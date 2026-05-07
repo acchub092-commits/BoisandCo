@@ -1,0 +1,1588 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.reference }} — {{ project.name }}{% endblock %}
+{% block page_title %}{{ project.reference }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:list' %}" class="btn-secondary btn-sm">← Retour</a>
+{% if user.is_manager_or_above %}
+<a href="{% url 'workflows:project_workflows' project.pk %}" class="btn-secondary btn-sm">Workflows</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── Bandeau statut ──────────────────────────────────────── #}
+  <div class="rounded-xl overflow-hidden shadow-card">
+
+    {# Bande colorée en haut selon le statut #}
+    <div class="h-1.5
+      {% if project.status == 'AVANT_VENTE' %}bg-ardoise-400
+      {% elif project.status == 'ETUDE' %}bg-blue-400
+      {% elif project.status == 'PRODUCTION' %}bg-amber-400
+      {% elif project.status == 'LOGISTIQUE' %}bg-purple-400
+      {% elif project.status == 'POSE' %}bg-foret-400
+      {% elif project.status == 'CLOTURE' %}bg-foret-600
+      {% endif %}">
+    </div>
+
+    <div class="bg-white px-6 py-5">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+
+        {# Titre + badge #}
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            {% if project.status == 'AVANT_VENTE' %}<span class="badge-avant-vente">{{ project.get_status_display }}</span>
+            {% elif project.status == 'ETUDE' %}<span class="badge-etude">{{ project.get_status_display }}</span>
+            {% elif project.status == 'PRODUCTION' %}<span class="badge-production">{{ project.get_status_display }}</span>
+            {% elif project.status == 'LOGISTIQUE' %}<span class="badge-logistique">{{ project.get_status_display }}</span>
+            {% elif project.status == 'POSE' %}<span class="badge-pose">{{ project.get_status_display }}</span>
+            {% elif project.status == 'CLOTURE' %}<span class="badge-cloture">{{ project.get_status_display }}</span>
+            {% endif %}
+            <span class="text-xs text-ardoise-400 font-mono">{{ project.reference }}</span>
+          </div>
+          <h2 class="text-2xl font-bold text-ardoise-900">{{ project.name }}</h2>
+          <p class="text-sm text-ardoise-500 mt-0.5">{{ project.client_name }}{% if project.address %} · {{ project.address|truncatechars:60 }}{% endif %}</p>
+        </div>
+
+        {# KPIs #}
+        <div class="flex items-center divide-x divide-ardoise-100 border border-ardoise-100 rounded-xl overflow-hidden bg-ardoise-50">
+          <div class="px-5 py-3 text-center">
+            <p class="text-xs text-ardoise-400 mb-0.5">Avancement</p>
+            <p class="text-2xl font-extrabold
+              {% if project.progress >= 80 %}text-foret-600
+              {% elif project.progress >= 40 %}text-bois-600
+              {% else %}text-ardoise-700{% endif %}">
+              {{ project.progress }}%
+            </p>
+          </div>
+          {% if project.budget %}
+          <div class="px-5 py-3 text-center">
+            <p class="text-xs text-ardoise-400 mb-0.5">Budget</p>
+            <p class="text-lg font-bold text-ardoise-800">{{ project.budget|floatformat:0 }} MAD</p>
+          </div>
+          {% endif %}
+          <div class="px-5 py-3 text-center">
+            <p class="text-xs text-ardoise-400 mb-0.5">Manager</p>
+            <div class="flex items-center gap-1.5 justify-center">
+              <div class="w-6 h-6 rounded-full bg-bois-500 text-white text-xs flex items-center justify-center font-semibold">
+                {{ project.manager.first_name|first|upper }}{{ project.manager.last_name|first|upper }}
+              </div>
+              <span class="text-sm font-medium text-ardoise-800">{{ project.manager.first_name }}</span>
+            </div>
+          </div>
+          {% if project.end_date %}
+          <div class="px-5 py-3 text-center">
+            <p class="text-xs text-ardoise-400 mb-0.5">Fin prévue</p>
+            <p class="text-sm font-bold text-ardoise-800">{{ project.end_date|date:"d/m/Y" }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Barre de progression globale #}
+      <div class="mt-4">
+        <div class="progress-bar h-2.5">
+          <div class="progress-fill" style="width: {{ project.progress }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Infos projet ────────────────────────────────────────── #}
+  <div x-data="{ open: localStorage.getItem('sec_info') !== 'false' }">
+    <button type="button" @click="open=!open; localStorage.setItem('sec_info', open)"
+            class="w-full flex items-center justify-between px-4 py-2.5 mb-3 rounded-xl bg-ardoise-50 border border-ardoise-100 hover:bg-ardoise-100 transition-colors select-none cursor-pointer">
+      <span class="text-sm font-semibold text-ardoise-700">Informations projet</span>
+      <span class="w-6 h-6 rounded-md border border-ardoise-200 bg-white flex items-center justify-center text-ardoise-600 font-bold text-base leading-none"
+            x-text="open ? '−' : '+'">−</span>
+    </button>
+  <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-100" x-transition:leave-end="opacity-0">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="card">
+      <h4 class="text-sm font-semibold text-ardoise-700 mb-3 pb-2 border-b border-ardoise-100">Client</h4>
+      <dl class="space-y-2 text-sm">
+        <div class="flex justify-between"><dt class="text-ardoise-400">Nom</dt><dd class="font-medium text-ardoise-800">{{ project.client_name }}</dd></div>
+        {% if project.client_email %}<div class="flex justify-between"><dt class="text-ardoise-400">Email</dt><dd class="text-ardoise-700">{{ project.client_email }}</dd></div>{% endif %}
+        {% if project.client_phone %}<div class="flex justify-between"><dt class="text-ardoise-400">Téléphone</dt><dd class="text-ardoise-700">{{ project.client_phone }}</dd></div>{% endif %}
+        {% if project.address %}<div class="flex justify-between gap-4"><dt class="text-ardoise-400 flex-shrink-0">Adresse</dt><dd class="text-ardoise-700 text-right">{{ project.address }}</dd></div>{% endif %}
+      </dl>
+    </div>
+
+    <div class="card">
+      <h4 class="text-sm font-semibold text-ardoise-700 mb-3 pb-2 border-b border-ardoise-100">Calendrier & responsables</h4>
+      <dl class="space-y-2 text-sm">
+        {% if project.start_date %}<div class="flex justify-between"><dt class="text-ardoise-400">Début</dt><dd class="font-medium text-ardoise-800">{{ project.start_date|date:"d/m/Y" }}</dd></div>{% endif %}
+        {% if project.end_date %}<div class="flex justify-between"><dt class="text-ardoise-400">Fin prévue</dt><dd class="font-medium text-ardoise-800">{{ project.end_date|date:"d/m/Y" }}</dd></div>{% endif %}
+        <div class="flex justify-between"><dt class="text-ardoise-400">Manager</dt><dd class="font-medium text-ardoise-800">{{ project.manager.get_full_name }}</dd></div>
+        {% if project.estimator %}<div class="flex justify-between"><dt class="text-ardoise-400">Estimateur</dt><dd class="text-ardoise-700">{{ project.estimator.get_full_name }}</dd></div>{% endif %}
+      </dl>
+
+      {# ── Chef de projet ── #}
+      <div class="mt-4 pt-4 border-t border-ardoise-100">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-ardoise-600 uppercase tracking-wide">Chef de projet</span>
+          {% if project.chef_de_projet and not project.chef_valide_par_admin %}
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">En attente de validation</span>
+          {% elif project.chef_valide_par_admin %}
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-foret-100 text-foret-700 font-medium">Validé</span>
+          {% endif %}
+        </div>
+
+        {% if project.chef_de_projet %}
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+               style="background-color: #163228; color: #f2e8d5;">
+            {{ project.chef_de_projet.first_name|first|upper }}{{ project.chef_de_projet.last_name|first|upper }}
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-ardoise-800">{{ project.chef_de_projet.get_full_name }}</p>
+            <p class="text-xs text-ardoise-400">{{ project.chef_de_projet.get_role_display }}
+              {% if project.chef_designe_le %} · désigné le {{ project.chef_designe_le|date:"d/m/Y" }}{% endif %}
+            </p>
+          </div>
+        </div>
+        {% if can_designate_chef and not project.chef_valide_par_admin %}
+        <form method="post" action="{% url 'projects:chef_validate' project.pk %}" class="mb-2">
+          {% csrf_token %}
+          <button type="submit"
+                  class="w-full text-xs px-3 py-2 rounded-lg font-semibold transition-colors"
+                  style="background-color: #163228; color: #f2e8d5;"
+                  onmouseover="this.style.backgroundColor='#1e4435'"
+                  onmouseout="this.style.backgroundColor='#163228'">
+            Valider la désignation
+          </button>
+        </form>
+        {% endif %}
+        {% else %}
+        <p class="text-xs text-ardoise-400 mb-3">Aucun chef de projet désigné.</p>
+        {% endif %}
+
+        {% if can_designate_chef %}
+        <details class="group">
+          <summary class="text-xs text-foret-600 hover:text-foret-700 cursor-pointer font-medium list-none flex items-center gap-1">
+            <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            {% if project.chef_de_projet %}Modifier{% else %}Désigner{% endif %} un chef de projet
+          </summary>
+          <form method="post" action="{% url 'projects:chef_design' project.pk %}" class="mt-2 flex gap-2">
+            {% csrf_token %}
+            <select name="chef_id" class="flex-1 text-xs border border-ardoise-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                    style="focus:border-color:#163228">
+              <option value="">— Choisir un membre —</option>
+              {% for u in designatable_users %}
+              <option value="{{ u.pk }}" {% if project.chef_de_projet_id == u.pk %}selected{% endif %}>
+                {{ u.get_full_name }} ({{ u.get_role_display }})
+              </option>
+              {% endfor %}
+            </select>
+            <button type="submit"
+                    class="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition-colors"
+                    style="background-color: #163228;">
+              OK
+            </button>
+          </form>
+        </details>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  </div>{# /transition #}
+  </div>{# /x-data sec_info #}
+
+  {# ── Gantt ───────────────────────────────────────────────── #}
+  <div class="card"
+       x-data="{
+         open: localStorage.getItem('gantt_open') !== 'false',
+         toggle() { this.open = !this.open; localStorage.setItem('gantt_open', this.open); }
+       }">
+
+    {# En-tête : titre + actions + toggle #}
+    <div class="flex items-center justify-between" :class="open ? 'mb-4' : ''">
+      <button @click="toggle()"
+              class="flex items-center gap-2 group cursor-pointer select-none"
+              :title="open ? 'Masquer le planning' : 'Afficher le planning'">
+        <h3 class="text-base font-semibold text-ardoise-800 group-hover:text-foret-600 transition-colors">
+          Planification
+        </h3>
+        <span class="w-6 h-6 rounded-md border border-ardoise-200 bg-ardoise-50 group-hover:border-foret-300 group-hover:bg-foret-50 flex items-center justify-center text-ardoise-500 group-hover:text-foret-600 font-bold text-base leading-none transition-colors"
+              x-text="open ? '−' : '+'">−</span>
+      </button>
+      <a href="{% url 'projects:gantt' project.pk %}"
+         class="inline-flex items-center gap-1.5 btn-secondary btn-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+        </svg>
+        Voir le planning
+      </a>
+    </div>
+
+    {# Contenu masquable — tableau planning complet #}
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+      {# Légende #}
+      <div class="flex flex-wrap gap-3 text-xs mb-3">
+        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-foret-500 inline-block"></span><span class="text-ardoise-500">A — Pipeline commercial</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-blue-500 inline-block"></span><span class="text-ardoise-500">B — Gestion de projet</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-amber-500 inline-block"></span><span class="text-ardoise-500">C — Facturation & SAV</span></div>
+        <div class="flex items-center gap-1.5 ml-3"><span class="w-3.5 h-3.5 rounded bg-foret-500 inline-block"></span><span class="text-ardoise-500">Terminé</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-white border-2 border-foret-500 inline-block"></span><span class="text-ardoise-500">En cours</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-ardoise-200 inline-block"></span><span class="text-ardoise-500">À faire</span></div>
+      </div>
+
+      {# Tableau planning #}
+      <div class="rounded-lg border border-ardoise-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-xs border-collapse" x-data="{ open: null }">
+            <thead>
+              <tr class="bg-ardoise-800 text-white">
+                <th class="w-8 px-2 py-2.5 text-center font-semibold border-r border-ardoise-700">N</th>
+                <th class="min-w-[180px] px-3 py-2.5 text-left font-semibold border-r border-ardoise-700">Étape</th>
+                <th class="min-w-[110px] px-3 py-2.5 text-left font-semibold border-r border-ardoise-700">Responsable</th>
+                {% for i in step_range %}
+                <th class="w-9 px-0 py-2.5 text-center font-semibold border-r border-ardoise-700 last:border-r-0">{{ i|stringformat:"02d" }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for partie_code, partie_data in parties.items %}
+              <tr class="{% if partie_code == 'A' %}bg-foret-700{% elif partie_code == 'B' %}bg-blue-700{% else %}bg-amber-600{% endif %}">
+                <td colspan="21" class="px-3 py-1.5 text-white font-bold text-xs tracking-wide">
+                  {{ partie_code }} — {{ partie_data.label }}
+                </td>
+              </tr>
+              {% for phase in partie_data.phases %}
+              {% with is_done=phase.is_completed is_active=phase.is_active %}
+              <tr class="border-b border-ardoise-100 hover:bg-ardoise-50/60 cursor-pointer transition-colors"
+                  @click="open = (open === {{ phase.pk }}) ? null : {{ phase.pk }}">
+                <td class="px-1 py-2.5 text-center border-r border-ardoise-100 align-middle">
+                  <span class="inline-flex items-center justify-center w-6 h-6 rounded font-bold text-white text-xs
+                    {% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %}">
+                    {{ phase.order|stringformat:"02d" }}
+                  </span>
+                </td>
+                <td class="px-3 py-2.5 border-r border-ardoise-100 align-middle">
+                  <div class="flex items-center gap-2">
+                    {% if is_done %}<svg class="w-3.5 h-3.5 text-foret-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    {% elif is_active %}<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
+                    {% else %}<span class="w-2 h-2 rounded-full bg-ardoise-300 flex-shrink-0"></span>{% endif %}
+                    <span class="font-medium {% if is_done %}text-ardoise-400 line-through{% elif is_active %}text-ardoise-900{% else %}text-ardoise-600{% endif %}">{{ phase.name }}</span>
+                    {% with ccount=phase.comments.count %}
+                    {% if ccount %}
+                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold
+                                 bg-foret-100 text-foret-700 border border-foret-200 flex-shrink-0"
+                          title="{{ ccount }} commentaire{{ ccount|pluralize }}">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                      </svg>
+                      {{ ccount }}
+                    </span>
+                    {% endif %}
+                    {% endwith %}
+                  </div>
+                  {% if phase.planned_start and phase.planned_end %}
+                  <p class="text-ardoise-400 mt-0.5 ml-5">{{ phase.planned_start|date:"d/m" }} → {{ phase.planned_end|date:"d/m/Y" }}</p>
+                  {% endif %}
+                </td>
+                <td class="px-3 py-2.5 border-r border-ardoise-100 align-middle">
+                  <span class="text-ardoise-500 text-xs block leading-tight">{{ phase.owner_label }}</span>
+                  <div class="flex items-center gap-1.5 mt-1">
+                    <div class="flex-1 h-1.5 rounded-full bg-ardoise-100 overflow-hidden">
+                      <div class="h-full rounded-full transition-all duration-300
+                        {% if is_done %}bg-foret-500
+                        {% elif is_active %}bg-blue-500
+                        {% else %}bg-ardoise-300{% endif %}"
+                           style="width: {{ phase.progress }}%"></div>
+                    </div>
+                    <span class="text-[10px] font-bold flex-shrink-0
+                      {% if is_done %}text-foret-600
+                      {% elif is_active %}text-blue-600
+                      {% else %}text-ardoise-400{% endif %}">
+                      {{ phase.progress }}%
+                    </span>
+                  </div>
+                </td>
+                {% for i in step_range %}
+                <td class="w-9 py-2.5 text-center border-r border-ardoise-100 last:border-r-0 align-middle">
+                  {% if i == phase.order %}
+                  <span class="inline-flex items-center justify-center w-6 h-6 rounded mx-auto
+                    {% if is_done %}{% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %}
+                    {% elif is_active %}bg-white border-2 {% if partie_code == 'A' %}border-foret-500{% elif partie_code == 'B' %}border-blue-500{% else %}border-amber-500{% endif %}
+                    {% else %}bg-ardoise-200{% endif %}">
+                    {% if is_done %}<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    {% elif is_active %}<span class="w-1.5 h-1.5 rounded-full {% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %} animate-pulse"></span>
+                    {% else %}<span class="w-1.5 h-1.5 rounded-full bg-ardoise-400"></span>{% endif %}
+                  </span>
+                  {% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {# Panneau étendu : dates + chat ─────────────────── #}
+              <tr x-show="open === {{ phase.pk }}" x-transition style="display:none"
+                  class="border-b border-ardoise-200">
+                <td colspan="21" class="p-0">
+                  <div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-ardoise-200 bg-ardoise-50">
+
+                    {# ── Colonne gauche : mise à jour ── #}
+                    <div class="p-4 lg:w-72 flex-shrink-0">
+                      <p class="text-xs font-semibold text-ardoise-500 uppercase tracking-wide mb-3">Mise à jour</p>
+
+                      {% if phase.user_can_comment %}
+                      {# Formulaire complet — rôle responsable ou management #}
+                      <form method="post" action="{% url 'projects:gantt_phase_update' project.pk phase.pk %}"
+                            class="space-y-3"
+                            x-data="{
+                              v: {{ phase.progress }},
+                              statut: '{% if phase.is_completed %}done{% elif phase.is_active %}active{% else %}pending{% endif %}',
+                              setStatut(s) {
+                                this.statut = s;
+                                if (s === 'done') this.v = 100;
+                              }
+                            }">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <input type="hidden" name="is_completed" :value="statut === 'done' ? '1' : ''">
+                        <input type="hidden" name="is_active"    :value="statut === 'active' ? '1' : ''">
+
+                        <div>
+                          <label class="form-label">Statut</label>
+                          <div class="grid grid-cols-3 gap-1.5 mt-1">
+                            <button type="button" @click="setStatut('pending')"
+                                    class="py-1.5 rounded-lg border text-xs font-medium transition-all"
+                                    :class="statut === 'pending'
+                                      ? 'border-ardoise-400 bg-ardoise-100 text-ardoise-700'
+                                      : 'border-ardoise-200 text-ardoise-400 hover:border-ardoise-300'">
+                              À faire
+                            </button>
+                            <button type="button" @click="setStatut('active')"
+                                    class="py-1.5 rounded-lg border text-xs font-medium transition-all"
+                                    :class="statut === 'active'
+                                      ? 'border-blue-400 bg-blue-50 text-blue-700'
+                                      : 'border-ardoise-200 text-ardoise-400 hover:border-blue-200'">
+                              En cours
+                            </button>
+                            <button type="button" @click="setStatut('done')"
+                                    class="py-1.5 rounded-lg border text-xs font-medium transition-all"
+                                    :class="statut === 'done'
+                                      ? 'border-foret-400 bg-foret-50 text-foret-700'
+                                      : 'border-ardoise-200 text-ardoise-400 hover:border-foret-200'">
+                              Terminée
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div class="flex items-center justify-between mb-1">
+                            <label class="form-label mb-0">Avancement</label>
+                            <span class="text-sm font-bold"
+                                  :class="statut === 'done' ? 'text-foret-600' : 'text-ardoise-600'"
+                                  x-text="v + '%'"></span>
+                          </div>
+                          <input type="range" name="progress" min="0" max="100" step="5"
+                                 x-model.number="v"
+                                 :disabled="statut === 'done'"
+                                 class="w-full accent-foret-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                          <div class="h-1.5 rounded-full bg-ardoise-100 overflow-hidden mt-1.5">
+                            <div class="h-full rounded-full transition-all duration-300"
+                                 :class="statut === 'done' ? 'bg-foret-500' : statut === 'active' ? 'bg-blue-400' : 'bg-ardoise-300'"
+                                 :style="'width:' + v + '%'"></div>
+                          </div>
+                        </div>
+
+                        <div><label class="form-label">Début prévu</label>
+                          <input type="date" name="planned_start"
+                                 value="{% if phase.planned_start %}{{ phase.planned_start|date:'Y-m-d' }}{% endif %}"
+                                 class="form-input w-full"></div>
+                        <div><label class="form-label">Fin prévue</label>
+                          <input type="date" name="planned_end"
+                                 value="{% if phase.planned_end %}{{ phase.planned_end|date:'Y-m-d' }}{% endif %}"
+                                 class="form-input w-full"></div>
+                        <div class="flex gap-2 pt-1">
+                          <button type="submit" class="btn-primary btn-sm flex-1">Enregistrer</button>
+                          <button type="button" @click="open = null" class="btn-secondary btn-sm">✕</button>
+                        </div>
+                      </form>
+
+                      {% else %}
+                      {# Lecture seule — info statut sans formulaire #}
+                      <div class="space-y-3">
+                        <div>
+                          <p class="form-label mb-1">Statut</p>
+                          <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold
+                            {% if phase.is_completed %}bg-foret-100 text-foret-700
+                            {% elif phase.is_active %}bg-blue-100 text-blue-700
+                            {% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+                            {% if phase.is_completed %}Terminée{% elif phase.is_active %}En cours{% else %}À faire{% endif %}
+                          </span>
+                        </div>
+                        <div>
+                          <p class="form-label mb-1">Avancement</p>
+                          <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 rounded-full bg-ardoise-100 overflow-hidden">
+                              <div class="h-full rounded-full
+                                {% if phase.is_completed %}bg-foret-500{% elif phase.is_active %}bg-blue-400{% else %}bg-ardoise-300{% endif %}"
+                                   style="width:{{ phase.progress }}%"></div>
+                            </div>
+                            <span class="text-xs font-bold text-ardoise-600">{{ phase.progress }}%</span>
+                          </div>
+                        </div>
+                        {% if phase.planned_start %}
+                        <div><p class="form-label mb-0.5">Début prévu</p>
+                          <p class="text-sm text-ardoise-700">{{ phase.planned_start|date:"d/m/Y" }}</p></div>
+                        {% endif %}
+                        {% if phase.planned_end %}
+                        <div><p class="form-label mb-0.5">Fin prévue</p>
+                          <p class="text-sm text-ardoise-700">{{ phase.planned_end|date:"d/m/Y" }}</p></div>
+                        {% endif %}
+                        <div class="pt-2 border-t border-ardoise-100 flex items-center gap-1.5 text-xs text-ardoise-400">
+                          <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                          </svg>
+                          <span>Responsable : <strong class="text-ardoise-600">{{ phase.owner_label }}</strong></span>
+                        </div>
+                        <button type="button" @click="open = null" class="btn-secondary btn-sm w-full">Fermer</button>
+                      </div>
+                      {% endif %}
+                    </div>
+
+                    {# ── Colonne droite : chat style WhatsApp ── #}
+                    <div class="flex-1 flex flex-col min-h-[320px] max-h-[520px]">
+
+                      {# En-tête chat #}
+                      <div class="px-4 py-2.5 bg-white border-b border-ardoise-200 flex items-center gap-2 flex-shrink-0">
+                        <div class="w-2 h-2 rounded-full {% if is_active %}bg-blue-500 animate-pulse{% elif is_done %}bg-foret-500{% else %}bg-ardoise-300{% endif %}"></div>
+                        <span class="text-xs font-semibold text-ardoise-700">{{ phase.name }}</span>
+                        <span class="text-xs text-ardoise-400 ml-auto">{{ phase.comments.count }} message{{ phase.comments.count|pluralize }}</span>
+                      </div>
+
+                      {# Messages #}
+                      <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-ardoise-50/40"
+                           style="background-image: url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e8eaed' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\");">
+                        {% for comment in phase.comments.all %}
+                        <div class="flex {% if comment.author == request.user %}justify-end{% else %}justify-start{% endif %} items-end gap-2">
+                          {% if comment.author != request.user %}
+                          <div class="w-7 h-7 rounded-full bg-ardoise-300 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {{ comment.author.first_name|first|upper }}{{ comment.author.last_name|first|upper }}
+                          </div>
+                          {% endif %}
+                          <div class="max-w-[72%] {% if comment.author == request.user %}bg-foret-500 text-white rounded-t-xl rounded-bl-xl{% else %}bg-white text-ardoise-800 rounded-t-xl rounded-br-xl{% endif %} px-3 py-2 shadow-sm">
+                            {% if comment.author != request.user %}
+                            <p class="text-[10px] font-semibold {% if comment.author == request.user %}text-foret-100{% else %}text-foret-600{% endif %} mb-0.5">
+                              {{ comment.author.get_full_name|default:comment.author.username }}
+                            </p>
+                            {% endif %}
+                            {% if comment.text %}<p class="text-sm leading-snug">{{ comment.text }}</p>{% endif %}
+                            {% if comment.audio %}
+                            <audio controls class="mt-1.5 h-8 w-48 rounded"
+                                   src="{{ comment.audio.url }}"></audio>
+                            {% endif %}
+                            {% if comment.attachment %}
+                            <a href="{{ comment.attachment.url }}" target="_blank" rel="noopener"
+                               class="flex items-center gap-1.5 mt-1.5 text-xs {% if comment.author == request.user %}text-foret-100 hover:text-white{% else %}text-foret-600 hover:text-foret-700{% endif %}">
+                              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                              </svg>
+                              <span class="truncate max-w-[160px]">{{ comment.attachment_basename }}</span>
+                            </a>
+                            {% endif %}
+                            <p class="text-[10px] mt-1 {% if comment.author == request.user %}text-foret-200{% else %}text-ardoise-400{% endif %} text-right">
+                              {{ comment.created_at|date:"d/m H:i" }}
+                            </p>
+                          </div>
+                        </div>
+                        {% empty %}
+                        <div class="flex items-center justify-center h-full py-6">
+                          <p class="text-xs text-ardoise-400">
+                            {% if phase.user_can_comment %}Aucun message — soyez le premier à commenter{% else %}Aucun message{% endif %}
+                          </p>
+                        </div>
+                        {% endfor %}
+                      </div>
+
+                      {# Zone de saisie — visible uniquement si le rôle correspond #}
+                      {% if phase.user_can_comment %}
+                      <form method="post" enctype="multipart/form-data"
+                            action="{% url 'projects:phase_comment' phase.pk %}"
+                            @submit.prevent="submitForm($event)"
+                            class="border-t border-ardoise-200 bg-white flex-shrink-0"
+                            x-data="Object.assign(taskAudio(), { fname: '' })">
+                        {% csrf_token %}
+
+                        {# Aperçu audio enregistré #}
+                        <div x-show="audioReady" x-transition class="px-4 pt-3">
+                          <div class="flex items-center gap-2 bg-foret-50 border border-foret-200 rounded-xl px-3 py-2">
+                            <svg class="w-4 h-4 text-foret-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                            </svg>
+                            <audio x-ref="preview" controls class="flex-1 h-8"></audio>
+                            <button type="button"
+                                    @click="audioReady = false; audioBlob = null; chunks = []"
+                                    class="text-ardoise-400 hover:text-red-500 transition-colors flex-shrink-0"
+                                    title="Supprimer l'audio">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {# Aperçu fichier sélectionné #}
+                        <div x-show="fname" x-transition class="px-4 pt-2">
+                          <div class="flex items-center gap-2 bg-bois-50 border border-bois-200 rounded-xl px-3 py-2">
+                            <svg class="w-4 h-4 text-bois-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            <span class="flex-1 text-xs text-bois-700 truncate" x-text="fname"></span>
+                            <button type="button"
+                                    @click="fname = ''; $el.closest('form').querySelector('[name=attachment]').value = ''"
+                                    class="text-ardoise-400 hover:text-red-500 transition-colors flex-shrink-0"
+                                    title="Retirer le fichier">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {# Textarea message #}
+                        <div class="px-4 pt-3 pb-2">
+                          <textarea name="text" rows="2"
+                                    placeholder="Écrivez un message…"
+                                    class="w-full text-sm border border-ardoise-200 rounded-xl px-3 py-2.5
+                                           focus:border-foret-400 focus:outline-none resize-none
+                                           placeholder-ardoise-300 bg-ardoise-50/50"></textarea>
+                        </div>
+
+                        {# Barre d'actions #}
+                        <div class="flex items-center gap-2 px-4 pb-3">
+
+                          {# Pièce jointe #}
+                          <label class="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex-shrink-0"
+                                 :class="fname ? 'border-bois-300 bg-bois-50 text-bois-700' : 'border-ardoise-200 text-ardoise-500 hover:border-foret-300 hover:text-foret-600'">
+                            <input type="file" name="attachment" class="hidden"
+                                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                   @change="fname = $event.target.files[0]?.name || ''">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            <span x-text="fname ? 'Fichier joint' : 'Joindre'"></span>
+                          </label>
+
+                          {# Mémo vocal #}
+                          <button type="button"
+                                  @click="recording ? stopRec() : startRec()"
+                                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex-shrink-0"
+                                  :class="recording
+                                    ? 'border-red-300 bg-red-50 text-red-600 animate-pulse'
+                                    : audioReady
+                                      ? 'border-foret-400 bg-foret-50 text-foret-700'
+                                      : 'border-ardoise-200 text-ardoise-500 hover:border-foret-300 hover:text-foret-600'">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                            </svg>
+                            <span x-text="recording ? 'Arrêter' : audioReady ? '✓ Mémo prêt' : 'Mémo vocal'"></span>
+                          </button>
+
+                          {# Envoyer #}
+                          <button type="submit" :disabled="submitting"
+                                  class="ml-auto flex items-center gap-2 px-4 py-1.5 rounded-lg bg-foret-500 hover:bg-foret-600 text-white text-xs font-semibold transition-colors disabled:opacity-60 disabled:cursor-wait">
+                            <span x-text="submitting ? 'Envoi…' : 'Envoyer'"></span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </form>
+                      {% else %}
+                      {# Lecture seule — rôle non responsable de cette étape #}
+                      <div class="border-t border-ardoise-200 bg-white flex-shrink-0 px-4 py-3 flex items-center gap-2 text-xs text-ardoise-400">
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                        <span>Lecture seule — votre rôle ({{ request.user.get_role_display }}) n'est pas responsable de cette étape.</span>
+                      </div>
+                      {% endif %}
+                    </div>
+
+                  </div>
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Phases & tâches — masqué, géré via la Planification ── #}
+  {% comment %}
+  <div>
+    <h3 class="text-base font-semibold text-ardoise-800 mb-3">Phases et tâches</h3>
+    <div class="space-y-3">
+      {% for phase in project.phases.all %}
+      <div x-data="{ open: {{ phase.is_active|yesno:'true,false' }} }" class="card p-0 overflow-hidden">
+
+        {# En-tête phase #}
+        <div class="flex items-center {% if phase.is_completed %}bg-foret-50{% elif phase.is_active %}bg-bois-50{% else %}bg-ardoise-50{% endif %} transition-colors">
+
+          {# Bouton accordion — toute la zone sauf les actions #}
+          <button @click="open = !open" class="flex-1 flex items-center gap-3 px-5 py-3.5 text-left min-w-0">
+            {% if phase.is_completed %}
+            <div class="w-5 h-5 rounded-full bg-foret-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            {% elif phase.is_active %}
+            <div class="w-5 h-5 rounded-full border-2 border-bois-500 flex items-center justify-center flex-shrink-0">
+              <span class="w-2 h-2 rounded-full bg-bois-500 animate-pulse"></span>
+            </div>
+            {% else %}
+            <div class="w-5 h-5 rounded-full border-2 border-ardoise-200 flex-shrink-0"></div>
+            {% endif %}
+
+            <span class="text-sm font-semibold text-ardoise-900 truncate">{{ phase.name }}</span>
+            {% if phase.estimated_days %}
+            <span class="text-xs text-ardoise-400 flex-shrink-0 hidden sm:inline">{{ phase.estimated_days }} j</span>
+            {% endif %}
+          </button>
+
+          {# Droite : barre + actions #}
+          <div class="flex items-center gap-3 pr-4 flex-shrink-0">
+            <div class="hidden sm:flex items-center gap-2">
+              <div class="progress-bar w-24">
+                <div class="progress-fill" style="width: {{ phase.progress }}%"></div>
+              </div>
+              <span class="text-xs font-semibold text-ardoise-600 w-8 text-right">{{ phase.progress }}%</span>
+            </div>
+
+            {# Bouton Activer #}
+            {% if not phase.is_active and not phase.is_completed %}
+            <form method="post" action="{% url 'projects:phase_activate' phase.pk %}">
+              {% csrf_token %}
+              <button type="submit"
+                      class="text-xs px-2.5 py-1 rounded-lg bg-bois-100 text-bois-700 hover:bg-bois-200 font-medium whitespace-nowrap transition-colors">
+                Activer
+              </button>
+            </form>
+            {% endif %}
+
+            {# Bouton Terminer #}
+            {% if phase.is_active and not phase.is_completed %}
+            <form method="post" action="{% url 'projects:phase_complete' phase.pk %}">
+              {% csrf_token %}
+              <button type="submit"
+                      onclick="return confirm('Terminer la phase « {{ phase.name }} » et passer à la suivante ?')"
+                      class="text-xs px-2.5 py-1 rounded-lg bg-foret-100 text-foret-700 hover:bg-foret-200 font-medium whitespace-nowrap transition-colors">
+                Terminer
+              </button>
+            </form>
+            {% endif %}
+
+            {# Badge terminée #}
+            {% if phase.is_completed %}
+            <span class="text-xs px-2 py-0.5 rounded-lg bg-foret-100 text-foret-600 font-medium">Terminée</span>
+            {% endif %}
+
+            <button @click="open = !open" class="p-1">
+              <svg class="w-4 h-4 text-ardoise-400 transition-transform duration-200" :class="{'rotate-180': open}"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {# Tâches #}
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+          {% if phase.tasks.exists %}
+          <ul class="divide-y divide-ardoise-50">
+            {% for task in phase.tasks.all %}
+            <li x-data="{ editing: false }" class="px-5 py-3 hover:bg-ardoise-50 transition-colors">
+              <div class="flex items-center justify-between gap-3">
+                {# Infos tâche #}
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="w-2.5 h-2.5 rounded-full flex-shrink-0
+                    {% if task.status == 'TERMINEE' %}bg-foret-500
+                    {% elif task.status == 'EN_COURS' %}bg-bois-500
+                    {% elif task.status == 'ACTIVE' %}bg-bois-300
+                    {% elif task.status == 'BLOQUEE' %}bg-red-400
+                    {% else %}bg-ardoise-200{% endif %}">
+                  </span>
+                  <div class="min-w-0">
+                    <a href="{% url 'projects:task_detail' task.pk %}"
+                       class="text-sm text-ardoise-800 truncate block hover:text-foret-600 transition-colors
+                         {% if task.status == 'TERMINEE' %}line-through text-ardoise-400{% endif %}">
+                      {{ task.name }}
+                    </a>
+                    {% if task.assignments.exists %}
+                    <span class="text-xs text-ardoise-400">
+                      {% for a in task.assignments.all %}{{ a.user.get_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    </span>
+                    {% endif %}
+                  </div>
+                  {% if task.required_role != 'ANY' %}
+                  <span class="text-xs px-1.5 py-0.5 rounded bg-ardoise-100 text-ardoise-500 flex-shrink-0 hidden sm:inline">
+                    {{ task.get_required_role_display }}
+                  </span>
+                  {% endif %}
+                  {% if task.comments.exists %}
+                  <button type="button" @click="editing = !editing"
+                          class="flex items-center gap-0.5 text-xs text-ardoise-400 hover:text-foret-600 transition-colors flex-shrink-0">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    {{ task.comments.count }}
+                  </button>
+                  {% endif %}
+                </div>
+
+                {# Avancement tâche #}
+                <div class="flex items-center gap-3 flex-shrink-0">
+                  {% if task.due_date %}
+                  <span class="text-xs text-ardoise-400 hidden sm:inline">{{ task.due_date|date:"d/m" }}</span>
+                  {% endif %}
+                  <div class="progress-bar w-16">
+                    <div class="progress-fill" style="width: {{ task.progress }}%"></div>
+                  </div>
+                  <span class="text-xs font-medium text-ardoise-500 w-7 text-right">{{ task.progress }}%</span>
+
+                  {# Bouton modifier avancement (sauf terminée) #}
+                  {% if task.status != 'TERMINEE' and task.status != 'EN_ATTENTE' %}
+                  <button @click="editing = !editing"
+                          class="p-1 rounded text-ardoise-400 hover:text-bois-600 hover:bg-bois-50 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+
+              {# Panneau inline : commentaires existants + avancement + nouveau commentaire #}
+              <div x-show="editing" x-transition
+                   class="mt-2 ml-5 border border-ardoise-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                {# ── Historique des commentaires ── #}
+                {% if task.comments.exists %}
+                <div class="divide-y divide-ardoise-50 max-h-64 overflow-y-auto">
+                  {% for comment in task.comments.all %}
+                  <div class="flex gap-3 px-4 py-3">
+                    <div class="w-7 h-7 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">
+                      {% if comment.author %}{{ comment.author.first_name|first|upper }}{{ comment.author.last_name|first|upper }}{% else %}?{% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-0.5">
+                        <span class="text-xs font-semibold text-ardoise-900">
+                          {% if comment.author %}{{ comment.author.get_full_name|default:comment.author.username }}{% else %}Inconnu{% endif %}
+                        </span>
+                        {% if comment.author %}
+                        <span class="text-xs px-1.5 py-0.5 rounded-full bg-foret-50 text-foret-600 font-medium">
+                          {{ comment.author.get_role_display }}
+                        </span>
+                        {% endif %}
+                        <span class="text-xs text-ardoise-400">
+                          {{ comment.created_at|date:"d/m/Y" }} à {{ comment.created_at|date:"H:i" }}
+                        </span>
+                      </div>
+                      {% if comment.text %}
+                      <p class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ comment.text }}</p>
+                      {% endif %}
+                      {% if comment.attachment %}
+                      <a href="{{ comment.attachment.url }}" target="_blank"
+                         class="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 bg-ardoise-50 border border-ardoise-100
+                                rounded-lg text-xs text-ardoise-600 hover:text-foret-700 hover:border-foret-200 transition-colors">
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        {{ comment.attachment_basename }}
+                      </a>
+                      {% endif %}
+                      {% if comment.audio %}
+                      <div class="flex items-center gap-1.5 mt-1.5">
+                        <svg class="w-4 h-4 text-foret-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                        <audio controls class="h-7 max-w-[200px]">
+                          <source src="{{ comment.audio.url }}">
+                        </audio>
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="border-t border-ardoise-100 px-4 py-2 bg-ardoise-50">
+                  <p class="text-xs text-ardoise-400 font-medium">Ajouter une mise à jour</p>
+                </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data"
+                      action="{% url 'projects:task_progress' task.pk %}"
+                      x-data="taskAudio()" @submit.prevent="submitForm($event)"
+                      class="space-y-0">
+                  {% csrf_token %}
+
+                  {# Ligne avancement #}
+                  <div class="flex items-center gap-3 px-4 py-3 bg-white border-b border-ardoise-100"
+                       x-data="{ val: {{ task.progress }} }">
+                    <span class="text-xs text-ardoise-500 flex-shrink-0">Avancement</span>
+                    <input type="range" name="progress" x-model="val"
+                           min="0" max="100" step="5"
+                           class="flex-1 accent-bois-500">
+                    <span class="text-xs font-bold text-bois-600 w-9 flex-shrink-0" x-text="val + '%'"></span>
+                  </div>
+
+                  {# Commentaire texte #}
+                  <div class="px-4 py-3">
+                    <textarea name="comment_text" rows="2"
+                              placeholder="Commentaire sur cette mise à jour (optionnel)…"
+                              class="w-full text-sm border border-ardoise-200 rounded-lg px-3 py-2
+                                     focus:border-foret-400 focus:outline-none resize-none bg-white
+                                     placeholder-ardoise-300"></textarea>
+                  </div>
+
+                  {# Pièces jointes : photo + audio #}
+                  <div class="flex flex-wrap items-center gap-3 px-4 pb-3">
+
+                    {# Photo / fichier #}
+                    <label x-data="{ fname: '' }"
+                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors"
+                           :class="fname ? 'border-foret-400 bg-foret-50 text-foret-700' : 'border-ardoise-200 bg-white text-ardoise-500 hover:border-foret-300'">
+                      <input type="file" name="comment_file"
+                             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                             class="hidden" @change="fname = $event.target.files[0]?.name || ''">
+                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                      </svg>
+                      <span class="text-xs font-medium truncate max-w-[120px]"
+                            x-text="fname || 'Photo / fichier'"></span>
+                    </label>
+
+                    {# Mémo vocal #}
+                    <div class="flex items-center gap-2">
+                      <button type="button" @click="recording ? stopRec() : startRec()"
+                              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors"
+                              :class="recording
+                                ? 'border-red-300 bg-red-50 text-red-600 animate-pulse'
+                                : audioReady
+                                  ? 'border-foret-400 bg-foret-50 text-foret-700'
+                                  : 'border-ardoise-200 bg-white text-ardoise-500 hover:border-foret-300'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                        <span x-text="recording ? 'Stop' : audioReady ? '✓ Audio' : 'Mémo vocal'"></span>
+                      </button>
+                      <audio x-show="audioReady" x-ref="preview" controls class="h-7 w-32"></audio>
+                    </div>
+
+                    {# Boutons action #}
+                    <div class="flex items-center gap-2 ml-auto">
+                      <button type="button" @click="editing = false"
+                              class="text-xs text-ardoise-400 hover:text-ardoise-700 px-2 py-1.5 transition-colors">
+                        Annuler
+                      </button>
+                      <button type="submit"
+                              :disabled="submitting"
+                              class="text-xs px-3 py-1.5 bg-bois-500 hover:bg-bois-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-60 disabled:cursor-wait">
+                        <span x-text="submitting ? 'Envoi…' : 'Enregistrer'"></span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="px-5 py-3 text-xs text-ardoise-400">Aucune tâche dans cette phase.</p>
+          {% endif %}
+        </div>
+
+      </div>
+      {% empty %}
+      <div class="card text-center py-10 text-ardoise-400 text-sm">
+        Aucune phase définie pour ce projet.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endcomment %}
+
+  {# ── Documents GED ───────────────────────────────────────── #}
+  <div class="card p-0 overflow-hidden" x-data="{ open: localStorage.getItem('sec_docs') !== 'false' }">
+    <div class="flex items-center justify-between px-5 py-3.5 border-b border-ardoise-100"
+         :class="open ? 'border-b' : 'border-b-0'">
+      <button type="button" @click="open=!open; localStorage.setItem('sec_docs', open)"
+              class="flex items-center gap-2 group cursor-pointer select-none">
+        <h4 class="text-sm font-semibold text-ardoise-700 group-hover:text-foret-600 transition-colors">Documents</h4>
+        {% with count=project.documents.count %}
+        {% if count %}
+        <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full
+                     bg-bois-100 text-bois-700 text-xs font-bold">{{ count }}</span>
+        {% endif %}
+        {% endwith %}
+        <span class="w-6 h-6 rounded-md border border-ardoise-200 bg-ardoise-50 group-hover:border-foret-300 group-hover:bg-foret-50 flex items-center justify-center text-ardoise-500 group-hover:text-foret-600 font-bold text-base leading-none transition-colors"
+              x-text="open ? '−' : '+'">−</span>
+      </button>
+      <div class="flex items-center gap-2" x-show="open">
+        <a href="{% url 'documents:list' %}?project={{ project.pk }}"
+           class="text-xs text-ardoise-500 hover:text-bois-600 transition-colors">
+          Voir tous →
+        </a>
+        <a href="{% url 'documents:upload' %}?project={{ project.pk }}"
+           class="btn-primary btn-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Déposer
+        </a>
+      </div>
+    </div>
+
+    <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-end="opacity-0">
+    {% with recent_docs=project.documents.all|slice:":8" %}
+    {% if recent_docs %}
+    <ul class="divide-y divide-ardoise-100">
+      {% for doc in recent_docs %}
+      <li class="flex items-center gap-3 px-5 py-3 hover:bg-ardoise-50 transition-colors group">
+
+        {# Icône type #}
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+          {% if doc.file_type == 'pdf' %}bg-red-50 text-red-500
+          {% elif doc.file_type == 'word' %}bg-blue-50 text-blue-500
+          {% elif doc.file_type == 'excel' %}bg-green-50 text-green-600
+          {% elif doc.file_type == 'image' %}bg-purple-50 text-purple-500
+          {% elif doc.file_type == 'cad' %}bg-amber-50 text-amber-600
+          {% else %}bg-ardoise-100 text-ardoise-400{% endif %}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+
+        {# Nom + méta #}
+        <div class="flex-1 min-w-0">
+          <a href="{{ doc.file.url }}" target="_blank"
+             class="text-sm font-medium text-ardoise-800 hover:text-bois-600 transition-colors truncate block">
+            {{ doc.name }}
+          </a>
+          <div class="flex items-center gap-2 mt-0.5">
+            {% if doc.category %}
+            <span class="text-xs text-ardoise-400">{{ doc.category.name }}</span>
+            <span class="text-ardoise-200">·</span>
+            {% endif %}
+            <span class="text-xs text-ardoise-400">{{ doc.file_size_human }}</span>
+            <span class="text-ardoise-200">·</span>
+            <span class="text-xs text-ardoise-400">{{ doc.uploaded_at|date:"d/m/Y" }}</span>
+          </div>
+        </div>
+
+        {# Télécharger #}
+        <a href="{{ doc.file.url }}" target="_blank" download
+           title="Télécharger"
+           class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center
+                  text-ardoise-300 hover:text-bois-600 hover:bg-bois-50
+                  opacity-0 group-hover:opacity-100 transition-all">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% with total=project.documents.count %}
+    {% if total > 8 %}
+    <div class="px-5 py-3 border-t border-ardoise-100 bg-ardoise-50 text-center">
+      <a href="{% url 'documents:list' %}?project={{ project.pk }}"
+         class="text-xs text-bois-600 hover:text-bois-700 font-medium transition-colors">
+        Voir les {{ total }} documents du projet →
+      </a>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% else %}
+    <div class="py-10 text-center">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-ardoise-100 mb-3">
+        <svg class="w-6 h-6 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <p class="text-sm text-ardoise-400 mb-3">Aucun document pour ce projet.</p>
+      <a href="{% url 'documents:upload' %}?project={{ project.pk }}" class="btn-primary btn-sm">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Déposer le premier document
+      </a>
+    </div>
+    {% endif %}
+    {% endwith %}
+    </div>{# /transition docs #}
+  </div>
+
+  {# ── Équipe projet ────────────────────────────────────────── #}
+  {% if project.members.exists %}
+  <div class="card" x-data="{ open: localStorage.getItem('sec_team') !== 'false' }">
+    <button type="button" @click="open=!open; localStorage.setItem('sec_team', open)"
+            class="flex items-center gap-2 group cursor-pointer select-none w-full" :class="open ? 'mb-3' : ''">
+      <h4 class="text-sm font-semibold text-ardoise-700 group-hover:text-foret-600 transition-colors flex-1 text-left">Équipe affectée au projet</h4>
+      <span class="w-6 h-6 rounded-md border border-ardoise-200 bg-ardoise-50 group-hover:border-foret-300 group-hover:bg-foret-50 flex items-center justify-center text-ardoise-500 group-hover:text-foret-600 font-bold text-base leading-none transition-colors"
+            x-text="open ? '−' : '+'">−</span>
+    </button>
+    <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-end="opacity-0">
+    <div class="flex flex-wrap gap-2">
+      {% for member in project.members.all %}
+      <div class="flex items-center gap-2 bg-ardoise-50 border border-ardoise-100 rounded-full px-3 py-1.5">
+        <div class="w-6 h-6 rounded-full text-white text-xs flex items-center justify-center font-bold flex-shrink-0
+          {% if member.user.role == 'DIRECTEUR' %}bg-ardoise-700
+          {% elif member.user.role == 'MANAGER' %}bg-foret-600
+          {% elif member.user.role == 'ESTIMATEUR' %}bg-blue-500
+          {% elif member.user.role == 'ATELIER' %}bg-amber-500
+          {% elif member.user.role == 'CHAUFFEUR' %}bg-purple-500
+          {% else %}bg-foret-400{% endif %}">
+          {{ member.user.first_name|first|upper }}{{ member.user.last_name|first|upper }}
+        </div>
+        <span class="text-xs font-medium text-ardoise-700">{{ member.user.get_full_name }}</span>
+        <span class="text-xs text-ardoise-400">{{ member.user.get_role_display }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    </div>{# /transition team #}
+  </div>
+  {% endif %}
+
+  {# ── Commande / Marché initial ────────────────────────────── #}
+  {% if project.initial_order %}
+  <div class="card">
+    <h4 class="text-sm font-semibold text-ardoise-700 mb-3 pb-2 border-b border-ardoise-100">
+      Commande / Marché initial
+    </h4>
+    <a href="{{ project.initial_order.url }}" target="_blank"
+       class="inline-flex items-center gap-3 px-4 py-3 bg-ardoise-50 border border-ardoise-100
+              rounded-xl hover:border-foret-300 hover:bg-foret-50 transition-colors group">
+      <div class="w-10 h-10 rounded-lg bg-foret-100 flex items-center justify-center flex-shrink-0 group-hover:bg-foret-200 transition-colors">
+        <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-ardoise-800 group-hover:text-foret-700 transition-colors">
+          Voir la commande initiale
+        </p>
+        <p class="text-xs text-ardoise-400">Cliquer pour ouvrir dans un nouvel onglet</p>
+      </div>
+      <svg class="w-4 h-4 text-ardoise-300 ml-auto group-hover:text-foret-500 transition-colors"
+           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+      </svg>
+    </a>
+  </div>
+  {% endif %}
+
+  {# ── Étapes de suivi (chef de projet) ───────────────────────── #}
+  {% if project_steps %}
+  <div class="card p-0 overflow-hidden" x-data="{ open: localStorage.getItem('sec_steps') !== 'false' }">
+    <div class="flex items-center justify-between px-5 py-3.5 border-b border-ardoise-100"
+         :class="open ? 'border-b' : 'border-b-0'">
+      <button type="button" @click="open=!open; localStorage.setItem('sec_steps', open)"
+              class="flex items-center gap-2 group cursor-pointer select-none">
+        <h4 class="text-sm font-semibold text-ardoise-700 group-hover:text-foret-600 transition-colors">Étapes de suivi</h4>
+        {% if project.chef_de_projet %}
+        <span class="text-xs text-ardoise-400">Chef : {{ project.chef_de_projet.get_full_name }}</span>
+        {% endif %}
+        <span class="w-6 h-6 rounded-md border border-ardoise-200 bg-ardoise-50 group-hover:border-foret-300 group-hover:bg-foret-50 flex items-center justify-center text-ardoise-500 group-hover:text-foret-600 font-bold text-base leading-none transition-colors"
+              x-text="open ? '−' : '+'">−</span>
+      </button>
+    </div>
+
+    <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-end="opacity-0">
+    <div class="divide-y divide-ardoise-100">
+      {% for step in project_steps %}
+      <div class="px-5 py-4"
+           x-data="{ open: false, fname: '' }">
+
+        {# En-tête étape #}
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 flex-shrink-0">
+            {% if step.is_completed %}
+            <div class="w-5 h-5 rounded-full flex items-center justify-center" style="background-color: #163228;">
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            {% else %}
+            <div class="w-5 h-5 rounded-full border-2 border-ardoise-300 bg-white"></div>
+            {% endif %}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm font-semibold {% if step.is_completed %}text-ardoise-400 line-through{% else %}text-ardoise-800{% endif %}">
+                {{ step.name }}
+              </span>
+              {% for role_code in step.responsables_roles %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-ardoise-100 text-ardoise-600 font-medium">{{ role_code }}</span>
+              {% endfor %}
+              {% if step.due_date %}
+              <span class="text-xs text-ardoise-400">→ {{ step.due_date|date:"d/m/Y" }}</span>
+              {% endif %}
+              {% with ccount=step.comments.count %}
+              {% if ccount %}
+              <button type="button" @click="open = !open"
+                      class="flex items-center gap-1 text-xs text-foret-600 hover:text-foret-700 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                {{ ccount }}
+              </button>
+              {% endif %}
+              {% endwith %}
+            </div>
+            {% if step.description %}
+            <p class="text-xs text-ardoise-500 mt-0.5">{{ step.description }}</p>
+            {% endif %}
+            {% if step.is_completed and step.completed_by %}
+            <p class="text-xs text-foret-600 mt-0.5">
+              Terminée le {{ step.completed_at|date:"d/m/Y" }} par {{ step.completed_by.get_full_name }}
+            </p>
+            {% endif %}
+          </div>
+          {# Bouton terminer (chef ou manager) #}
+          {% if not step.is_completed %}
+          {% if user.is_superuser or user.role == 'DIRECTEUR' or user.role == 'MANAGER' or project.chef_de_projet_id == user.pk %}
+          <form method="post" action="{% url 'projects:step_complete' step.pk %}" class="flex-shrink-0">
+            {% csrf_token %}
+            <button type="submit"
+                    class="text-xs px-2.5 py-1 rounded-lg border border-foret-300 text-foret-600 hover:bg-foret-50 transition-colors font-medium">
+              Terminer
+            </button>
+          </form>
+          {% endif %}
+          {% endif %}
+        </div>
+
+        {# Commentaires + formulaire (toggle) #}
+        <div x-show="open" x-transition class="mt-3 ml-8" style="display:none">
+
+          {# Historique #}
+          {% if step.comments.all %}
+          <div class="space-y-2 mb-3">
+            {% for comment in step.comments.all %}
+            <div class="flex gap-2.5">
+              <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 text-white"
+                   style="background-color: #163228;">
+                {% if comment.author %}{{ comment.author.first_name|first|upper }}{{ comment.author.last_name|first|upper }}{% else %}?{% endif %}
+              </div>
+              <div class="flex-1 bg-ardoise-50 rounded-xl px-3 py-2">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-xs font-semibold text-ardoise-800">
+                    {% if comment.author %}{{ comment.author.get_full_name|default:comment.author.username }}{% else %}Inconnu{% endif %}
+                  </span>
+                  {% if comment.author %}
+                  <span class="text-[10px] text-ardoise-400">{{ comment.author.get_role_display }}</span>
+                  {% endif %}
+                  <span class="text-[10px] text-ardoise-400 ml-auto">{{ comment.created_at|date:"d/m H:i" }}</span>
+                </div>
+                {% if comment.text %}<p class="text-sm text-ardoise-700">{{ comment.text }}</p>{% endif %}
+                {% if comment.attachment %}
+                <a href="{{ comment.attachment.url }}" target="_blank"
+                   class="flex items-center gap-1 mt-1 text-xs text-foret-600 hover:text-foret-700">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                  </svg>
+                  Pièce jointe
+                </a>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {# Formulaire commentaire (rôle responsable uniquement) #}
+          {% if step.user_can_comment %}
+          <form method="post" enctype="multipart/form-data"
+                action="{% url 'projects:step_comment' step.pk %}"
+                class="flex gap-2 items-end">
+            {% csrf_token %}
+            <div class="flex-1">
+              <textarea name="text" rows="2"
+                        placeholder="Ajouter un commentaire…"
+                        class="w-full text-sm border border-ardoise-200 rounded-xl px-3 py-2 focus:outline-none resize-none placeholder-ardoise-300"
+                        onfocus="this.style.borderColor='#163228'" onblur="this.style.borderColor=''"></textarea>
+            </div>
+            <label class="flex-shrink-0 p-2.5 rounded-xl border border-ardoise-200 text-ardoise-400 hover:text-foret-600 hover:border-foret-300 cursor-pointer transition-colors"
+                   :class="fname ? 'border-foret-400 bg-foret-50 text-foret-600' : ''" title="Pièce jointe">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+              </svg>
+              <input type="file" name="attachment" class="hidden" @change="fname=$event.target.files[0]?.name||''">
+            </label>
+            <button type="submit"
+                    class="flex-shrink-0 p-2.5 rounded-xl text-white transition-colors"
+                    style="background-color: #163228;" title="Envoyer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+            </button>
+          </form>
+          {% else %}
+          <p class="text-xs text-ardoise-400 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            Lecture seule — votre rôle ({{ request.user.get_role_display }}) n'est pas responsable de cette étape.
+          </p>
+          {% endif %}
+        </div>
+
+        {# Bouton voir commentaires / formulaire (si peut commenter) #}
+        {% if step.user_can_comment or step.comments.count %}
+        <button type="button" @click="open = !open"
+                class="mt-2 ml-8 text-xs text-ardoise-400 hover:text-foret-600 transition-colors"
+                x-text="open ? '↑ Masquer' : '{% if step.user_can_comment %}Commenter{% if step.comments.count %} ({{ step.comments.count }}){% endif %}{% else %}Voir {{ step.comments.count }} commentaire{{ step.comments.count|pluralize }}{% endif %}'">
+        </button>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+    </div>
+    </div>{# /transition steps #}
+  </div>
+  {% endif %}
+
+  {# ── Chat équipe projet ───────────────────────────────────── #}
+  <div class="card p-0 overflow-hidden"
+       x-data="{
+         openChat: localStorage.getItem('sec_chat') !== 'false',
+         replyTo: null,
+         audioReady: false, recording: false, submitting: false,
+         mediaRecorder: null, chunks: [], audioBlob: null, _stopResolve: null,
+         fname: '',
+         async startRec() {
+           this.audioBlob = null; this.audioReady = false; this.chunks = [];
+           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+           const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+           this.mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+           this.mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) this.chunks.push(e.data); };
+           this.mediaRecorder.onstop = () => {
+             const type = this.mediaRecorder.mimeType || mime || 'audio/webm';
+             this.audioBlob = new Blob(this.chunks, { type });
+             this.$refs.audioPreview.src = URL.createObjectURL(this.audioBlob);
+             this.audioReady = true;
+             if (this._stopResolve) { this._stopResolve(); this._stopResolve = null; }
+           };
+           this.mediaRecorder.start(200); this.recording = true;
+         },
+         stopRec() { this.mediaRecorder?.stop(); this.mediaRecorder?.stream?.getTracks().forEach(t => t.stop()); this.recording = false; },
+         _waitStop() {
+           if (this.audioReady || !this.mediaRecorder) return Promise.resolve();
+           return new Promise(r => { this._stopResolve = r; });
+         },
+         async submitChat(event) {
+           if (this.submitting) return;
+           if (this.recording) this.stopRec();
+           if (this.mediaRecorder && !this.audioReady) await this._waitStop();
+           this.submitting = true;
+           const form = event.target;
+           const fd = new FormData(form);
+           if (this.audioBlob?.size > 0) {
+             const m = this.mediaRecorder?.mimeType || '';
+             const ext = m.includes('mp4') ? 'mp4' : m.includes('ogg') ? 'ogg' : 'webm';
+             fd.append('audio', this.audioBlob, 'memo.' + ext);
+           }
+           const resp = await fetch(form.action, { method: 'POST', body: fd });
+           const html = await resp.text();
+           document.getElementById('chat-body').innerHTML = html;
+           form.reset(); this.replyTo = null; this.audioReady = false; this.audioBlob = null; this.chunks = []; this.fname = ''; this.submitting = false;
+           const cb = document.getElementById('chat-body'); cb.scrollTop = cb.scrollHeight;
+         }
+       }">
+
+    {# En-tête #}
+    <div class="flex items-center justify-between px-5 py-3"
+         :class="openChat ? 'border-b border-ardoise-100' : ''"
+         style="background-color: #163228;">
+      <button type="button" @click="openChat=!openChat; localStorage.setItem('sec_chat', openChat)"
+              class="flex items-center gap-2.5 cursor-pointer select-none group">
+        <svg class="w-4 h-4" style="color: rgba(242,232,213,0.7);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+        <span class="text-sm font-semibold" style="color: #f2e8d5;">Discussion équipe</span>
+        <span class="text-xs px-2 py-0.5 rounded-full" style="background: rgba(242,232,213,0.15); color: rgba(242,232,213,0.65);">
+          {{ chat_messages.count }} message{{ chat_messages.count|pluralize }}
+        </span>
+        <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-base leading-none transition-colors"
+              style="background: rgba(242,232,213,0.15); color: #f2e8d5;"
+              x-text="openChat ? '−' : '+'">−</span>
+      </button>
+      <div class="flex items-center gap-1.5" x-show="openChat">
+        {% for member in project.members.all|slice:":5" %}
+        <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold"
+             style="background-color: #163228; color: #f2e8d5; border-color: rgba(242,232,213,0.3);"
+             title="{{ member.user.get_full_name }}">
+          {{ member.user.first_name|first|upper }}{{ member.user.last_name|first|upper }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div x-show="openChat" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-end="opacity-0">
+    {# Messages (scrollable) #}
+    <div id="chat-body"
+         class="flex flex-col gap-3 overflow-y-auto px-4 py-4"
+         style="min-height: 340px; max-height: 480px; background-color: #f8f7f5;"
+         hx-get="{% url 'projects:project_chat' project.pk %}"
+         hx-trigger="every 30s"
+         hx-swap="innerHTML"
+         hx-target="#chat-body">
+      {% include "projects/partials/_chat_messages.html" with chat_messages=chat_messages %}
+    </div>
+
+    {# Zone de saisie #}
+    <form method="post" enctype="multipart/form-data"
+          action="{% url 'projects:project_message_create' project.pk %}"
+          @submit.prevent="submitChat($event)"
+          class="border-t border-ardoise-100 bg-white">
+      {% csrf_token %}
+      <input type="hidden" name="reply_to" :value="replyTo ? replyTo.id : ''">
+
+      {# Bande de réponse #}
+      <div x-show="replyTo" x-transition class="px-4 pt-3" style="display:none">
+        <div class="flex items-start gap-2 bg-ardoise-50 border border-ardoise-200 rounded-xl px-3 py-2">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-foret-700" x-text="replyTo?.author"></p>
+            <p class="text-xs text-ardoise-500 truncate" x-text="replyTo?.preview"></p>
+          </div>
+          <button type="button" @click="replyTo = null"
+                  class="text-ardoise-400 hover:text-red-500 transition-colors flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {# Aperçu audio #}
+      <div x-show="audioReady" x-transition class="px-4 pt-3" style="display:none">
+        <div class="flex items-center gap-2 bg-foret-50 border border-foret-200 rounded-xl px-3 py-2">
+          <audio x-ref="audioPreview" controls class="flex-1 h-8"></audio>
+          <button type="button" @click="audioReady=false; audioBlob=null; chunks=[]"
+                  class="text-ardoise-400 hover:text-red-500 transition-colors flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {# Aperçu pièce jointe #}
+      <div x-show="fname" x-transition class="px-4 pt-3" style="display:none">
+        <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-xs text-blue-700">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+          </svg>
+          <span x-text="fname" class="truncate flex-1"></span>
+          <button type="button" @click="fname=''; $refs.fileInput.value=''"
+                  class="text-blue-400 hover:text-red-500">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {# Saisie principale #}
+      <div class="flex items-end gap-2 px-4 py-3">
+        <textarea name="content" rows="1" x-ref="chatInput"
+                  placeholder="Écrire un message à l'équipe…"
+                  class="flex-1 resize-none rounded-xl border border-ardoise-200 text-sm px-3.5 py-2.5 outline-none transition-all"
+                  style="max-height: 120px;"
+                  @input="$el.style.height='auto'; $el.style.height=$el.scrollHeight+'px'"
+                  @keydown.enter.exact.prevent="$el.closest('form').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}))"
+                  onfocus="this.style.borderColor='#163228'; this.style.boxShadow='0 0 0 3px rgba(22,50,40,0.08)'"
+                  onblur="this.style.borderColor=''; this.style.boxShadow=''"></textarea>
+
+        {# Bouton fichier #}
+        <label class="flex-shrink-0 p-2.5 rounded-xl border border-ardoise-200 text-ardoise-400 hover:text-foret-600 hover:border-foret-300 cursor-pointer transition-colors" title="Joindre un fichier">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+          </svg>
+          <input type="file" name="attachment" x-ref="fileInput" class="hidden"
+                 @change="fname = $event.target.files[0]?.name || ''">
+        </label>
+
+        {# Bouton audio #}
+        <button type="button"
+                @click="recording ? stopRec() : startRec()"
+                :class="recording ? 'bg-red-500 text-white border-red-500 animate-pulse' : 'border-ardoise-200 text-ardoise-400 hover:text-foret-600 hover:border-foret-300'"
+                class="flex-shrink-0 p-2.5 rounded-xl border transition-colors"
+                :title="recording ? 'Arrêter' : 'Mémo vocal'">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+          </svg>
+        </button>
+
+        {# Envoyer #}
+        <button type="submit"
+                :disabled="submitting"
+                class="flex-shrink-0 p-2.5 rounded-xl text-white transition-colors disabled:opacity-50"
+                style="background-color: #163228;"
+                onmouseover="this.style.backgroundColor='#1e4435'"
+                onmouseout="this.style.backgroundColor='#163228'"
+                title="Envoyer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </div>
+    </form>
+    </div>{# /transition chat #}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* Enregistreur audio pour les mises à jour de tâches */
+function taskAudio() {
+  return {
+    recording: false,
+    audioReady: false,
+    submitting: false,
+    mediaRecorder: null,
+    chunks: [],
+    audioBlob: null,
+    _stopResolve: null,
+
+    async startRec() {
+      try {
+        this.audioBlob   = null;
+        this.audioReady  = false;
+        this.chunks      = [];
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        /* Détection du meilleur format supporté par le navigateur */
+        const mimeType = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/ogg;codecs=opus',
+          'audio/mp4',
+        ].find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+        this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
+        this.mediaRecorder.ondataavailable = e => {
+          if (e.data && e.data.size > 0) this.chunks.push(e.data);
+        };
+
+        this.mediaRecorder.onstop = () => {
+          const type = this.mediaRecorder.mimeType || mimeType || 'audio/webm';
+          this.audioBlob = new Blob(this.chunks, { type });
+          this.$refs.preview.src = URL.createObjectURL(this.audioBlob);
+          this.audioReady = true;
+          /* Résout la promesse en attente dans submitForm */
+          if (this._stopResolve) { this._stopResolve(); this._stopResolve = null; }
+        };
+
+        this.mediaRecorder.start(200); /* chunk toutes les 200 ms */
+        this.recording = true;
+      } catch (err) {
+        alert('Microphone non disponible : ' + err.message);
+      }
+    },
+
+    stopRec() {
+      if (this.mediaRecorder && this.recording) {
+        this.mediaRecorder.stop();
+        this.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        this.recording = false;
+      }
+    },
+
+    /* Attend la fin de l'encodage (onstop asynchrone) */
+    _waitStop() {
+      if (this.audioReady || !this.mediaRecorder) return Promise.resolve();
+      return new Promise(resolve => { this._stopResolve = resolve; });
+    },
+
+    async submitForm(event) {
+      if (this.submitting) return;
+
+      /* Si l'enregistrement est encore actif, on l'arrête */
+      if (this.recording) this.stopRec();
+
+      /* On attend que onstop ait construit le blob avant d'envoyer */
+      if (this.mediaRecorder && !this.audioReady) await this._waitStop();
+
+      this.submitting = true;
+      const form = event.target;
+      const fd   = new FormData(form);
+
+      if (this.audioBlob && this.audioBlob.size > 0) {
+        const m   = this.mediaRecorder?.mimeType || '';
+        const ext = m.includes('mp4') ? 'mp4' : m.includes('ogg') ? 'ogg' : 'webm';
+        fd.append('comment_audio', this.audioBlob, `memo.${ext}`);
+      }
+
+      try {
+        const resp = await fetch(form.action, { method: 'POST', body: fd });
+        window.location.href = resp.url || form.action;
+      } catch (_) {
+        window.location.href = form.action;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

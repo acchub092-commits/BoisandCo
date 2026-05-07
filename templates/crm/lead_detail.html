@@ -1,0 +1,762 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lead.project_name }}{% endblock %}
+{% block page_title %}{{ lead.project_name }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:pipeline' %}" class="btn-secondary btn-sm">← Pipeline</a>
+<a href="{% url 'crm:lead_edit' lead.pk %}" class="btn-secondary btn-sm">Modifier</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  {# ── En-tête ───────────────────────────────────────────────────── #}
+  <div class="card">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex-1">
+        <div class="flex items-center gap-3 flex-wrap mb-2">
+          {# Badge statut #}
+          <span class="px-3 py-1 rounded-full text-sm font-semibold
+            {% if lead.status == 'GAGNEE' %}bg-foret-100 text-foret-700
+            {% elif lead.status == 'PERDUE' %}bg-red-100 text-red-700
+            {% elif lead.status == 'OFFRE' %}bg-cyan-100 text-cyan-700
+            {% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+            {{ lead.get_status_display }}
+          </span>
+          {# Potentiel #}
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium
+            {% if lead.potential == 'IMPORTANT' %}bg-foret-100 text-foret-700
+            {% elif lead.potential == 'MOYEN' %}bg-bois-100 text-bois-700
+            {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+            Potentiel {{ lead.get_potential_display }}
+          </span>
+          {% if lead.flux_type %}
+          <span class="px-2.5 py-1 rounded-full text-xs bg-blue-100 text-blue-700">{{ lead.get_flux_type_display }}</span>
+          {% endif %}
+        </div>
+        <h1 class="text-xl font-bold text-ardoise-900">{{ lead.project_name }}</h1>
+        <p class="text-ardoise-600 mt-0.5">{{ lead.contact_name }}{% if lead.company %} · <strong>{{ lead.company }}</strong>{% endif %}</p>
+        {% if lead.location %}<p class="text-sm text-ardoise-400 mt-1">📍 {{ lead.location }}</p>{% endif %}
+      </div>
+      {% if lead.offer_amount_ht %}
+      <div class="text-right">
+        <p class="text-2xl font-bold text-bois-600">{{ lead.offer_amount_ht|floatformat:0 }} MAD</p>
+        <p class="text-xs text-ardoise-400">Montant offre HT</p>
+      </div>
+      {% elif lead.budget_mad %}
+      <div class="text-right">
+        <p class="text-2xl font-bold text-ardoise-500">{{ lead.budget_mad|floatformat:0 }} MAD</p>
+        <p class="text-xs text-ardoise-400">Budget estimé</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Changer statut #}
+    <div class="mt-4 pt-4 border-t border-ardoise-100">
+      <p class="text-xs font-semibold text-ardoise-500 mb-2">Avancer dans le pipeline :</p>
+      <div class="flex flex-wrap gap-2">
+        {% for val, lbl in statuses %}
+        {% if val != lead.status %}
+        <form method="post" action="{% url 'crm:lead_status' lead.pk %}" style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="{{ val }}">
+          <button type="submit"
+                  class="text-xs px-3 py-1.5 rounded-lg border transition-colors
+                    {% if val == 'GAGNEE' %}border-foret-400 text-foret-600 hover:bg-foret-50
+                    {% elif val == 'PERDUE' %}border-red-300 text-red-500 hover:bg-red-50
+                    {% else %}border-ardoise-300 text-ardoise-600 hover:bg-ardoise-50{% endif %}">
+            {{ lbl }}
+          </button>
+        </form>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-4">
+
+    {# ── Informations ────────────────────────────────────────────── #}
+    <div class="md:col-span-2 space-y-4">
+
+      {# Contact #}
+      <div class="card">
+        <h3 class="text-sm font-semibold text-ardoise-700 mb-3">Contact</h3>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          {% if lead.email %}
+          <div><span class="text-ardoise-400">Email</span><br><a href="mailto:{{ lead.email }}" class="text-foret-600 hover:underline">{{ lead.email }}</a></div>
+          {% endif %}
+          {% if lead.phone %}
+          <div><span class="text-ardoise-400">Tél.</span><br><span class="font-medium">{{ lead.phone }}</span></div>
+          {% endif %}
+          {% if lead.client_type %}
+          <div><span class="text-ardoise-400">Type client</span><br><span class="font-medium">{{ lead.client_type }}</span></div>
+          {% endif %}
+          {% if lead.project_type %}
+          <div><span class="text-ardoise-400">Type projet</span><br><span class="font-medium">{{ lead.project_type }}</span></div>
+          {% endif %}
+          {% if lead.products %}
+          <div class="col-span-2"><span class="text-ardoise-400">Produits</span><br><span class="font-medium">{{ lead.products }}</span></div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Qualification #}
+      <div class="card">
+        <h3 class="text-sm font-semibold text-ardoise-700 mb-3">Qualification</h3>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          {% if lead.canal_origine %}
+          <div><span class="text-ardoise-400">Canal</span><br><span class="font-medium">{{ lead.get_canal_origine_display }}</span></div>
+          {% endif %}
+          {% if lead.nb_logements %}
+          <div><span class="text-ardoise-400">Logements</span><br><span class="font-medium">{{ lead.nb_logements }}</span></div>
+          {% endif %}
+          {% if lead.start_date_est %}
+          <div><span class="text-ardoise-400">Début estimé</span><br><span class="font-medium">{{ lead.start_date_est|date:"d/m/Y" }}</span></div>
+          {% endif %}
+          {% if lead.end_date_est %}
+          <div><span class="text-ardoise-400">Fin estimée</span><br><span class="font-medium">{{ lead.end_date_est|date:"d/m/Y" }}</span></div>
+          {% endif %}
+          {% if lead.probability %}
+          <div><span class="text-ardoise-400">Probabilité</span><br>
+            <span class="font-semibold {% if lead.probability == 'HIGH' %}text-foret-600{% elif lead.probability == 'MED' %}text-bois-600{% else %}text-ardoise-500{% endif %}">
+              {{ lead.get_probability_display }}
+            </span>
+          </div>
+          {% endif %}
+          {% if lead.competitor %}
+          <div><span class="text-ardoise-400">Concurrents</span><br><span class="font-medium">{{ lead.competitor }}</span></div>
+          {% endif %}
+        </div>
+        {% if lead.strategic_comment %}
+        <div class="mt-3 p-3 bg-bois-50 rounded-lg text-sm text-ardoise-700">{{ lead.strategic_comment }}</div>
+        {% endif %}
+      </div>
+
+      {# Offre #}
+      {% if lead.offer_amount_ht or lead.offer_sent_date %}
+      <div class="card">
+        <h3 class="text-sm font-semibold text-ardoise-700 mb-3">Offre commerciale</h3>
+        <div class="grid grid-cols-3 gap-2 text-sm">
+          {% if lead.offer_sent_date %}
+          <div><span class="text-ardoise-400">Date envoi</span><br><span class="font-medium">{{ lead.offer_sent_date|date:"d/m/Y" }}</span></div>
+          {% endif %}
+          <div><span class="text-ardoise-400">Validité</span><br><span class="font-medium">{{ lead.offer_validity_days }} jours</span></div>
+          {% if lead.offer_expiry_date %}
+          <div>
+            <span class="text-ardoise-400">Expiration</span><br>
+            <span class="font-medium {% if lead.is_offer_expired %}text-red-500{% endif %}">
+              {{ lead.offer_expiry_date|date:"d/m/Y" }}
+              {% if lead.is_offer_expired %} (expirée){% endif %}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+        {% if lead.loss_reason %}
+        <div class="mt-3 flex items-center gap-2 text-sm text-red-600">
+          <span class="font-semibold">Motif perte :</span> {{ lead.get_loss_reason_display }}
+          {% if lead.loss_notes %} — {{ lead.loss_notes }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# Lier à un projet #}
+      {% if lead.status == 'GAGNEE' and not lead.project %}
+      <div class="card border-foret-200 bg-foret-50">
+        <h3 class="text-sm font-semibold text-foret-700 mb-3">Lier à un dossier projet</h3>
+        <form method="post" action="{% url 'crm:lead_link_project' lead.pk %}" class="flex gap-2">
+          {% csrf_token %}
+          <select name="project_id" class="form-input flex-1 text-sm">
+            <option value="">— Choisir un projet existant —</option>
+            {% for p in projects %}
+            <option value="{{ p.pk }}">{{ p.reference }} — {{ p.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn-primary btn-sm">Lier</button>
+        </form>
+      </div>
+      {% elif lead.project %}
+      <div class="card border-foret-200 bg-foret-50">
+        <p class="text-sm text-foret-700">
+          Dossier projet lié :
+          <a href="{% url 'projects:detail' lead.project.pk %}" class="font-bold hover:underline">
+            {{ lead.project.reference }} — {{ lead.project.name }}
+          </a>
+        </p>
+      </div>
+      {% endif %}
+
+      {# ── Workflow Validation ──────────────────────── #}
+      {% if lead.workflow_status == 'PENDING_VALIDATION' or lead.workflow_status == 'DRAFT' %}
+      <div class="card p-0 overflow-hidden border
+        {% if lead.workflow_status == 'PENDING_VALIDATION' %}border-orange-200 bg-orange-50
+        {% else %}border-ardoise-200{% endif %}">
+        <div class="px-5 py-4 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full
+              {% if lead.workflow_status == 'PENDING_VALIDATION' %}bg-orange-400 animate-pulse
+              {% else %}bg-ardoise-400{% endif %}"></span>
+            <div>
+              <p class="text-sm font-semibold text-ardoise-900">
+                {% if lead.workflow_status == 'DRAFT' %}Brouillon — non soumis à validation
+                {% else %}En attente de validation du Directeur Commercial
+                {% endif %}
+              </p>
+              <p class="text-xs text-ardoise-500 mt-0.5">
+                {% if lead.workflow_status == 'DRAFT' %}Soumettez cette opportunité pour qu'elle soit activée.
+                {% else %}Soumis {{ lead.updated_at|timesince }}. Le DC doit valider pour activer.
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            {% if lead.workflow_status == 'DRAFT' %}
+              {% if request.user == lead.assigned_to or request.user.role == 'DIRECTEUR' or request.user.role == 'MANAGER' or request.user.is_superuser %}
+              <form method="post" action="{% url 'crm:lead_submit' lead.pk %}">
+                {% csrf_token %}
+                <button class="btn-primary btn-sm">Soumettre à validation</button>
+              </form>
+              {% endif %}
+            {% elif lead.workflow_status == 'PENDING_VALIDATION' %}
+              {% if request.user.role == 'DIRECTEUR' or request.user.role == 'MANAGER' or request.user.is_superuser %}
+              <form method="post" action="{% url 'crm:lead_validate' lead.pk %}">
+                {% csrf_token %}
+                <button class="btn-primary btn-sm">Valider</button>
+              </form>
+              <button onclick="document.getElementById('modal-reject-{{ lead.pk }}').classList.remove('hidden')"
+                      class="btn-secondary btn-sm text-red-500">Rejeter</button>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% elif lead.workflow_status == 'VALIDATED' %}
+      <div class="flex items-center gap-2 px-1 py-0.5">
+        <svg class="w-4 h-4 text-foret-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-xs text-foret-700 font-medium">
+          Validée{% if lead.validated_by %} par {{ lead.validated_by.get_full_name }}{% endif %}
+          {% if lead.validated_at %}le {{ lead.validated_at|date:"d/m/Y" }}{% endif %}
+        </p>
+      </div>
+      {% endif %}
+
+      {# ── Rendez-vous ──────────────────────────────── #}
+      <div class="card p-0 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-ardoise-100">
+          <h3 class="text-sm font-semibold text-ardoise-700">Rendez-vous</h3>
+          <a href="{% url 'crm:appointment_create' lead.pk %}" class="btn-primary btn-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Planifier RDV
+          </a>
+        </div>
+        {% with appointments=lead.appointments.all %}
+        {% if appointments %}
+        <div class="divide-y divide-ardoise-50">
+          {% for rdv in appointments %}
+          <div class="flex items-start gap-4 px-5 py-3 hover:bg-ardoise-50 transition-colors group">
+            <div class="text-center flex-shrink-0 w-10">
+              <p class="text-sm font-bold text-ardoise-700">{{ rdv.scheduled_at|date:"H:i" }}</p>
+              <p class="text-[10px] text-ardoise-400">{{ rdv.scheduled_at|date:"d/m/Y" }}</p>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-semibold text-ardoise-900 truncate">{{ rdv.title }}</p>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full {{ rdv.status_color }}">
+                    {{ rdv.get_status_display }}
+                  </span>
+                  <a href="{% url 'crm:appointment_update' rdv.pk %}"
+                     class="opacity-0 group-hover:opacity-100 p-1 rounded text-ardoise-400 hover:text-foret-600 transition-all">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                  </a>
+                  {% if rdv.status != 'REALISE' %}
+                  <a href="{% url 'crm:appointment_report' rdv.pk %}"
+                     class="opacity-0 group-hover:opacity-100 p-1 rounded text-ardoise-400 hover:text-blue-600 transition-all"
+                     title="Rédiger compte rendu">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+              <p class="text-xs text-ardoise-400 mt-0.5">
+                {{ rdv.get_appointment_type_display }} · {{ rdv.duration_minutes }} min
+                {% if rdv.location %} · {{ rdv.location }}{% endif %}
+              </p>
+              {% if rdv.report %}
+              <p class="text-xs text-ardoise-500 mt-1 italic line-clamp-2">{{ rdv.report }}</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-ardoise-400 text-center py-6">Aucun rendez-vous planifié</p>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      {# ── Documents ────────────────────────────────── #}
+      <div class="card p-0 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-ardoise-100">
+          <h3 class="text-sm font-semibold text-ardoise-700">
+            Documents
+            {% with ndocs=lead.documents.count %}
+            {% if ndocs > 0 %}
+            <span class="ml-1 text-[10px] font-bold text-ardoise-500 bg-ardoise-100 px-1.5 py-0.5 rounded-full">{{ ndocs }}</span>
+            {% endif %}
+            {% endwith %}
+          </h3>
+          <a href="{% url 'crm:document_upload' lead.pk %}" class="btn-secondary btn-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Ajouter
+          </a>
+        </div>
+        {% with documents=lead.documents.all %}
+        {% if documents %}
+        <div class="divide-y divide-ardoise-50">
+          {% for doc in documents %}
+          <div class="flex items-center gap-3 px-5 py-2.5 hover:bg-ardoise-50 group">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+              {% if doc.is_image %}bg-blue-100 text-blue-600
+              {% elif doc.extension == '.pdf' %}bg-red-100 text-red-600
+              {% elif doc.extension == '.dwg' %}bg-amber-100 text-amber-700
+              {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ doc.icon }}"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <a href="{{ doc.file.url }}" target="_blank"
+                 class="text-sm font-medium text-ardoise-800 hover:text-foret-600 truncate block">{{ doc.title }}</a>
+              <p class="text-xs text-ardoise-400">
+                {{ doc.get_doc_type_display }} · {{ doc.created_at|date:"d/m/Y" }}
+                {% if doc.uploaded_by %} · {{ doc.uploaded_by.get_full_name }}{% endif %}
+              </p>
+            </div>
+            <form method="post" action="{% url 'crm:document_delete' doc.pk %}"
+                  onsubmit="return confirm('Supprimer ce document ?')"
+                  class="opacity-0 group-hover:opacity-100 transition-opacity">
+              {% csrf_token %}
+              <button class="p-1.5 rounded text-ardoise-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-ardoise-400 text-center py-6">Aucun document joint</p>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      {# ── Journal d'activité ───────────────────────── #}
+      <div class="card p-0 overflow-hidden">
+        <div class="px-5 py-3 border-b border-ardoise-100">
+          <h3 class="text-sm font-semibold text-ardoise-700">Journal d'activité</h3>
+        </div>
+        {# Formulaire ajout note #}
+        <div class="px-5 py-3 border-b border-ardoise-100 bg-ardoise-50">
+          <form method="post" action="{% url 'crm:lead_log' lead.pk %}" class="flex gap-2">
+            {% csrf_token %}
+            <select name="log_type" class="form-input py-1.5 text-xs flex-shrink-0 w-28">
+              <option value="NOTE">Note</option>
+              <option value="APPEL">Appel</option>
+              <option value="EMAIL">Email</option>
+            </select>
+            <input type="text" name="content" placeholder="Ajouter une note…"
+                   class="form-input py-1.5 text-xs flex-1" required>
+            <button type="submit" class="btn-primary btn-sm px-3">+</button>
+          </form>
+        </div>
+        <div id="activity-log-list" class="divide-y divide-ardoise-50 max-h-80 overflow-y-auto">
+          {% for log in lead.activity_logs.all %}
+          {% include "crm/partials/log_entry.html" with log=log %}
+          {% empty %}
+          <p class="text-xs text-ardoise-400 text-center py-6">Aucune activité enregistrée</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# ── Activités agenda ─────────────────────────── #}
+      <div class="card p-0 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-ardoise-100">
+          <h3 class="text-sm font-semibold text-ardoise-700">Activités</h3>
+          <button onclick="document.getElementById('modal-activity-{{ lead.pk }}').classList.remove('hidden')"
+                  class="btn-primary btn-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Planifier
+          </button>
+        </div>
+
+        {% with activities=lead.activities.all %}
+        {% if activities %}
+        <div class="divide-y divide-ardoise-50">
+          {% for act in activities %}
+          <div class="flex items-start gap-3 px-5 py-3 hover:bg-ardoise-50 transition-colors group">
+            {# Icône type #}
+            <span class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
+              {% if act.activity_type == 'VISITE' %}bg-foret-100 text-foret-600
+              {% elif act.activity_type == 'APPEL' %}bg-blue-100 text-blue-600
+              {% elif act.activity_type == 'REUNION' %}bg-purple-100 text-purple-600
+              {% elif act.activity_type == 'DEMO' %}bg-bois-100 text-bois-600
+              {% elif act.activity_type == 'RELANCE' %}bg-amber-100 text-amber-600
+              {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ act.icon_path }}"/>
+              </svg>
+            </span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-ardoise-800 truncate {% if act.status == 'ANNULE' %}line-through text-ardoise-400{% endif %}">
+                  {{ act.subject }}
+                </p>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+                    {% if act.status == 'REALISE' %}bg-foret-100 text-foret-700
+                    {% elif act.status == 'ANNULE' %}bg-ardoise-100 text-ardoise-500
+                    {% elif act.is_overdue %}bg-red-100 text-red-600
+                    {% else %}bg-blue-100 text-blue-700{% endif %}">
+                    {% if act.is_overdue and act.status == 'PLANIFIE' %}En retard{% else %}{{ act.get_status_display }}{% endif %}
+                  </span>
+                  <a href="{% url 'crm:activity_update' act.pk %}"
+                     class="opacity-0 group-hover:opacity-100 p-1 rounded text-ardoise-400 hover:text-foret-600 transition-all">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                  </a>
+                </div>
+              </div>
+              <p class="text-xs text-ardoise-400 mt-0.5">
+                {{ act.get_activity_type_display }} · {{ act.planned_at|date:"d/m/Y à H:i" }}
+                {% if act.location %} · {{ act.location }}{% endif %}
+              </p>
+              {% if act.compte_rendu %}
+              <p class="text-xs text-ardoise-500 mt-1 italic line-clamp-2">{{ act.compte_rendu }}</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-ardoise-400 text-center py-6">Aucune activité planifiée</p>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      {# ── Chiffrages liés ───────────────────────────────── #}
+      <div class="card p-0 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-ardoise-100">
+          <h3 class="text-sm font-semibold text-ardoise-700">Chiffrages</h3>
+          <a href="{% url 'crm:lead_chiffrage' lead.pk %}"
+             class="btn-secondary btn-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            Nouveau chiffrage
+          </a>
+        </div>
+        {% with chiffrages=lead.chiffrages.all %}
+        {% if chiffrages %}
+        <div class="divide-y divide-ardoise-50">
+          {% for c in chiffrages %}
+          <a href="{% url 'chiffrage:detail' c.pk %}"
+             class="flex items-center justify-between px-5 py-3 hover:bg-ardoise-50 transition-colors group">
+            <div>
+              <p class="text-sm font-medium text-ardoise-800">{{ c.reference }}</p>
+              <p class="text-xs text-ardoise-400">{{ c.created_at|date:"d/m/Y" }}
+                {% if c.montant_ht %} · {{ c.montant_ht|floatformat:0 }} MAD{% endif %}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-600">
+                {{ c.get_statut_display|truncatechars:18 }}
+              </span>
+              <svg class="w-4 h-4 text-ardoise-300 group-hover:text-foret-500 transition-colors"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-ardoise-400 text-center py-6">Aucun chiffrage lié</p>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      {# Notes / historique #}
+      <div class="card">
+        <h3 class="text-sm font-semibold text-ardoise-700 mb-3">Notes & échanges</h3>
+        <div class="space-y-2 mb-3 max-h-48 overflow-y-auto">
+          {% for note in lead.notes.all %}
+          <div class="flex gap-2">
+            <div class="w-7 h-7 rounded-full bg-ardoise-200 text-ardoise-600 text-xs flex items-center justify-center font-bold flex-shrink-0">
+              {{ note.author.first_name|first|upper }}{{ note.author.last_name|first|upper }}
+            </div>
+            <div class="flex-1">
+              <p class="text-xs text-ardoise-400 mb-0.5">
+                {{ note.author.get_full_name|default:note.author.username }} · {{ note.created_at|date:"d/m/Y à H:i" }}
+              </p>
+              <p class="text-sm text-ardoise-700">{{ note.text }}</p>
+            </div>
+          </div>
+          {% empty %}
+          <p class="text-sm text-ardoise-400 text-center py-3">Aucune note</p>
+          {% endfor %}
+        </div>
+        <form method="post" action="{% url 'crm:lead_note' lead.pk %}" class="flex gap-2">
+          {% csrf_token %}
+          <input type="text" name="text" placeholder="Ajouter une note…" class="form-input flex-1 text-sm" required>
+          <button type="submit" class="btn-primary btn-sm">Ajouter</button>
+        </form>
+      </div>
+
+    </div>
+
+    {# ── Sidebar droite ──────────────────────────────────────────── #}
+    <div class="space-y-4">
+
+      {# Assigné & relance #}
+      <div class="card space-y-3 text-sm">
+        {% if lead.assigned_to %}
+        <div>
+          <p class="text-ardoise-400 text-xs mb-1">Assigné à</p>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-foret-400 text-white text-xs flex items-center justify-center font-bold">
+              {{ lead.assigned_to.first_name|first|upper }}{{ lead.assigned_to.last_name|first|upper }}
+            </div>
+            <div>
+              <p class="font-medium">{{ lead.assigned_to.get_full_name|default:lead.assigned_to.username }}</p>
+              <p class="text-xs text-ardoise-400">{{ lead.assigned_to.get_role_display }}</p>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% if lead.next_followup_date %}
+        <div>
+          <p class="text-ardoise-400 text-xs mb-1">Prochaine relance</p>
+          <p class="font-semibold {% if lead.next_followup_date < today %}text-red-500{% endif %}">
+            {{ lead.next_followup_date|date:"d/m/Y" }}
+          </p>
+        </div>
+        {% endif %}
+        <div>
+          <p class="text-ardoise-400 text-xs mb-1">Créé le</p>
+          <p>{{ lead.created_at|date:"d/m/Y" }}</p>
+        </div>
+        {% if lead.created_by %}
+        <div>
+          <p class="text-ardoise-400 text-xs mb-1">Créé par</p>
+          <p>{{ lead.created_by.get_full_name|default:lead.created_by.username }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Actions #}
+      <div class="card space-y-2">
+        <a href="{% url 'crm:lead_edit' lead.pk %}" class="btn-secondary btn-sm w-full text-center block">
+          Modifier
+        </a>
+        <a href="{% url 'crm:document_upload' lead.pk %}" class="btn-secondary btn-sm w-full text-center block">
+          + Document
+        </a>
+        <a href="{% url 'crm:appointment_create' lead.pk %}" class="btn-secondary btn-sm w-full text-center block">
+          + Rendez-vous
+        </a>
+        {% if request.user.role == 'DIRECTEUR' or request.user.role == 'MANAGER' or request.user.is_superuser %}
+        <button onclick="document.getElementById('modal-assign-{{ lead.pk }}').classList.remove('hidden')"
+                class="btn-secondary btn-sm w-full text-center block">
+          Assigner
+        </button>
+        {% endif %}
+        <form method="post" action="{% url 'crm:lead_delete' lead.pk %}"
+              onsubmit="return confirm('Supprimer ce lead définitivement ?')">
+          {% csrf_token %}
+          <button type="submit" class="w-full text-xs px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+            Supprimer
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{# ── Modal nouvelle activité ── #}
+<div id="modal-activity-{{ lead.pk }}" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-ardoise-100">
+      <h3 class="text-base font-semibold text-ardoise-900">Planifier une activité</h3>
+      <button onclick="document.getElementById('modal-activity-{{ lead.pk }}').classList.add('hidden')"
+              class="text-ardoise-400 hover:text-ardoise-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form method="post" action="{% url 'crm:activity_create' lead.pk %}" class="p-6 space-y-4">
+      {% csrf_token %}
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Type <span class="text-red-400">*</span></label>
+          <select name="activity_type" class="form-input w-full">
+            {% for val, label in activity_types %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Statut</label>
+          <select name="status" class="form-input w-full">
+            <option value="PLANIFIE">Planifié</option>
+            <option value="REALISE">Réalisé</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Objet <span class="text-red-400">*</span></label>
+        <input type="text" name="subject" required class="form-input w-full"
+               placeholder="Ex : Présentation catalogue showroom">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Date <span class="text-red-400">*</span></label>
+          <input type="date" name="planned_date" required class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Heure</label>
+          <input type="time" name="planned_time" value="09:00" class="form-input w-full">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Durée (min)</label>
+          <input type="number" name="duration_min" value="60" min="15" step="15" class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Lieu</label>
+          <input type="text" name="location" class="form-input w-full" placeholder="Casablanca…">
+        </div>
+      </div>
+      {% if team %}
+      <div>
+        <label class="form-label">Assigné à</label>
+        <select name="assigned_to" class="form-input w-full">
+          {% for member in team %}
+          <option value="{{ member.pk }}"
+            {% if lead.assigned_to and lead.assigned_to.pk == member.pk %}selected{% endif %}>
+            {{ member.get_full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div>
+        <label class="form-label">Compte rendu (optionnel)</label>
+        <textarea name="compte_rendu" rows="3" class="form-input w-full resize-none"
+                  placeholder="Notes, résultats, prochaines actions…"></textarea>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button"
+                onclick="document.getElementById('modal-activity-{{ lead.pk }}').classList.add('hidden')"
+                class="btn-secondary">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{# ── Modal rejet opportunité ── #}
+<div id="modal-reject-{{ lead.pk }}" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-ardoise-100">
+      <h3 class="text-base font-semibold text-ardoise-900">Rejeter l'opportunité</h3>
+      <button onclick="document.getElementById('modal-reject-{{ lead.pk }}').classList.add('hidden')"
+              class="text-ardoise-400 hover:text-ardoise-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form method="post" action="{% url 'crm:lead_reject' lead.pk %}" class="p-6 space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="form-label">Motif du rejet (optionnel)</label>
+        <textarea name="comment" rows="3" class="form-input w-full resize-none"
+                  placeholder="Informations manquantes, projet non prioritaire…"></textarea>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button"
+                onclick="document.getElementById('modal-reject-{{ lead.pk }}').classList.add('hidden')"
+                class="btn-secondary">Annuler</button>
+        <button type="submit" class="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">
+          Rejeter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Modal assigner ── #}
+{% if request.user.role == 'DIRECTEUR' or request.user.role == 'MANAGER' or request.user.is_superuser %}
+<div id="modal-assign-{{ lead.pk }}" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-ardoise-100">
+      <h3 class="text-base font-semibold text-ardoise-900">Assigner à un commercial</h3>
+      <button onclick="document.getElementById('modal-assign-{{ lead.pk }}').classList.add('hidden')"
+              class="text-ardoise-400 hover:text-ardoise-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form method="post" action="{% url 'crm:lead_assign' lead.pk %}" class="p-6 space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="form-label">Commercial</label>
+        <select name="assigned_to" class="form-input w-full">
+          <option value="">— Non assigné —</option>
+          {% for member in team %}
+          <option value="{{ member.pk }}" {% if lead.assigned_to_id == member.pk %}selected{% endif %}>
+            {{ member.get_full_name }} ({{ member.get_role_display }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button"
+                onclick="document.getElementById('modal-assign-{{ lead.pk }}').classList.add('hidden')"
+                class="btn-secondary">Annuler</button>
+        <button type="submit" class="btn-primary">Assigner</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const today = new Date().toISOString().slice(0, 10);
+</script>
+{% endblock %}

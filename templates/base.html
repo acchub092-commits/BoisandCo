@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr" x-data="{ sidebarOpen: window.innerWidth >= 1024, mobileMenuOpen: false }">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Bois&amp;Co{% endblock %} — Bois&amp;Co</title>
+
+  {% load static tailwind_tags %}
+
+  {# Tailwind CSS compilé #}
+  {% tailwind_css %}
+
+  {# Police Inter via Google Fonts #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  {# HTMX #}
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+
+  {# Alpine.js #}
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+  {# Empêche le flash des éléments x-cloak avant Alpine #}
+  <style>[x-cloak]{display:none!important}</style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-ardoise-50 font-sans text-ardoise-900 antialiased"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+  {# ── Indicateur HTMX global ─────────────────────────────── #}
+  <div id="htmx-indicator"
+       class="fixed top-0 left-0 right-0 z-50 h-1 bg-bois-500 animate-pulse">
+  </div>
+
+  {% if user.is_authenticated %}
+
+    <div class="flex h-screen overflow-hidden">
+
+      {# ── Sidebar ─────────────────────────────────────────── #}
+      {% include "partials/_sidebar.html" %}
+
+      {# ── Contenu principal ───────────────────────────────── #}
+      <div class="flex-1 flex flex-col overflow-hidden">
+
+        {# ── Topbar ────────────────────────────────────────── #}
+        {% include "partials/_topbar.html" %}
+
+        <main class="flex-1 overflow-y-auto p-6" id="main-content">
+
+          {# Messages Django #}
+          {% include "partials/_messages.html" %}
+
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+
+  {% else %}
+    {# Layout simplifié pour pages auth / portail client #}
+    <main class="min-h-screen flex items-center justify-center p-4">
+      {% include "partials/_messages.html" %}
+      {% block auth_content %}{% endblock %}
+    </main>
+  {% endif %}
+
+  {# Rechargement automatique en développement #}
+  {% load django_browser_reload %}
+  {% django_browser_reload_script %}
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Déposer un document{% endblock %}
+{% block page_title %}Documents{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'documents:list' %}" class="btn-secondary btn-sm">
+  ← Retour à la GED
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto"
+     x-data="gedUpload()"
+     x-init="init()">
+
+  {# ── En-tête #}
+  <div class="mb-5">
+    <h1 class="text-xl font-bold text-ardoise-900">Déposer un document</h1>
+    <p class="text-sm text-ardoise-500 mt-0.5">Ajoutez un document à la GED et associez-le à un projet.</p>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="upload-form"
+        @submit="submitting = true" class="space-y-5">
+    {% csrf_token %}
+    {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+
+    {# ── Zone de dépôt ─────────────────────────────────────── #}
+    <div class="card p-0 overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-ardoise-100 bg-ardoise-50">
+        <h2 class="text-sm font-semibold text-ardoise-700">Fichier</h2>
+      </div>
+      <div class="p-5">
+
+        {# Drop zone #}
+        <div
+          class="relative border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer
+                 {% if errors.file %}border-red-300 bg-red-50{% else %}border-ardoise-200 bg-ardoise-50/40{% endif %}"
+          :class="{
+            'border-bois-400 bg-bois-50': dragging,
+            'border-foret-400 bg-foret-50': fileReady && !dragging
+          }"
+          @dragover.prevent="dragging = true"
+          @dragleave.prevent="dragging = false"
+          @drop.prevent="onDrop($event)"
+          @click="$refs.fileInput.click()">
+
+          {# État : aucun fichier sélectionné #}
+          <div x-show="!fileReady" class="py-10 text-center">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 transition-colors"
+                 :class="dragging ? 'bg-bois-100' : 'bg-ardoise-100'">
+              <svg class="w-7 h-7 transition-colors"
+                   :class="dragging ? 'text-bois-500' : 'text-ardoise-400'"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-ardoise-700">
+              <span class="text-bois-600">Cliquez pour choisir</span> ou glissez-déposez un fichier
+            </p>
+            <p class="text-xs text-ardoise-400 mt-1">PDF, Word, Excel, Images, CAO — max 50 Mo</p>
+          </div>
+
+          {# État : fichier sélectionné — preview card #}
+          <div x-show="fileReady" x-cloak class="p-4" @click.stop>
+            <div class="flex items-center gap-4 bg-white rounded-xl border border-ardoise-100 p-3.5 shadow-sm">
+
+              {# Icône type fichier #}
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                   :class="fileIconBg">
+                <svg class="w-6 h-6" :class="fileIconColor" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+
+              {# Infos fichier #}
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-ardoise-900 truncate" x-text="fileName"></p>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-xs text-ardoise-400" x-text="fileSize"></span>
+                  <span class="text-ardoise-200">·</span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                        :class="fileTypeBadge" x-text="fileTypeLabel"></span>
+                </div>
+              </div>
+
+              {# Changer #}
+              <button type="button"
+                      @click.stop="clearFile()"
+                      class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
+                             text-ardoise-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {# Changer de fichier #}
+            <p class="text-xs text-ardoise-400 mt-2 text-center cursor-pointer hover:text-bois-600 transition-colors"
+               @click="$refs.fileInput.click()">
+              Cliquez pour changer de fichier
+            </p>
+          </div>
+
+          {# Input réel caché #}
+          <input x-ref="fileInput" id="file-input" type="file" name="file"
+                 class="hidden"
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg,.dxf,.zip,.rar"
+                 @change="onFileChange($event)">
+        </div>
+
+        {% if errors.file %}
+        <p class="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          {{ errors.file }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Informations ───────────────────────────────────────── #}
+    <div class="card p-0 overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-ardoise-100 bg-ardoise-50">
+        <h2 class="text-sm font-semibold text-ardoise-700">Informations</h2>
+      </div>
+      <div class="p-5 space-y-4">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {# Projet #}
+          <div>
+            <label class="form-label">Projet <span class="text-red-500">*</span></label>
+            <select name="project"
+                    class="form-input {% if errors.project %}border-red-400 bg-red-50{% endif %}">
+              <option value="">— Sélectionner un projet —</option>
+              {% for p in projects %}
+              <option value="{{ p.pk }}"
+                      {% if post.project == p.pk|stringformat:"s" %}selected{% endif %}>
+                {{ p.reference }} — {{ p.name|truncatechars:45 }}
+              </option>
+              {% endfor %}
+            </select>
+            {% if errors.project %}
+            <p class="mt-1 text-xs text-red-500 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {{ errors.project }}
+            </p>
+            {% endif %}
+          </div>
+
+          {# Catégorie #}
+          <div>
+            <label class="form-label">Catégorie</label>
+            <select name="category" class="form-input">
+              <option value="">— Sans catégorie —</option>
+              {% for cat in categories %}
+              {% if cat.children.all %}
+              <optgroup label="{{ cat.name }}">
+                {% for child in cat.children.all %}
+                <option value="{{ child.pk }}"
+                        {% if post.category == child.pk|stringformat:"s" %}selected{% endif %}>
+                  {{ child.name }}
+                </option>
+                {% endfor %}
+              </optgroup>
+              {% else %}
+              <option value="{{ cat.pk }}"
+                      {% if post.category == cat.pk|stringformat:"s" %}selected{% endif %}>
+                {{ cat.name }}
+              </option>
+              {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+
+        </div>
+
+        {# Nom du document #}
+        <div>
+          <label class="form-label">Nom du document <span class="text-red-500">*</span></label>
+          <input type="text" name="name" x-ref="nameInput"
+                 value="{{ post.name|default:'' }}"
+                 placeholder="Ex : Plan façade — Maison Moreau"
+                 class="form-input {% if errors.name %}border-red-400 bg-red-50{% endif %}">
+          <p class="mt-1 text-xs text-ardoise-400">Auto-rempli depuis le nom du fichier si laissé vide</p>
+          {% if errors.name %}
+          <p class="mt-1 text-xs text-red-500 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {{ errors.name }}
+          </p>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {# Version #}
+          <div>
+            <label class="form-label">Version</label>
+            <input type="text" name="version"
+                   value="{{ post.version|default:'1.0' }}"
+                   placeholder="1.0"
+                   class="form-input">
+            <p class="mt-1 text-xs text-ardoise-400">Ex : 1.0, 2.3, REV-A</p>
+          </div>
+
+          {# Description #}
+          <div>
+            <label class="form-label">Description <span class="text-ardoise-400 font-normal">(optionnel)</span></label>
+            <input type="text" name="description"
+                   value="{{ post.description|default:'' }}"
+                   placeholder="Note courte sur ce document…"
+                   class="form-input">
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    {# ── Actions ────────────────────────────────────────────── #}
+    <div class="flex justify-between items-center">
+      <a href="{% url 'documents:list' %}" class="btn-secondary">Annuler</a>
+      <button type="submit" class="btn-primary" :disabled="submitting">
+        <template x-if="!submitting">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Déposer le document
+          </span>
+        </template>
+        <template x-if="submitting">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            Envoi en cours…
+          </span>
+        </template>
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+function gedUpload() {
+  return {
+    dragging: false,
+    fileReady: false,
+    submitting: false,
+    fileName: '',
+    fileSize: '',
+    fileTypeLabel: '',
+    fileIconBg: 'bg-ardoise-100',
+    fileIconColor: 'text-ardoise-400',
+    fileTypeBadge: 'bg-ardoise-100 text-ardoise-600',
+
+    init() {
+      // Pré-sélectionner le projet depuis l'URL si présent
+      const params = new URLSearchParams(window.location.search);
+      const proj = params.get('project');
+      if (proj) {
+        const sel = document.querySelector('select[name="project"]');
+        if (sel) sel.value = proj;
+      }
+    },
+
+    onDrop(e) {
+      this.dragging = false;
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      this._applyFile(file);
+      // Injecter dans l'input réel
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      this.$refs.fileInput.files = dt.files;
+    },
+
+    onFileChange(e) {
+      const file = e.target.files[0];
+      if (file) this._applyFile(file);
+    },
+
+    clearFile() {
+      this.fileReady = false;
+      this.$refs.fileInput.value = '';
+    },
+
+    _applyFile(file) {
+      this.fileReady = true;
+      this.fileName = file.name;
+      this.fileSize = this._humanSize(file.size);
+
+      // Auto-remplir le nom si vide
+      const nameInput = this.$refs.nameInput;
+      if (nameInput && !nameInput.value.trim()) {
+        // Retirer l'extension
+        nameInput.value = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      }
+
+      // Couleurs selon type
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'pdf') {
+        this.fileIconBg = 'bg-red-50'; this.fileIconColor = 'text-red-500';
+        this.fileTypeBadge = 'bg-red-50 text-red-600'; this.fileTypeLabel = 'PDF';
+      } else if (['doc','docx'].includes(ext)) {
+        this.fileIconBg = 'bg-blue-50'; this.fileIconColor = 'text-blue-500';
+        this.fileTypeBadge = 'bg-blue-50 text-blue-600'; this.fileTypeLabel = 'Word';
+      } else if (['xls','xlsx'].includes(ext)) {
+        this.fileIconBg = 'bg-green-50'; this.fileIconColor = 'text-green-600';
+        this.fileTypeBadge = 'bg-green-50 text-green-700'; this.fileTypeLabel = 'Excel';
+      } else if (['png','jpg','jpeg','gif','webp'].includes(ext)) {
+        this.fileIconBg = 'bg-purple-50'; this.fileIconColor = 'text-purple-500';
+        this.fileTypeBadge = 'bg-purple-50 text-purple-600'; this.fileTypeLabel = 'Image';
+      } else if (['dwg','dxf'].includes(ext)) {
+        this.fileIconBg = 'bg-amber-50'; this.fileIconColor = 'text-amber-600';
+        this.fileTypeBadge = 'bg-amber-50 text-amber-700'; this.fileTypeLabel = 'CAO/DAO';
+      } else {
+        this.fileIconBg = 'bg-ardoise-100'; this.fileIconColor = 'text-ardoise-500';
+        this.fileTypeBadge = 'bg-ardoise-100 text-ardoise-600'; this.fileTypeLabel = ext.toUpperCase();
+      }
+    },
+
+    _humanSize(bytes) {
+      const units = ['o','Ko','Mo','Go'];
+      let i = 0;
+      while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+      return bytes.toFixed(1) + ' ' + units[i];
+    }
+  };
+}
+</script>
+{% endblock %}

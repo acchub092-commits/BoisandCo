@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 80" role="img" aria-label="Bois&amp;Co">
+  <!-- Texte BOIS -->
+  <text x="8" y="46" font-family="Arial Black, Arial, sans-serif" font-weight="900"
+        font-size="38" fill="#1a1a1a" letter-spacing="-1">BOIS</text>
+  <!-- Cadre vert autour de &CO -->
+  <rect x="108" y="6" width="104" height="52" rx="3"
+        fill="none" stroke="#3a8f2e" stroke-width="4"/>
+  <!-- & CO -->
+  <text x="116" y="46" font-family="Arial Black, Arial, sans-serif" font-weight="900"
+        font-size="38" fill="#1a1a1a" letter-spacing="-1">&amp;CO</text>
+  <!-- Tagline -->
+  <text x="8" y="68" font-family="Arial, sans-serif" font-weight="400"
+        font-size="8.5" fill="#555555" letter-spacing="1.5">FABRICANT DE PORTES, PLACARDS ET CUISINES</text>
+</svg>

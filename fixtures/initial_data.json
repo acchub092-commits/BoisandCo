@@ -1,0 +1,47 @@
+[
+  {
+    "model": "sites.site",
+    "pk": 1,
+    "fields": {
+      "domain": "localhost:8000",
+      "name": "Bois&Co — Développement"
+    }
+  },
+
+  {"model": "documents.documentcategory", "pk": 1,
+   "fields": {"name": "Plans", "slug": "plans", "parent": null, "icon": "file-blueprint", "order": 1}},
+  {"model": "documents.documentcategory", "pk": 2,
+   "fields": {"name": "Plans d'implantation", "slug": "plans-implantation", "parent": 1, "icon": "layout", "order": 1}},
+  {"model": "documents.documentcategory", "pk": 3,
+   "fields": {"name": "Plans d'exécution", "slug": "plans-execution", "parent": 1, "icon": "drafting-compass", "order": 2}},
+  {"model": "documents.documentcategory", "pk": 4,
+   "fields": {"name": "Plans de détail", "slug": "plans-detail", "parent": 1, "icon": "zoom-in", "order": 3}},
+
+  {"model": "documents.documentcategory", "pk": 5,
+   "fields": {"name": "Devis & Contrats", "slug": "devis-contrats", "parent": null, "icon": "file-text", "order": 2}},
+  {"model": "documents.documentcategory", "pk": 6,
+   "fields": {"name": "Devis", "slug": "devis", "parent": 5, "icon": "file-euro", "order": 1}},
+  {"model": "documents.documentcategory", "pk": 7,
+   "fields": {"name": "Contrats signés", "slug": "contrats-signes", "parent": 5, "icon": "pen-line", "order": 2}},
+  {"model": "documents.documentcategory", "pk": 8,
+   "fields": {"name": "Avenants", "slug": "avenants", "parent": 5, "icon": "file-plus", "order": 3}},
+
+  {"model": "documents.documentcategory", "pk": 9,
+   "fields": {"name": "Photos", "slug": "photos", "parent": null, "icon": "camera", "order": 3}},
+  {"model": "documents.documentcategory", "pk": 10,
+   "fields": {"name": "Photos avant travaux", "slug": "photos-avant", "parent": 9, "icon": "image", "order": 1}},
+  {"model": "documents.documentcategory", "pk": 11,
+   "fields": {"name": "Photos chantier", "slug": "photos-chantier", "parent": 9, "icon": "hard-hat", "order": 2}},
+  {"model": "documents.documentcategory", "pk": 12,
+   "fields": {"name": "Photos finales", "slug": "photos-finales", "parent": 9, "icon": "star", "order": 3}},
+
+  {"model": "documents.documentcategory", "pk": 13,
+   "fields": {"name": "PV & Réception", "slug": "pv-reception", "parent": null, "icon": "clipboard-check", "order": 4}},
+
+  {"model": "documents.documentcategory", "pk": 14,
+   "fields": {"name": "Logistique", "slug": "logistique", "parent": null, "icon": "truck", "order": 5}},
+  {"model": "documents.documentcategory", "pk": 15,
+   "fields": {"name": "Bons de livraison", "slug": "bons-livraison", "parent": 14, "icon": "package", "order": 1}},
+  {"model": "documents.documentcategory", "pk": 16,
+   "fields": {"name": "Bordereaux", "slug": "bordereaux", "parent": 14, "icon": "list", "order": 2}}
+]

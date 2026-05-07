@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% load allauth %}
+
+{% block title %}Gestion des e-mails{% endblock %}
+
+{% block page_title %}Gestion des e-mails{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+  {# Breadcrumb #}
+  <nav class="flex items-center gap-2 text-sm text-ardoise-500">
+    <a href="{% url 'projects:dashboard' %}" class="hover:text-ardoise-700 transition-colors">Tableau de bord</a>
+    <svg class="w-4 h-4 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-ardoise-800 font-medium">Gestion des e-mails</span>
+  </nav>
+
+  {# ── Adresses e-mail existantes ──────────────────────────── #}
+  <div class="card p-8">
+
+    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-ardoise-100">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold text-ardoise-900">Adresses e-mail</h2>
+        <p class="text-sm text-ardoise-500 mt-0.5">Gérez les adresses associées à votre compte.</p>
+      </div>
+    </div>
+
+    {% if emailaddresses %}
+    <form method="post" action="{% url 'account_email' %}" class="space-y-3">
+      {% csrf_token %}
+
+      {% for emailaddress in emailaddresses %}
+      <div class="flex items-center justify-between gap-4 px-4 py-3 rounded-lg border
+                  {% if emailaddress.primary %}border-foret-200 bg-foret-50{% else %}border-ardoise-200 bg-ardoise-50{% endif %}">
+
+        <div class="flex items-center gap-3 min-w-0">
+          {# Radio pour sélectionner comme principale #}
+          <input type="radio" name="email" value="{{ emailaddress.email }}"
+                 id="email_radio_{{ forloop.counter }}"
+                 {% if emailaddress.primary %}checked{% endif %}
+                 class="text-foret-500 border-ardoise-300 focus:ring-foret-400">
+
+          <label for="email_radio_{{ forloop.counter }}" class="min-w-0 cursor-pointer">
+            <span class="block text-sm font-medium text-ardoise-900 truncate">{{ emailaddress.email }}</span>
+            <span class="flex items-center gap-2 mt-0.5">
+              {% if emailaddress.primary %}
+                <span class="inline-flex items-center gap-1 text-xs font-medium text-foret-700">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  Principale
+                </span>
+              {% endif %}
+              {% if emailaddress.verified %}
+                <span class="inline-flex items-center gap-1 text-xs text-ardoise-500">
+                  <svg class="w-3 h-3 text-foret-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                  </svg>
+                  Vérifiée
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 text-xs text-amber-600">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                  </svg>
+                  Non vérifiée
+                </span>
+              {% endif %}
+            </span>
+          </label>
+        </div>
+
+        {# Actions sur cette adresse #}
+        <div class="flex items-center gap-2 flex-shrink-0">
+          {% if not emailaddress.verified %}
+          <button type="submit" name="action_send" value="{{ emailaddress.email }}"
+                  class="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors font-medium">
+            Renvoyer
+          </button>
+          {% endif %}
+          {% if not emailaddress.primary %}
+          <button type="submit" name="action_remove" value="{{ emailaddress.email }}"
+                  onclick="return confirm('Supprimer {{ emailaddress.email }} ?')"
+                  class="p-1.5 rounded-lg text-ardoise-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {# Définir comme principale #}
+      <div class="pt-2">
+        <button type="submit" name="action_primary"
+                class="btn-secondary text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          Définir l'adresse sélectionnée comme principale
+        </button>
+      </div>
+
+    </form>
+    {% else %}
+    <p class="text-sm text-ardoise-500 italic">Aucune adresse e-mail associée pour le moment.</p>
+    {% endif %}
+
+  </div>
+
+  {# ── Ajouter une adresse ──────────────────────────────────── #}
+  {% if can_add_email %}
+  <div class="card p-8">
+
+    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-ardoise-100">
+      <div class="w-12 h-12 rounded-xl bg-foret-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold text-ardoise-900">Ajouter une adresse e-mail</h2>
+        <p class="text-sm text-ardoise-500 mt-0.5">Associez une adresse supplémentaire à votre compte.</p>
+      </div>
+    </div>
+
+    {# Erreurs #}
+    {% if form.errors %}
+    <div class="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 mb-5">
+      <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        {% for error in form.email.errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'account_email' %}" class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <label for="id_email" class="form-label">Nouvelle adresse e-mail</label>
+        <input type="email" name="email" id="id_email"
+               autocomplete="email" required
+               class="form-input {% if form.email.errors %}border-red-400 focus:ring-red-400{% endif %}"
+               placeholder="nouvelle@adresse.fr">
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" name="action_add" class="btn-primary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Ajouter l'adresse
+        </button>
+      </div>
+
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

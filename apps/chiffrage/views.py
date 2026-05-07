@@ -1,0 +1,756 @@
+"""
+Vues du module Chiffrage — Bois&Co
+RBAC :
+  COMMERCIAL  → soumet et suit ses demandes
+  MANAGER     → DC : valide/rejette, arbitre les modifications
+  DIRECTEUR   → DG : validation finale du devis
+  ESTIMATEUR  → Service Méthodes : chiffrage, fil de discussion, soumission DG
+"""
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages as django_messages
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.generic import View, ListView
+import mimetypes
+from django.http import HttpResponseForbidden, JsonResponse, FileResponse, Http404
+from django.db.models import Q, Count
+from django.utils import timezone
+
+from .models import (
+    DemandeChiffrage, FichierChiffrage, MessageFil,
+    HistoriqueAction, DemandeModification,
+)
+from apps.users.models import User
+
+ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'ADMIN')
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+class ChiffrageRequiredMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not request.user.is_superuser and request.user.role not in ROLES_CHIFFRAGE:
+            return HttpResponseForbidden("Accès non autorisé.")
+        return super().dispatch(request, *args, **kwargs)
+
+
+def _log(demande, auteur, action, detail='', ancien='', nouveau=''):
+    HistoriqueAction.objects.create(
+        demande=demande,
+        auteur=auteur,
+        action=action,
+        detail=detail,
+        ancien_statut=ancien,
+        nouveau_statut=nouveau,
+    )
+
+
+def _notify(recipients, title, message, sender=None, demande=None):
+    """Crée des notifications in-app pour la liste de destinataires."""
+    from apps.notifications.models import Notification
+    from django.contrib.contenttypes.models import ContentType
+    ct = ContentType.objects.get_for_model(DemandeChiffrage) if demande else None
+    for user in recipients:
+        if user is None:
+            continue
+        Notification.objects.create(
+            recipient=user,
+            sender=sender,
+            notification_type=Notification.Type.APPROVAL_REQUESTED,
+            title=title,
+            message=message,
+            content_type=ct,
+            object_id=demande.pk if demande else None,
+        )
+
+
+def _qs_for_user(user):
+    """Queryset de base filtré selon le rôle."""
+    qs = DemandeChiffrage.objects.select_related(
+        'commercial', 'assigned_to', 'validated_by_dc', 'validated_by_dg'
+    )
+    if user.role == 'COMMERCIAL' and not user.is_superuser:
+        return qs.filter(commercial=user)
+    # MANAGER, DIRECTEUR, ESTIMATEUR, ADMIN voient tout
+    return qs
+
+
+# ---------------------------------------------------------------------------
+# Dashboard / Liste
+# ---------------------------------------------------------------------------
+
+class DashboardView(ChiffrageRequiredMixin, View):
+    template_name = 'chiffrage/dashboard.html'
+
+    def get(self, request):
+        qs = _qs_for_user(request.user)
+
+        # Filtres
+        statut    = request.GET.get('statut', '')
+        urgence   = request.GET.get('urgence', '')
+        search    = request.GET.get('q', '').strip()
+        retard    = request.GET.get('retard', '')
+
+        if statut:
+            qs = qs.filter(statut=statut)
+        if urgence:
+            qs = qs.filter(urgence=urgence)
+        if search:
+            qs = qs.filter(
+                Q(reference__icontains=search)
+                | Q(client_nom__icontains=search)
+                | Q(client_ref_affaire__icontains=search)
+            )
+
+        all_qs = _qs_for_user(request.user)
+        today = timezone.now().date()
+
+        # Stats
+        stats = {
+            'en_attente':   all_qs.filter(statut='EN_ATTENTE').count(),
+            'en_chiffrage': all_qs.filter(statut='EN_CHIFFRAGE').count(),
+            'soumis_dg':    all_qs.filter(statut='SOUMIS_DG').count(),
+            'valides':      all_qs.filter(statut='DEVIS_VALIDE').count(),
+            'retard':       sum(
+                1 for d in all_qs.exclude(statut__in=[
+                    'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE'
+                ]) if d.delai_souhaite and d.delai_souhaite < today
+            ),
+        }
+
+        # Filtre retard (post-queryset car propriété Python)
+        demandes = list(qs.order_by('-created_at'))
+        if retard:
+            demandes = [d for d in demandes if d.is_retard]
+
+        return render(request, self.template_name, {
+            'demandes':      demandes,
+            'stats':         stats,
+            'statuts':       DemandeChiffrage.Statut.choices,
+            'urgences':      DemandeChiffrage.Urgence.choices,
+            'sel_statut':    statut,
+            'sel_urgence':   urgence,
+            'search':        search,
+            'sel_retard':    retard,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Création demande
+# ---------------------------------------------------------------------------
+
+class DemandeCreateView(ChiffrageRequiredMixin, View):
+    template_name = 'chiffrage/demande_create.html'
+
+    def get(self, request):
+        if not request.user.is_superuser and request.user.role not in ('COMMERCIAL', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+        # Pré-remplissage depuis un lead CRM (toujours toutes les clés initialisées)
+        lead_id = request.GET.get('lead_id')
+        prefill = {
+            'client_nom':  request.GET.get('client_nom', '') if lead_id else '',
+            'description': request.GET.get('description', '') if lead_id else '',
+            'lead_id':     lead_id or '',
+        }
+        ctx = self._ctx()
+        ctx['prefill'] = prefill
+        return render(request, self.template_name, ctx)
+
+    def post(self, request):
+        if not request.user.is_superuser and request.user.role not in ('COMMERCIAL', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+
+        client_nom    = request.POST.get('client_nom', '').strip()
+        client_ref    = request.POST.get('client_ref_affaire', '').strip()
+        description   = request.POST.get('description', '').strip()
+        delai         = request.POST.get('delai_souhaite', '') or None
+        urgence       = request.POST.get('urgence', DemandeChiffrage.Urgence.STANDARD)
+        finitions     = request.POST.get('finitions', '').strip()
+        kits          = request.POST.get('kits_references', '').strip()
+        quantites     = request.POST.get('quantites_estimees', '').strip()
+        contraintes   = request.POST.get('contraintes_techniques', '').strip()
+        commentaires  = request.POST.get('commentaires', '').strip()
+        fichiers      = request.FILES.getlist('fichiers')
+
+        errors = {}
+        if not client_nom:
+            errors['client_nom'] = 'Le nom du client est obligatoire.'
+        if not description:
+            errors['description'] = 'La description est obligatoire.'
+
+        if errors:
+            return render(request, self.template_name, {
+                **self._ctx(), 'errors': errors, 'post': request.POST,
+            })
+
+        lead_id = request.POST.get('lead_id') or None
+        demande = DemandeChiffrage.objects.create(
+            commercial=request.user,
+            client_nom=client_nom,
+            client_ref_affaire=client_ref,
+            description=description,
+            delai_souhaite=delai,
+            urgence=urgence,
+            finitions=finitions,
+            kits_references=kits,
+            quantites_estimees=quantites,
+            contraintes_techniques=contraintes,
+            commentaires=commentaires,
+            statut=DemandeChiffrage.Statut.EN_ATTENTE,
+            lead_id=lead_id,
+        )
+
+        for f in fichiers:
+            FichierChiffrage.objects.create(
+                demande=demande,
+                fichier=f,
+                nom=f.name,
+                uploaded_by=request.user,
+            )
+
+        _log(demande, request.user, 'Demande soumise',
+             nouveau=DemandeChiffrage.Statut.EN_ATTENTE)
+
+        # Notification → tous les DC (MANAGER)
+        dc_users = User.objects.filter(role='MANAGER', is_active_employee=True)
+        _notify(
+            dc_users,
+            f'Nouvelle demande de chiffrage — {demande.reference}',
+            f'{request.user.get_full_name()} a soumis une demande pour {client_nom}.',
+            sender=request.user, demande=demande,
+        )
+
+        django_messages.success(request,
+            f'Demande {demande.reference} soumise avec succès — en attente de validation.')
+        return redirect('chiffrage:detail', pk=demande.pk)
+
+    def _ctx(self):
+        return {
+            'urgences': DemandeChiffrage.Urgence.choices,
+            'errors': {}, 'post': {},
+        }
+
+
+# ---------------------------------------------------------------------------
+# Détail demande
+# ---------------------------------------------------------------------------
+
+class DemandeDetailView(ChiffrageRequiredMixin, View):
+    template_name = 'chiffrage/demande_detail.html'
+
+    def get(self, request, pk):
+        demande = get_object_or_404(
+            DemandeChiffrage.objects.prefetch_related(
+                'fichiers', 'messages__auteur', 'historique__auteur',
+                'demandes_modification',
+            ).select_related('commercial', 'assigned_to', 'validated_by_dc', 'validated_by_dg'),
+            pk=pk,
+        )
+        # COMMERCIAL ne voit que ses propres demandes
+        if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            return HttpResponseForbidden()
+
+        # Fichiers — séparés en deux widgets distincts
+        is_commercial = request.user.role == 'COMMERCIAL' and not request.user.is_superuser
+        is_manager    = request.user.role == 'MANAGER' or request.user.is_superuser
+        POST_DG = {'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE'}
+        devis_visible = demande.statut in POST_DG
+
+        # Widget 1 — Documents du dossier (sans le devis final)
+        dossier_qs = demande.fichiers.filter(is_devis=False)
+        if is_commercial:
+            dossier_qs = dossier_qs.filter(is_internal=False)
+        fichiers = dossier_qs
+
+        # Widget 2 — Devis final (is_devis=True)
+        # DG + Méthodes + Admin : dernière version + historique lecture seule
+        # DC + Commercial : dernière version uniquement, seulement après validation DG
+        all_devis = demande.fichiers.filter(is_devis=True).order_by('-uploaded_at')
+        if request.user.role in ('DIRECTEUR', 'ESTIMATEUR') or request.user.is_superuser:
+            devis_latest   = all_devis.first()
+            devis_archives = list(all_devis[1:])   # versions antérieures, lecture seule
+        elif devis_visible:
+            devis_latest   = all_devis.first()
+            devis_archives = []
+        else:
+            devis_latest   = None
+            devis_archives = []
+
+        # Messages filtrés (commerciaux ne voient pas les notes internes)
+        msgs = demande.messages.filter(is_internal=False) if is_commercial else demande.messages.all()
+
+        # Modification en attente
+        modif_en_attente = demande.demandes_modification.filter(
+            statut='EN_ATTENTE'
+        ).first()
+
+        # Chiffreurs disponibles (ESTIMATEUR)
+        chiffreurs = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
+
+        return render(request, self.template_name, {
+            'demande':           demande,
+            'fichiers':          fichiers,
+            'messages':          msgs,
+            'historique':        demande.historique.all(),
+            'modif_en_attente':  modif_en_attente,
+            'chiffreurs':        chiffreurs,
+            'is_commercial':     is_commercial,
+            'devis_latest':      devis_latest,
+            'devis_archives':    devis_archives,
+            'devis_visible':     devis_visible,
+            'jalons':            DemandeChiffrage.Jalon.choices,
+            'urgences':          DemandeChiffrage.Urgence.choices,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Actions DC (MANAGER)
+# ---------------------------------------------------------------------------
+
+class ActionDCView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role != 'MANAGER':
+            return HttpResponseForbidden()
+
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        action  = request.POST.get('action')
+        motif   = request.POST.get('motif', '').strip()
+
+        ancien = demande.statut
+
+        if action == 'valider':
+            demande.statut = DemandeChiffrage.Statut.VALIDEE_DC
+            demande.validated_by_dc = request.user
+            demande.validated_dc_at = timezone.now()
+            demande.save()
+            _log(demande, request.user, 'Validée par DC', nouveau=demande.statut, ancien=ancien)
+            # Notification → Méthodes
+            methodes = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
+            _notify(methodes,
+                f'Nouvelle demande à chiffrer — {demande.reference}',
+                f'La demande {demande.reference} ({demande.client_nom}) est prête à être chiffrée.',
+                sender=request.user, demande=demande)
+            django_messages.success(request, 'Demande validée et transmise au Service Méthodes.')
+
+        elif action == 'rejeter':
+            if not motif:
+                django_messages.error(request, 'Un motif de rejet est obligatoire.')
+                return redirect('chiffrage:detail', pk=pk)
+            demande.statut = DemandeChiffrage.Statut.REJETEE
+            demande.save()
+            _log(demande, request.user, 'Rejetée par DC', detail=motif,
+                 nouveau=demande.statut, ancien=ancien)
+            _notify([demande.commercial],
+                f'Demande rejetée — {demande.reference}',
+                f'Votre demande a été rejetée. Motif : {motif}',
+                sender=request.user, demande=demande)
+            django_messages.warning(request, 'Demande rejetée. Le commercial a été notifié.')
+
+        elif action == 'retourner':
+            if not motif:
+                django_messages.error(request, 'Un commentaire est obligatoire.')
+                return redirect('chiffrage:detail', pk=pk)
+            demande.statut = DemandeChiffrage.Statut.RETOURNEE
+            demande.save()
+            _log(demande, request.user, 'Retournée pour complétion', detail=motif,
+                 nouveau=demande.statut, ancien=ancien)
+            _notify([demande.commercial],
+                f'Demande retournée — {demande.reference}',
+                f'Des éléments complémentaires sont demandés : {motif}',
+                sender=request.user, demande=demande)
+            django_messages.info(request, 'Demande retournée au commercial pour complétion.')
+
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Actions Méthodes (ESTIMATEUR)
+# ---------------------------------------------------------------------------
+
+class AssignerView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+        demande = get_object_or_404(DemandeChiffrage, pk=pk,
+                                    statut=DemandeChiffrage.Statut.VALIDEE_DC)
+        chiffreur_id = request.POST.get('chiffreur') or None
+        ancien = demande.statut
+        demande.assigned_to = User.objects.get(pk=chiffreur_id) if chiffreur_id else request.user
+        demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
+        demande.jalon  = DemandeChiffrage.Jalon.ANALYSE
+        demande.save()
+        _log(demande, request.user,
+             f'Pris en charge par {demande.assigned_to.get_full_name()}',
+             nouveau=demande.statut, ancien=ancien)
+        django_messages.success(request, 'Demande prise en charge — chiffrage en cours.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+class JalonView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        jalon = request.POST.get('jalon', '')
+        if jalon in dict(DemandeChiffrage.Jalon.choices):
+            demande.jalon = jalon
+            demande.save(update_fields=['jalon', 'updated_at'])
+            _log(demande, request.user,
+                 f'Jalon mis à jour : {demande.get_jalon_display()}')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+class MontantView(ChiffrageRequiredMixin, View):
+    """Enregistrement du montant brouillon par Méthodes."""
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        montant = request.POST.get('montant_ht', '').strip()
+        try:
+            demande.montant_ht = float(montant.replace(',', '.')) if montant else None
+        except ValueError:
+            pass
+        demande.save(update_fields=['montant_ht', 'updated_at'])
+        django_messages.success(request, 'Montant enregistré (invisible pour le commercial).')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+class SoumettreDevisView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+        demande = get_object_or_404(
+            DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.EN_CHIFFRAGE
+        )
+        # Fichier devis optionnel
+        fichier = request.FILES.get('fichier_devis')
+        if fichier:
+            FichierChiffrage.objects.create(
+                demande=demande, fichier=fichier, nom=fichier.name,
+                uploaded_by=request.user, is_devis=True,
+            )
+        ancien = demande.statut
+        demande.statut = DemandeChiffrage.Statut.SOUMIS_DG
+        demande.jalon  = ''
+        demande.save()
+        _log(demande, request.user, 'Devis soumis à la DG',
+             nouveau=demande.statut, ancien=ancien)
+        dg_users = User.objects.filter(role='DIRECTEUR', is_active_employee=True)
+        _notify(dg_users,
+            f'Devis à valider — {demande.reference}',
+            f'Le devis {demande.reference} ({demande.client_nom}) est prêt pour votre validation.',
+            sender=request.user, demande=demande)
+        django_messages.success(request, 'Devis soumis à la Direction Générale pour validation.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Actions DG (DIRECTEUR)
+# ---------------------------------------------------------------------------
+
+class ActionDGView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role != 'DIRECTEUR':
+            return HttpResponseForbidden()
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        action = request.POST.get('action')
+        motif  = request.POST.get('motif', '').strip()
+        ancien = demande.statut
+
+        if action == 'valider':
+            demande.statut = DemandeChiffrage.Statut.DEVIS_VALIDE
+            demande.validated_by_dg = request.user
+            demande.validated_dg_at = timezone.now()
+            demande.save()
+            _log(demande, request.user, 'Devis validé par la DG',
+                 nouveau=demande.statut, ancien=ancien)
+            _notify([demande.commercial],
+                f'Votre devis est prêt — {demande.reference}',
+                f'Le devis pour {demande.client_nom} a été validé. Vous pouvez le consulter.',
+                sender=request.user, demande=demande)
+            # Création automatique du projet avec séquençage Bois&Co
+            try:
+                if not hasattr(demande, 'projet'):
+                    from apps.projects.models import Project
+                    Project.creer_depuis_chiffrage(demande, validated_by=request.user)
+            except Exception:
+                pass  # non-bloquant
+            django_messages.success(request, 'Devis validé. Projet créé automatiquement avec le séquençage Bois&Co.')
+
+        elif action == 'revision':
+            if not motif:
+                django_messages.error(request, 'Un motif est requis.')
+                return redirect('chiffrage:detail', pk=pk)
+            demande.statut = DemandeChiffrage.Statut.REVISION_DG
+            demande.save()
+            _log(demande, request.user, 'Modifications demandées par DG', detail=motif,
+                 nouveau=demande.statut, ancien=ancien)
+            methodes = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
+            _notify(methodes,
+                f'Révision demandée — {demande.reference}',
+                f'La DG demande des modifications : {motif}',
+                sender=request.user, demande=demande)
+            django_messages.warning(request, 'Révision demandée au Service Méthodes.')
+
+        elif action == 'refuser':
+            if not motif:
+                django_messages.error(request, 'Un motif de refus est requis.')
+                return redirect('chiffrage:detail', pk=pk)
+            demande.statut = DemandeChiffrage.Statut.ARCHIVE
+            demande.save()
+            _log(demande, request.user, 'Refusé et archivé par DG', detail=motif,
+                 nouveau=demande.statut, ancien=ancien)
+            django_messages.info(request, 'Demande refusée et archivée.')
+
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Reprise révision DG → chiffrage
+# ---------------------------------------------------------------------------
+
+class RepriseRevisionView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+            return HttpResponseForbidden()
+        demande = get_object_or_404(
+            DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.REVISION_DG
+        )
+        ancien = demande.statut
+        demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
+        demande.save()
+        _log(demande, request.user, 'Révision prise en compte — chiffrage repris',
+             nouveau=demande.statut, ancien=ancien)
+        django_messages.info(request, 'Chiffrage repris.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Résultat commercial (COMMERCIAL)
+# ---------------------------------------------------------------------------
+
+class ResultatView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            return HttpResponseForbidden()
+        action = request.POST.get('action')
+        ancien = demande.statut
+
+        if action == 'transmettre':
+            demande.statut = DemandeChiffrage.Statut.TRANSMIS
+            demande.transmis_client_at = timezone.now()
+            demande.save()
+            _log(demande, request.user, 'Devis transmis au client',
+                 nouveau=demande.statut, ancien=ancien)
+            django_messages.success(request, 'Devis marqué comme transmis au client.')
+        elif action == 'accepte':
+            demande.statut = DemandeChiffrage.Statut.ACCEPTE
+            demande.save()
+            _log(demande, request.user, 'Devis accepté par le client',
+                 nouveau=demande.statut, ancien=ancien)
+            django_messages.success(request, 'Devis accepté par le client.')
+        elif action == 'refuse':
+            demande.statut = DemandeChiffrage.Statut.REFUSE_CLI
+            demande.save()
+            _log(demande, request.user, 'Devis refusé par le client',
+                 nouveau=demande.statut, ancien=ancien)
+            django_messages.info(request, 'Devis refusé par le client.')
+
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Fil de discussion
+# ---------------------------------------------------------------------------
+
+class MessageView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            return HttpResponseForbidden()
+
+        contenu = request.POST.get('contenu', '').strip()
+        if not contenu:
+            return redirect('chiffrage:detail', pk=pk)
+
+        fichier = request.FILES.get('fichier')
+        is_internal = request.POST.get('is_internal') == '1' and request.user.role != 'COMMERCIAL'
+
+        msg = MessageFil.objects.create(
+            demande=demande,
+            auteur=request.user,
+            contenu=contenu,
+            fichier=fichier,
+            nom_fichier=fichier.name if fichier else '',
+            is_internal=is_internal,
+        )
+        _log(demande, request.user,
+             'Note interne ajoutée' if is_internal else 'Message envoyé dans le fil')
+
+        # Notification selon rôle
+        if request.user.role == 'COMMERCIAL':
+            # notifier Méthodes assigné + DC
+            recipients = list(filter(None, [demande.assigned_to]))
+            recipients += list(User.objects.filter(role='MANAGER', is_active_employee=True))
+        else:
+            recipients = [demande.commercial] if not is_internal else []
+
+        _notify(recipients,
+            f'Nouveau message — {demande.reference}',
+            f'{request.user.get_full_name()} : {contenu[:100]}',
+            sender=request.user, demande=demande)
+
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Upload fichier
+# ---------------------------------------------------------------------------
+
+class FichierUploadView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            return HttpResponseForbidden()
+        if request.user.role == 'COMMERCIAL' and not demande.can_commercial_edit:
+            django_messages.error(request, 'Modification impossible dans ce statut.')
+            return redirect('chiffrage:detail', pk=pk)
+
+        fichiers = request.FILES.getlist('fichiers')
+        is_internal = request.POST.get('is_internal') == '1' and request.user.role != 'COMMERCIAL'
+        for f in fichiers:
+            FichierChiffrage.objects.create(
+                demande=demande, fichier=f, nom=f.name,
+                uploaded_by=request.user, is_internal=is_internal,
+            )
+        _log(demande, request.user, f'{len(fichiers)} fichier(s) ajouté(s)')
+        django_messages.success(request, f'{len(fichiers)} fichier(s) ajouté(s).')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Demande de modification (Commercial → DC arbitrage)
+# ---------------------------------------------------------------------------
+
+class ModificationView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk,
+                                    statut=DemandeChiffrage.Statut.EN_CHIFFRAGE)
+        if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            return HttpResponseForbidden()
+
+        nature       = request.POST.get('nature', '').strip()
+        justif       = request.POST.get('justification', '').strip()
+        urgence      = request.POST.get('urgence', 'STANDARD')
+
+        if not nature or not justif:
+            django_messages.error(request, 'Nature et justification sont obligatoires.')
+            return redirect('chiffrage:detail', pk=pk)
+
+        DemandeModification.objects.create(
+            demande=demande, soumis_par=request.user,
+            nature=nature, justification=justif, urgence=urgence,
+        )
+        _log(demande, request.user, 'Demande de modification soumise', detail=nature)
+
+        dc_users = User.objects.filter(role='MANAGER', is_active_employee=True)
+        _notify(list(dc_users) + list(User.objects.filter(role='ESTIMATEUR', is_active_employee=True)),
+            f'Demande de modification — {demande.reference}',
+            f'{request.user.get_full_name()} demande une modification : {nature}',
+            sender=request.user, demande=demande)
+        django_messages.success(request, 'Demande de modification soumise au DC.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+class ArbitrerModifView(ChiffrageRequiredMixin, View):
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role != 'MANAGER':
+            return HttpResponseForbidden()
+        modif  = get_object_or_404(DemandeModification, pk=pk)
+        action = request.POST.get('action')
+        motif  = request.POST.get('motif', '').strip()
+
+        modif.traite_par = request.user
+        modif.traite_at  = timezone.now()
+
+        if action == 'accepter':
+            modif.statut = DemandeModification.Statut.ACCEPTEE
+            modif.save()
+            modif.demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
+            modif.demande.save(update_fields=['statut', 'updated_at'])
+            _log(modif.demande, request.user,
+                 'Modification acceptée par DC', detail=modif.nature)
+            methodes = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
+            _notify(methodes,
+                f'Modification acceptée — {modif.demande.reference}',
+                f'Le DC a accepté une modification : {modif.nature}',
+                sender=request.user, demande=modif.demande)
+            django_messages.success(request, 'Modification acceptée.')
+        elif action == 'refuser':
+            modif.statut = DemandeModification.Statut.REFUSEE
+            modif.motif_refus = motif
+            modif.save()
+            _log(modif.demande, request.user,
+                 'Modification refusée par DC', detail=motif)
+            _notify([modif.soumis_par],
+                f'Modification refusée — {modif.demande.reference}',
+                f'Votre demande de modification a été refusée. Motif : {motif}',
+                sender=request.user, demande=modif.demande)
+            django_messages.info(request, 'Modification refusée.')
+
+        return redirect('chiffrage:detail', pk=modif.demande.pk)
+
+
+# ---------------------------------------------------------------------------
+# Visionneuse sécurisée — devis final
+# ---------------------------------------------------------------------------
+
+class DevisPreviewView(ChiffrageRequiredMixin, View):
+    """
+    Sert un fichier devis (is_devis=True) en mode inline (aperçu navigateur).
+    Pas de téléchargement forcé ; accès conditionné au rôle et au statut de la demande.
+    """
+
+    POST_DG = {'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE'}
+
+    def get(self, request, pk, fichier_pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        fichier = get_object_or_404(
+            FichierChiffrage, pk=fichier_pk, demande=demande, is_devis=True
+        )
+
+        devis_visible = demande.statut in self.POST_DG
+
+        if request.user.role in ('DIRECTEUR', 'ESTIMATEUR'):
+            pass  # accès complet à toutes les versions
+        elif devis_visible:
+            # DC et Commercial : uniquement la version la plus récente
+            latest = (
+                demande.fichiers.filter(is_devis=True)
+                .order_by('-uploaded_at')
+                .first()
+            )
+            if not latest or latest.pk != fichier.pk:
+                raise Http404
+        else:
+            raise Http404
+
+        content_type, _ = mimetypes.guess_type(fichier.fichier.name)
+        content_type = content_type or 'application/octet-stream'
+
+        response = FileResponse(
+            fichier.fichier.open('rb'),
+            content_type=content_type,
+        )
+        response['Content-Disposition'] = f'inline; filename="{fichier.nom}"'
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        # Autoriser l'iframe same-origin (override du middleware XFrameOptions)
+        response['X-Frame-Options'] = 'SAMEORIGIN'
+        return response

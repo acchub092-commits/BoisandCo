@@ -1,0 +1,35 @@
+{% load static %}
+
+{# ── Overlay mobile ──────────────────────────────────────────── #}
+<div x-show="mobileMenuOpen"
+     x-cloak
+     x-transition:enter="transition-opacity ease-in-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition-opacity ease-in-out duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @click="mobileMenuOpen = false"
+     class="fixed inset-0 bg-black/60 z-20 lg:hidden">
+</div>
+
+{# ── Sidebar desktop (relative, toujours visible) ────────────── #}
+<aside class="hidden lg:flex flex-col shadow-sidebar transition-all duration-300 ease-in-out flex-shrink-0"
+       style="background-color: #163228;"
+       :class="sidebarOpen ? 'w-60' : 'w-16'">
+  {% include "partials/_sidebar_content.html" %}
+</aside>
+
+{# ── Sidebar mobile (fixed, s'ouvre en overlay) ──────────────── #}
+<aside x-show="mobileMenuOpen"
+       x-cloak
+       x-transition:enter="transition-transform ease-in-out duration-200"
+       x-transition:enter-start="-translate-x-full"
+       x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition-transform ease-in-out duration-200"
+       x-transition:leave-start="translate-x-0"
+       x-transition:leave-end="-translate-x-full"
+       class="lg:hidden fixed inset-y-0 left-0 z-30 w-60 flex flex-col shadow-sidebar"
+       style="background-color: #163228;">
+  {% include "partials/_sidebar_content.html" %}
+</aside>

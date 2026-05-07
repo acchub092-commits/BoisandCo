@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ task.name }} — {{ project.reference }}{% endblock %}
+{% block page_title %}{{ project.reference }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:detail' project.pk %}" class="btn-secondary btn-sm">← Fiche projet</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+
+  {# ── En-tête tâche ──────────────────────────────────────────────────── #}
+  <div class="card">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        {# Fil d'Ariane #}
+        <p class="text-xs text-ardoise-400 mb-1">
+          <a href="{% url 'projects:detail' project.pk %}" class="hover:text-foret-600">{{ project.reference }}</a>
+          <span class="mx-1">›</span>
+          <span>{{ phase.name }}</span>
+          <span class="mx-1">›</span>
+          <span class="text-ardoise-600 font-medium">{{ task.name }}</span>
+        </p>
+
+        <h2 class="text-xl font-bold text-ardoise-900 leading-tight">{{ task.name }}</h2>
+        {% if task.description %}
+        <p class="text-sm text-ardoise-500 mt-1">{{ task.description }}</p>
+        {% endif %}
+      </div>
+
+      {# Statut badge #}
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
+          {% if task.status == 'TERMINEE' %}bg-foret-100 text-foret-700
+          {% elif task.status == 'EN_COURS' %}bg-amber-100 text-amber-700
+          {% elif task.status == 'ACTIVE' %}bg-bois-100 text-bois-700
+          {% elif task.status == 'BLOQUEE' %}bg-red-100 text-red-700
+          {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+          <span class="w-1.5 h-1.5 rounded-full
+            {% if task.status == 'TERMINEE' %}bg-foret-500
+            {% elif task.status == 'EN_COURS' %}bg-amber-500
+            {% elif task.status == 'ACTIVE' %}bg-bois-500
+            {% elif task.status == 'BLOQUEE' %}bg-red-500
+            {% else %}bg-ardoise-300{% endif %}"></span>
+          {{ task.get_status_display }}
+        </span>
+      </div>
+    </div>
+
+    {# KPIs ligne #}
+    <div class="flex flex-wrap gap-5 mt-4 pt-4 border-t border-ardoise-100 text-sm">
+      <div>
+        <p class="text-xs text-ardoise-400">Avancement</p>
+        <div class="flex items-center gap-2 mt-1">
+          <div class="progress-bar w-28">
+            <div class="progress-fill" style="width: {{ task.progress }}%"></div>
+          </div>
+          <span class="font-bold text-ardoise-700">{{ task.progress }}%</span>
+        </div>
+      </div>
+      {% if task.estimated_hours %}
+      <div>
+        <p class="text-xs text-ardoise-400">Heures estimées</p>
+        <p class="font-semibold text-ardoise-700 mt-1">{{ task.estimated_hours }}h</p>
+      </div>
+      {% endif %}
+      {% if task.due_date %}
+      <div>
+        <p class="text-xs text-ardoise-400">Échéance</p>
+        <p class="font-semibold text-ardoise-700 mt-1">{{ task.due_date|date:"d/m/Y" }}</p>
+      </div>
+      {% endif %}
+      {% if task.required_role != 'ANY' %}
+      <div>
+        <p class="text-xs text-ardoise-400">Rôle requis</p>
+        <p class="font-semibold text-ardoise-700 mt-1">{{ task.get_required_role_display }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Mise à jour avancement #}
+    {% if task.status != 'TERMINEE' and task.status != 'EN_ATTENTE' %}
+    <form method="post" action="{% url 'projects:task_progress' task.pk %}"
+          class="flex items-center gap-3 mt-4" x-data="{ val: {{ task.progress }} }">
+      {% csrf_token %}
+      <label class="text-xs text-ardoise-500 flex-shrink-0">Avancement</label>
+      <input type="range" name="progress" x-model="val" min="0" max="100" step="5"
+             class="flex-1 accent-foret-500">
+      <span class="text-xs font-bold text-foret-600 w-9" x-text="val + '%'"></span>
+      <button type="submit" class="btn-primary btn-sm">Enregistrer</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {# ── Équipe affectée ────────────────────────────────────────────────── #}
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-semibold text-ardoise-700">Équipe affectée</h3>
+    </div>
+
+    {% if task.assignments.exists %}
+    <div class="flex flex-wrap gap-2 mb-4">
+      {% for assignment in task.assignments.all %}
+      <div class="flex items-center gap-2 bg-ardoise-50 border border-ardoise-100 rounded-full px-3 py-1.5">
+        <div class="w-6 h-6 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
+          {{ assignment.user.first_name|first|upper }}{{ assignment.user.last_name|first|upper }}
+        </div>
+        <span class="text-xs font-medium text-ardoise-700">{{ assignment.user.get_full_name }}</span>
+        {% if assignment.is_primary %}
+        <span class="text-[10px] text-foret-500 font-semibold">Principal</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-ardoise-400 mb-4">Aucun membre affecté à cette tâche.</p>
+    {% endif %}
+
+    {# Affecter un membre #}
+    <form method="post" action="{% url 'projects:task_assign' task.pk %}" class="flex items-center gap-2">
+      {% csrf_token %}
+      <select name="user_id" class="form-input flex-1 text-sm">
+        <option value="">— Affecter un membre —</option>
+        {% for user in assignable_users %}
+        {% if user.pk not in assigned_ids %}
+        <option value="{{ user.pk }}">{{ user.get_full_name|default:user.username }} — {{ user.get_role_display }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn-secondary btn-sm whitespace-nowrap">Affecter</button>
+    </form>
+  </div>
+
+  {# ── Commentaires & pièces jointes ─────────────────────────────────── #}
+  <div class="card space-y-4">
+    <h3 class="text-sm font-semibold text-ardoise-700">Commentaires & échanges</h3>
+
+    {# Liste des commentaires #}
+    {% if task.comments.exists %}
+    <div class="space-y-3">
+      {% for comment in task.comments.all %}
+      <div class="flex gap-3 group">
+        {# Avatar auteur #}
+        <div class="w-8 h-8 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">
+          {% if comment.author %}{{ comment.author.first_name|first|upper }}{{ comment.author.last_name|first|upper }}{% else %}?{% endif %}
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+            <span class="text-xs font-semibold text-ardoise-900">
+              {% if comment.author %}{{ comment.author.get_full_name|default:comment.author.username }}{% else %}Inconnu{% endif %}
+            </span>
+            {% if comment.author %}
+            <span class="text-xs px-1.5 py-0.5 rounded-full bg-foret-50 text-foret-600 font-medium">
+              {{ comment.author.get_role_display }}
+            </span>
+            {% endif %}
+            <span class="text-xs text-ardoise-400">
+              {{ comment.created_at|date:"d/m/Y" }} à {{ comment.created_at|date:"H:i" }}
+            </span>
+          </div>
+
+          {% if comment.text %}
+          <p class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ comment.text }}</p>
+          {% endif %}
+
+          {# Pièce jointe #}
+          {% if comment.attachment %}
+          <a href="{{ comment.attachment.url }}" target="_blank"
+             class="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-ardoise-50 border border-ardoise-100
+                    rounded-lg text-xs text-ardoise-600 hover:text-foret-700 hover:border-foret-200 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+            </svg>
+            {{ comment.attachment_basename }}
+          </a>
+          {% endif %}
+
+          {# Mémo vocal #}
+          {% if comment.audio %}
+          <div class="mt-2 flex items-center gap-2">
+            <svg class="w-4 h-4 text-foret-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+            </svg>
+            <audio controls class="h-8 max-w-xs">
+              <source src="{{ comment.audio.url }}">
+            </audio>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <hr class="border-ardoise-100">
+    {% endif %}
+
+    {# Formulaire nouveau commentaire #}
+    <form method="post" enctype="multipart/form-data"
+          action="{% url 'projects:task_comment' task.pk %}"
+          x-data="audioRecorder()" class="space-y-3">
+      {% csrf_token %}
+
+      <textarea name="text" rows="3" placeholder="Ajouter un commentaire…"
+                class="form-input resize-none text-sm"></textarea>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+        {# Pièce jointe fichier #}
+        <div x-data="{ fname: '' }">
+          <label class="form-label text-xs">Fichier joint</label>
+          <label class="flex items-center gap-2 px-3 py-2 border border-ardoise-200 rounded-lg cursor-pointer
+                        hover:border-foret-300 hover:bg-foret-50 transition-colors"
+                 :class="fname ? 'border-foret-400 bg-foret-50' : ''">
+            <input type="file" name="attachment" class="hidden"
+                   @change="fname = $event.target.files[0]?.name || ''">
+            <svg class="w-4 h-4 flex-shrink-0" :class="fname ? 'text-foret-500' : 'text-ardoise-400'"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+            </svg>
+            <span class="text-xs text-ardoise-500 truncate" x-text="fname || 'Joindre un fichier'"></span>
+          </label>
+        </div>
+
+        {# Mémo vocal #}
+        <div>
+          <label class="form-label text-xs">Mémo vocal</label>
+          <div class="flex items-center gap-2">
+            {# Bouton enregistrer #}
+            <button type="button"
+                    @click="recording ? stopRec() : startRec()"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                    :class="recording ? 'bg-red-100 text-red-600 border border-red-300 animate-pulse'
+                                      : 'bg-ardoise-50 text-ardoise-600 border border-ardoise-200 hover:border-foret-300 hover:text-foret-700'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+              </svg>
+              <span x-text="recording ? 'Arrêter' : (audioReady ? 'Réenregistrer' : 'Enregistrer')"></span>
+            </button>
+
+            {# Lecteur preview #}
+            <audio x-show="audioReady" x-ref="preview" controls class="h-8 flex-1 min-w-0"></audio>
+          </div>
+
+          {# Champ caché pour le fichier audio enregistré #}
+          <input type="file" name="audio" x-ref="audioInput" class="hidden" accept="audio/*">
+
+          {# Ou uploader directement un fichier audio #}
+          <label class="flex items-center gap-1.5 mt-1.5 text-xs text-ardoise-400 hover:text-foret-600 cursor-pointer">
+            <input type="file" name="audio" accept="audio/*" class="hidden"
+                   @change="uploadAudio($event)">
+            ou uploader un fichier audio
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit"
+                class="flex items-center gap-2 px-4 py-2 bg-foret-500 hover:bg-foret-600 text-white
+                       text-sm font-semibold rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+          Envoyer
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function audioRecorder() {
+  return {
+    recording: false,
+    audioReady: false,
+    mediaRecorder: null,
+    chunks: [],
+
+    async startRec() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.chunks = [];
+        this.mediaRecorder = new MediaRecorder(stream);
+        this.mediaRecorder.ondataavailable = e => this.chunks.push(e.data);
+        this.mediaRecorder.onstop = () => this.finalizeAudio();
+        this.mediaRecorder.start();
+        this.recording = true;
+        this.audioReady = false;
+      } catch (err) {
+        alert('Microphone non disponible : ' + err.message);
+      }
+    },
+
+    stopRec() {
+      if (this.mediaRecorder && this.recording) {
+        this.mediaRecorder.stop();
+        this.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        this.recording = false;
+      }
+    },
+
+    finalizeAudio() {
+      const blob = new Blob(this.chunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      this.$refs.preview.src = url;
+      this.audioReady = true;
+
+      // Injecter comme fichier dans l'input
+      const file = new File([blob], 'memo-vocal.webm', { type: 'audio/webm' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      this.$refs.audioInput.files = dt.files;
+    },
+
+    uploadAudio(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        this.$refs.preview.src = url;
+        this.audioReady = true;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

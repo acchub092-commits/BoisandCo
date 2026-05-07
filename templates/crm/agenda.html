@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Agenda commercial{% endblock %}
+{% block page_title %}Agenda commercial{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:pipeline' %}" class="btn-secondary btn-sm">← Pipeline</a>
+<button onclick="document.getElementById('modal-activity').classList.remove('hidden')"
+        class="btn-primary btn-sm">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+  </svg>
+  Nouvelle activité
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── KPIs ── #}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card py-3 text-center">
+      <p class="text-2xl font-extrabold text-ardoise-800">{{ stats.total }}</p>
+      <p class="text-xs text-ardoise-400 mt-0.5">Activités totales</p>
+    </div>
+    <div class="card py-3 text-center">
+      <p class="text-2xl font-extrabold text-blue-600">{{ stats.planifie }}</p>
+      <p class="text-xs text-ardoise-400 mt-0.5">Planifiées</p>
+    </div>
+    <div class="card py-3 text-center">
+      <p class="text-2xl font-extrabold text-foret-600">{{ stats.realise }}</p>
+      <p class="text-xs text-ardoise-400 mt-0.5">Réalisées</p>
+    </div>
+    <div class="card py-3 text-center">
+      <p class="text-2xl font-extrabold text-red-500">{{ stats.en_retard }}</p>
+      <p class="text-xs text-ardoise-400 mt-0.5">En retard</p>
+    </div>
+  </div>
+
+  {# ── Filtres ── #}
+  <form method="get" class="card py-3 flex flex-wrap items-center gap-3">
+    {# Période #}
+    <div class="flex items-center gap-1 rounded-lg border border-ardoise-200 overflow-hidden text-xs font-medium">
+      <a href="?periode=semaine{% if filter_user_id %}&commercial={{ filter_user_id }}{% endif %}"
+         class="px-3 py-2 transition-colors {% if periode == 'semaine' %}bg-foret-500 text-white{% else %}text-ardoise-500 hover:bg-ardoise-50{% endif %}">
+        Semaine
+      </a>
+      <a href="?periode=mois{% if filter_user_id %}&commercial={{ filter_user_id }}{% endif %}"
+         class="px-3 py-2 transition-colors {% if periode == 'mois' %}bg-foret-500 text-white{% else %}text-ardoise-500 hover:bg-ardoise-50{% endif %}">
+        Mois
+      </a>
+      <a href="?periode=tout{% if filter_user_id %}&commercial={{ filter_user_id }}{% endif %}"
+         class="px-3 py-2 transition-colors {% if periode == 'tout' %}bg-foret-500 text-white{% else %}text-ardoise-500 hover:bg-ardoise-50{% endif %}">
+        Tout
+      </a>
+    </div>
+
+    {# Filtre commercial (managers seulement) #}
+    {% if user.is_manager_or_above %}
+    <select name="commercial" onchange="this.form.submit()"
+            class="form-input py-1.5 text-xs">
+      <option value="">Tous les commerciaux</option>
+      {% for member in team %}
+      <option value="{{ member.pk }}" {% if filter_user_id == member.pk|stringformat:"s" %}selected{% endif %}>
+        {{ member.get_full_name }}
+      </option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="periode" value="{{ periode }}">
+    {% endif %}
+  </form>
+
+  {# ── Liste des activités ── #}
+  <div class="space-y-2">
+    {% regroup activities by planned_at|date:"Y-m-d" as day_list %}
+    {% for day in day_list %}
+    <div>
+      {# En-tête jour #}
+      <div class="flex items-center gap-3 py-2">
+        <div class="flex items-center gap-2">
+          {% if day.grouper == today|date:"Y-m-d" %}
+          <span class="w-7 h-7 rounded-full bg-foret-500 text-white text-xs font-bold flex items-center justify-center">
+            {{ day.list.0.planned_at|date:"d" }}
+          </span>
+          <span class="text-sm font-bold text-foret-600">Aujourd'hui · {{ day.list.0.planned_at|date:"l d F" }}</span>
+          {% else %}
+          <span class="w-7 h-7 rounded-full bg-ardoise-100 text-ardoise-600 text-xs font-bold flex items-center justify-center">
+            {{ day.list.0.planned_at|date:"d" }}
+          </span>
+          <span class="text-sm font-semibold text-ardoise-600">{{ day.list.0.planned_at|date:"l d F Y" }}</span>
+          {% endif %}
+        </div>
+        <div class="flex-1 h-px bg-ardoise-100"></div>
+        <span class="text-xs text-ardoise-400">{{ day.list|length }} activité{{ day.list|length|pluralize }}</span>
+      </div>
+
+      {# Activités du jour #}
+      <div class="space-y-1.5 ml-4">
+        {% for act in day.list %}
+        <div class="card py-3 flex items-start gap-4 group
+          {% if act.is_overdue %}border-l-4 border-red-400{% elif act.status == 'REALISE' %}border-l-4 border-foret-400{% elif act.status == 'ANNULE' %}opacity-50{% endif %}">
+
+          {# Heure #}
+          <div class="text-center flex-shrink-0 w-12">
+            <p class="text-sm font-bold text-ardoise-700">{{ act.planned_at|date:"H:i" }}</p>
+            <p class="text-[10px] text-ardoise-400">{{ act.duration_min }} min</p>
+          </div>
+
+          {# Type badge #}
+          <div class="flex-shrink-0 mt-0.5">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full
+              {% if act.activity_type == 'VISITE' %}bg-foret-100 text-foret-600
+              {% elif act.activity_type == 'APPEL' %}bg-blue-100 text-blue-600
+              {% elif act.activity_type == 'REUNION' %}bg-purple-100 text-purple-600
+              {% elif act.activity_type == 'DEMO' %}bg-bois-100 text-bois-600
+              {% elif act.activity_type == 'RELANCE' %}bg-amber-100 text-amber-600
+              {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ act.icon_path }}"/>
+              </svg>
+            </span>
+          </div>
+
+          {# Contenu #}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <p class="text-sm font-semibold text-ardoise-900 {% if act.status == 'ANNULE' %}line-through{% endif %}">
+                  {{ act.subject }}
+                </p>
+                <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                  <span class="text-xs text-ardoise-400">{{ act.get_activity_type_display }}</span>
+                  {% if act.lead %}
+                  <a href="{% url 'crm:lead_detail' act.lead.pk %}"
+                     class="text-xs text-foret-600 hover:underline">
+                    {{ act.lead.project_name }}
+                  </a>
+                  {% endif %}
+                  {% if act.location %}
+                  <span class="text-xs text-ardoise-400">
+                    <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    {{ act.location }}
+                  </span>
+                  {% endif %}
+                </div>
+                {% if act.compte_rendu %}
+                <p class="text-xs text-ardoise-500 mt-1 italic line-clamp-2">{{ act.compte_rendu }}</p>
+                {% endif %}
+              </div>
+
+              <div class="flex items-center gap-2 flex-shrink-0">
+                {# Badge statut #}
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full
+                  {% if act.status == 'REALISE' %}bg-foret-100 text-foret-700
+                  {% elif act.status == 'ANNULE' %}bg-ardoise-100 text-ardoise-500
+                  {% elif act.is_overdue %}bg-red-100 text-red-600
+                  {% else %}bg-blue-100 text-blue-700{% endif %}">
+                  {% if act.is_overdue and act.status == 'PLANIFIE' %}En retard{% else %}{{ act.get_status_display }}{% endif %}
+                </span>
+                {# Commercial #}
+                {% if act.assigned_to %}
+                <div class="w-7 h-7 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0"
+                     title="{{ act.assigned_to.get_full_name }}">
+                  {{ act.assigned_to.first_name|first|upper }}{{ act.assigned_to.last_name|first|upper }}
+                </div>
+                {% endif %}
+                {# Actions #}
+                <a href="{% url 'crm:activity_update' act.pk %}"
+                   class="opacity-0 group-hover:opacity-100 p-1.5 rounded text-ardoise-400 hover:text-foret-600 hover:bg-foret-50 transition-all">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="card py-16 text-center">
+      <svg class="w-12 h-12 mx-auto text-ardoise-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <p class="text-sm text-ardoise-400">Aucune activité sur cette période.</p>
+      <button onclick="document.getElementById('modal-activity').classList.remove('hidden')"
+              class="mt-3 btn-primary btn-sm">Planifier une activité</button>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+{# ── Modal nouvelle activité ── #}
+<div id="modal-activity" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-ardoise-100">
+      <h3 class="text-base font-semibold text-ardoise-900">Planifier une activité</h3>
+      <button onclick="document.getElementById('modal-activity').classList.add('hidden')"
+              class="text-ardoise-400 hover:text-ardoise-700">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form method="post" action="{% url 'crm:activity_create_standalone' %}" class="p-6 space-y-4">
+      {% csrf_token %}
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Type <span class="text-red-400">*</span></label>
+          <select name="activity_type" class="form-input">
+            {% for val, label in activity_types %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Statut</label>
+          <select name="status" class="form-input">
+            <option value="PLANIFIE">Planifié</option>
+            <option value="REALISE">Réalisé</option>
+            <option value="ANNULE">Annulé</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Objet <span class="text-red-400">*</span></label>
+        <input type="text" name="subject" required class="form-input w-full" placeholder="Ex : Visite chantier Résidence Atlas">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Date <span class="text-red-400">*</span></label>
+          <input type="date" name="planned_date" required class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Heure</label>
+          <input type="time" name="planned_time" value="09:00" class="form-input w-full">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Durée (min)</label>
+          <input type="number" name="duration_min" value="60" min="15" step="15" class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Lieu</label>
+          <input type="text" name="location" class="form-input w-full" placeholder="Casablanca…">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Opportunité liée</label>
+        <select name="lead_id" class="form-input w-full">
+          <option value="">— Aucune —</option>
+          {% for lead in leads_actifs %}
+          <option value="{{ lead.pk }}">{{ lead.project_name }} ({{ lead.contact_name }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if user.is_manager_or_above %}
+      <div>
+        <label class="form-label">Assigné à</label>
+        <select name="assigned_to" class="form-input w-full">
+          {% for member in team %}
+          <option value="{{ member.pk }}" {% if member == user %}selected{% endif %}>{{ member.get_full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div>
+        <label class="form-label">Compte rendu</label>
+        <textarea name="compte_rendu" rows="3" class="form-input w-full resize-none"
+                  placeholder="Notes, résultats, prochaines étapes…"></textarea>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('modal-activity').classList.add('hidden')"
+                class="btn-secondary">Annuler</button>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

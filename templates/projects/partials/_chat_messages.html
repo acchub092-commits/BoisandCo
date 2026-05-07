@@ -1,0 +1,96 @@
+{% for msg in chat_messages %}
+<div class="flex {% if msg.author == request.user %}justify-end{% else %}justify-start{% endif %} items-end gap-2 group"
+     id="msg-{{ msg.pk }}">
+
+  {# Avatar auteur (messages des autres) #}
+  {% if msg.author != request.user %}
+  <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 self-end"
+       style="background-color: #163228;">
+    {{ msg.author.first_name|first|upper }}{{ msg.author.last_name|first|upper }}
+  </div>
+  {% endif %}
+
+  <div class="max-w-[72%] flex flex-col {% if msg.author == request.user %}items-end{% else %}items-start{% endif %}">
+
+    {# Nom auteur (messages des autres) #}
+    {% if msg.author != request.user %}
+    <span class="text-[10px] font-semibold text-ardoise-500 mb-0.5 px-1">
+      {{ msg.author.get_full_name|default:msg.author.username }}
+    </span>
+    {% endif %}
+
+    {# Bulle message #}
+    <div class="{% if msg.author == request.user %}rounded-t-2xl rounded-bl-2xl{% else %}rounded-t-2xl rounded-br-2xl{% endif %}
+                {% if msg.author == request.user %}text-white{% else %}bg-white text-ardoise-800{% endif %}
+                px-4 py-2.5 shadow-sm relative"
+         {% if msg.author == request.user %}style="background-color: #163228;"{% endif %}>
+
+      {# Citation si réponse #}
+      {% if msg.reply_to %}
+      <div class="mb-2 px-3 py-1.5 rounded-lg text-xs border-l-2 {% if msg.author == request.user %}border-creme-200/40 bg-white/10{% else %}border-foret-400 bg-ardoise-50{% endif %}">
+        <span class="font-semibold {% if msg.author == request.user %}text-creme-200{% else %}text-foret-700{% endif %}">
+          {{ msg.reply_to.author.get_full_name|default:msg.reply_to.author.username }}
+        </span>
+        <p class="{% if msg.author == request.user %}text-white/70{% else %}text-ardoise-500{% endif %} truncate mt-0.5">
+          {% if msg.reply_to.content %}{{ msg.reply_to.content|truncatechars:60 }}{% elif msg.reply_to.audio %}🎤 Mémo vocal{% else %}📎 Fichier joint{% endif %}
+        </p>
+      </div>
+      {% endif %}
+
+      {# Texte #}
+      {% if msg.content %}<p class="text-sm leading-snug whitespace-pre-wrap">{{ msg.content }}</p>{% endif %}
+
+      {# Audio #}
+      {% if msg.audio %}
+      <audio controls class="mt-2 h-8 max-w-[200px] rounded"
+             src="{{ msg.audio.url }}"></audio>
+      {% endif %}
+
+      {# Pièce jointe #}
+      {% if msg.attachment %}
+      <a href="{{ msg.attachment.url }}" target="_blank" rel="noopener"
+         class="flex items-center gap-1.5 mt-2 text-xs {% if msg.author == request.user %}text-creme-200 hover:text-white{% else %}text-foret-600 hover:text-foret-700{% endif %}">
+        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+        </svg>
+        <span class="truncate max-w-[160px]">{{ msg.attachment_basename|default:msg.attachment_name }}</span>
+      </a>
+      {% endif %}
+
+      {# Heure + bouton répondre #}
+      <div class="flex items-center gap-2 mt-1.5 {% if msg.author == request.user %}justify-end{% endif %}">
+        <span class="text-[10px] {% if msg.author == request.user %}text-creme-200/60{% else %}text-ardoise-400{% endif %}">
+          {{ msg.created_at|date:"d/m H:i" }}
+        </span>
+        <button type="button"
+                @click="replyTo = { id: {{ msg.pk }}, author: '{{ msg.author.get_full_name|default:msg.author.username|escapejs }}', preview: '{% if msg.content %}{{ msg.content|truncatechars:50|escapejs }}{% elif msg.audio %}🎤 Mémo vocal{% else %}📎 Fichier{% endif %}' }; $refs.chatInput.focus()"
+                class="text-[10px] {% if msg.author == request.user %}text-creme-200/50 hover:text-creme-200{% else %}text-ardoise-400 hover:text-foret-600{% endif %} transition-colors opacity-0 group-hover:opacity-100">
+          Répondre
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# Avatar (mes messages) #}
+  {% if msg.author == request.user %}
+  <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 self-end"
+       style="background-color: #163228; color: #f2e8d5;">
+    {{ msg.author.first_name|first|upper }}{{ msg.author.last_name|first|upper }}
+  </div>
+  {% endif %}
+
+</div>
+{% empty %}
+<div class="flex flex-col items-center justify-center h-full py-8 text-center">
+  <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+       style="background-color: rgba(22,50,40,0.06);">
+    <svg class="w-5 h-5 text-ardoise-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    </svg>
+  </div>
+  <p class="text-sm font-medium text-ardoise-600">Démarrez la conversation</p>
+  <p class="text-xs text-ardoise-400 mt-0.5">Partagez une mise à jour avec l'équipe</p>
+</div>
+{% endfor %}

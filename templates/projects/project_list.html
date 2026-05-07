@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Projets{% endblock %}
+{% block page_title %}Projets{% endblock %}
+
+{% block topbar_actions %}
+{% if request.user.is_superuser %}
+<a href="{% url 'projects:create' %}" class="btn-primary">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+  </svg>
+  Nouveau projet
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4"
+     x-data="{
+       viewMode: localStorage.getItem('projects_view') || 'list',
+       setView(m) { this.viewMode = m; localStorage.setItem('projects_view', m); }
+     }">
+
+  {# ══════════════════════════════════════════════════════════════ #}
+  {# BARRE DE FILTRES                                              #}
+  {# ══════════════════════════════════════════════════════════════ #}
+  <form method="get" id="filter-form" class="space-y-3">
+
+    {# ── Ligne 1 : recherche + toggle + bouton nouveau ── #}
+    <div class="flex items-center gap-3">
+
+      {# Champ recherche #}
+      <div class="relative flex-1 min-w-0">
+        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <svg class="w-4 h-4 text-ardoise-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <input type="text" name="q" value="{{ q }}"
+               placeholder="Rechercher par nom, référence, client, adresse…"
+               class="form-input pl-10 pr-10"
+               autocomplete="off">
+        {% if q %}
+        <a href="?{% if selected_status %}status={{ selected_status }}&{% endif %}{% if selected_manager %}manager={{ selected_manager }}&{% endif %}{% if start_after %}start_after={{ start_after }}&{% endif %}{% if end_before %}end_before={{ end_before }}{% endif %}"
+           class="absolute inset-y-0 right-0 flex items-center pr-3 text-ardoise-300 hover:text-ardoise-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </a>
+        {% endif %}
+      </div>
+
+      {# Toggle vue #}
+      <div class="flex items-center rounded-lg border border-ardoise-200 bg-white p-0.5 flex-shrink-0">
+        <button type="button" @click="setView('list')"
+                :class="viewMode === 'list' ? 'bg-ardoise-800 text-white shadow-sm' : 'text-ardoise-400 hover:text-ardoise-700'"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                title="Vue tableau">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          <span class="hidden sm:inline">Tableau</span>
+        </button>
+        <button type="button" @click="setView('grid')"
+                :class="viewMode === 'grid' ? 'bg-ardoise-800 text-white shadow-sm' : 'text-ardoise-400 hover:text-ardoise-700'"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                title="Vue cartes">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+          </svg>
+          <span class="hidden sm:inline">Cartes</span>
+        </button>
+      </div>
+
+      {# Bouton Nouveau projet — admin uniquement #}
+      {% if request.user.is_superuser %}
+      <a href="{% url 'projects:create' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600
+                text-white font-semibold text-sm transition-colors shadow-sm flex-shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        <span class="hidden sm:inline">Nouveau projet</span>
+        <span class="sm:hidden">Nouveau</span>
+      </a>
+      {% endif %}
+    </div>
+
+    {# ── Ligne 2 : statut + manager + dates + reset ── #}
+    <div class="flex flex-wrap items-center gap-2">
+
+      {# Pills statut (radio buttons masqués) #}
+      <div class="flex flex-wrap gap-1.5">
+        <label class="cursor-pointer">
+          <input type="radio" name="status" value="" class="sr-only"
+                 {% if not selected_status %}checked{% endif %}
+                 onchange="document.getElementById('filter-form').submit()">
+          <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+                 {% if not selected_status %}bg-ardoise-800 text-white border-ardoise-800
+                 {% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
+            Tous
+            <span class="px-1 py-0.5 rounded-full text-xs
+                   {% if not selected_status %}bg-white/20{% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+              {{ total_count }}
+            </span>
+          </span>
+        </label>
+        {% for value, label in project_statuses %}
+        <label class="cursor-pointer">
+          <input type="radio" name="status" value="{{ value }}" class="sr-only"
+                 {% if selected_status == value %}checked{% endif %}
+                 onchange="document.getElementById('filter-form').submit()">
+          <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+                 {% if selected_status == value %}
+                   {% if value == 'AVANT_VENTE' %}bg-ardoise-600 text-white border-ardoise-600
+                   {% elif value == 'ETUDE' %}bg-blue-500 text-white border-blue-500
+                   {% elif value == 'PRODUCTION' %}bg-amber-500 text-white border-amber-500
+                   {% elif value == 'LOGISTIQUE' %}bg-purple-500 text-white border-purple-500
+                   {% elif value == 'POSE' %}bg-foret-500 text-white border-foret-500
+                   {% elif value == 'CLOTURE' %}bg-ardoise-400 text-white border-ardoise-400
+                   {% endif %}
+                 {% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
+            {{ label }}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+
+      {# Séparateur vertical #}
+      <div class="hidden sm:block w-px h-6 bg-ardoise-200 mx-1"></div>
+
+      {# Manager #}
+      <select name="manager"
+              onchange="document.getElementById('filter-form').submit()"
+              class="text-xs rounded-lg border border-ardoise-200 bg-white text-ardoise-700
+                     px-3 py-1.5 focus:ring-bois-500 focus:border-bois-500 cursor-pointer
+                     {% if selected_manager %}border-bois-400 bg-bois-50 text-bois-700 font-medium{% endif %}">
+        <option value="">Tous les managers</option>
+        {% for m in managers %}
+        <option value="{{ m.pk }}" {% if selected_manager == m.pk|stringformat:"s" %}selected{% endif %}>
+          {{ m.get_full_name|default:m.username }}
+        </option>
+        {% endfor %}
+      </select>
+
+      {# Date début ≥ #}
+      <div class="flex items-center gap-1.5">
+        <label class="text-xs text-ardoise-500 whitespace-nowrap">Du</label>
+        <input type="date" name="start_after" value="{{ start_after }}"
+               onchange="document.getElementById('filter-form').submit()"
+               class="text-xs rounded-lg border border-ardoise-200 bg-white text-ardoise-700
+                      px-2.5 py-1.5 focus:ring-bois-500 focus:border-bois-500
+                      {% if start_after %}border-bois-400 bg-bois-50 text-bois-700{% endif %}">
+      </div>
+
+      {# Date fin ≤ #}
+      <div class="flex items-center gap-1.5">
+        <label class="text-xs text-ardoise-500 whitespace-nowrap">au</label>
+        <input type="date" name="end_before" value="{{ end_before }}"
+               onchange="document.getElementById('filter-form').submit()"
+               class="text-xs rounded-lg border border-ardoise-200 bg-white text-ardoise-700
+                      px-2.5 py-1.5 focus:ring-bois-500 focus:border-bois-500
+                      {% if end_before %}border-bois-400 bg-bois-50 text-bois-700{% endif %}">
+      </div>
+
+      {# Bouton reset si filtres actifs #}
+      {% if active_filters_count %}
+      <a href="{% url 'projects:list' %}"
+         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Réinitialiser
+        <span class="px-1.5 py-0.5 rounded-full bg-red-200 text-red-700 text-xs">{{ active_filters_count }}</span>
+      </a>
+      {% endif %}
+
+      {# Bouton submit caché (pour la touche Entrée sur le champ texte) #}
+      <button type="submit" class="sr-only">Rechercher</button>
+    </div>
+
+  </form>
+
+  {# ── Résultats header ── #}
+  {% if active_filters_count %}
+  <div class="flex items-center justify-between">
+    <p class="text-sm text-ardoise-500">
+      <span class="font-semibold text-ardoise-800">{{ projects.count }}</span>
+      projet{{ projects.count|pluralize }} trouvé{{ projects.count|pluralize }}
+      sur {{ total_count }} au total
+    </p>
+
+    {# Chips des filtres actifs #}
+    <div class="flex flex-wrap items-center gap-2">
+      {% if q %}
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-ardoise-100 text-ardoise-700">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        « {{ q }}»
+      </span>
+      {% endif %}
+      {% if selected_status %}
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+        {% if selected_status == 'AVANT_VENTE' %}bg-ardoise-100 text-ardoise-700
+        {% elif selected_status == 'ETUDE' %}bg-blue-100 text-blue-700
+        {% elif selected_status == 'PRODUCTION' %}bg-amber-100 text-amber-700
+        {% elif selected_status == 'LOGISTIQUE' %}bg-purple-100 text-purple-700
+        {% elif selected_status == 'POSE' %}bg-foret-100 text-foret-700
+        {% elif selected_status == 'CLOTURE' %}bg-ardoise-100 text-ardoise-500
+        {% endif %}">
+        {% for value, label in project_statuses %}{% if value == selected_status %}{{ label }}{% endif %}{% endfor %}
+      </span>
+      {% endif %}
+      {% if selected_manager %}
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-bois-100 text-bois-700">
+        {% for m in managers %}{% if m.pk|stringformat:"s" == selected_manager %}{{ m.get_full_name }}{% endif %}{% endfor %}
+      </span>
+      {% endif %}
+      {% if start_after %}
+      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-ardoise-100 text-ardoise-700">
+        À partir du {{ start_after }}
+      </span>
+      {% endif %}
+      {% if end_before %}
+      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-ardoise-100 text-ardoise-700">
+        Jusqu'au {{ end_before }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ════════════════════════════════════════════════════════════ #}
+  {# VUE TABLEAU                                                 #}
+  {# ════════════════════════════════════════════════════════════ #}
+  <div x-show="viewMode === 'list'" x-cloak>
+    <div class="card p-0 overflow-hidden">
+      <table class="min-w-full divide-y divide-ardoise-100">
+        <thead class="bg-ardoise-50">
+          <tr>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wider">Référence</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wider">Projet / Client</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wider">Statut</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wider hidden md:table-cell">Manager</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wider w-40 hidden lg:table-cell">Avancement</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wider hidden lg:table-cell">Dates</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ardoise-100 bg-white">
+          {% for project in projects %}
+          <tr class="hover:bg-bois-50 transition-colors cursor-pointer"
+              onclick="window.location='{% url 'projects:detail' project.pk %}'">
+
+            <td class="px-5 py-4 text-sm font-mono font-medium text-ardoise-400 whitespace-nowrap">
+              {{ project.reference }}
+            </td>
+
+            <td class="px-5 py-4">
+              <p class="text-sm font-semibold text-ardoise-900">{{ project.name }}</p>
+              <p class="text-xs text-ardoise-400 mt-0.5">{{ project.client_name }}</p>
+            </td>
+
+            <td class="px-5 py-4 whitespace-nowrap">
+              {% if project.status == 'AVANT_VENTE' %}<span class="badge-avant-vente">{{ project.get_status_display }}</span>
+              {% elif project.status == 'ETUDE' %}<span class="badge-etude">{{ project.get_status_display }}</span>
+              {% elif project.status == 'PRODUCTION' %}<span class="badge-production">{{ project.get_status_display }}</span>
+              {% elif project.status == 'LOGISTIQUE' %}<span class="badge-logistique">{{ project.get_status_display }}</span>
+              {% elif project.status == 'POSE' %}<span class="badge-pose">{{ project.get_status_display }}</span>
+              {% elif project.status == 'CLOTURE' %}<span class="badge-cloture">{{ project.get_status_display }}</span>
+              {% endif %}
+            </td>
+
+            <td class="px-5 py-4 text-sm text-ardoise-600 whitespace-nowrap hidden md:table-cell">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-bois-100 text-bois-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                  {{ project.manager.first_name|first|upper }}{{ project.manager.last_name|first|upper }}
+                </div>
+                {{ project.manager.get_full_name|default:project.manager.username }}
+              </div>
+            </td>
+
+            <td class="px-5 py-4 hidden lg:table-cell">
+              <div class="flex items-center gap-2">
+                <div class="progress-bar flex-1">
+                  <div class="progress-fill" style="width: {{ project.progress }}%"></div>
+                </div>
+                <span class="text-xs font-medium text-ardoise-500 w-8 text-right">{{ project.progress }}%</span>
+              </div>
+            </td>
+
+            <td class="px-5 py-4 text-xs text-ardoise-400 whitespace-nowrap hidden lg:table-cell">
+              {% if project.start_date %}
+                {{ project.start_date|date:"d/m/Y" }}
+                {% if project.end_date %} → {{ project.end_date|date:"d/m/Y" }}{% endif %}
+              {% else %}
+                <span class="text-ardoise-300">—</span>
+              {% endif %}
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-5 py-16 text-center">
+              <div class="flex flex-col items-center gap-3">
+                <svg class="w-10 h-10 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <p class="text-sm text-ardoise-400">
+                  {% if active_filters_count %}Aucun projet ne correspond à votre recherche.
+                  {% else %}Aucun projet trouvé.{% endif %}
+                </p>
+                {% if active_filters_count %}
+                <a href="{% url 'projects:list' %}" class="btn-secondary btn-sm">Effacer les filtres</a>
+                {% elif request.user.is_superuser %}
+                <a href="{% url 'projects:create' %}" class="btn-primary btn-sm">Créer un projet</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ════════════════════════════════════════════════════════════ #}
+  {# VUE CARTES                                                  #}
+  {# ════════════════════════════════════════════════════════════ #}
+  <div x-show="viewMode === 'grid'" x-cloak
+       class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for project in projects %}
+    <a href="{% url 'projects:detail' project.pk %}"
+       class="card p-0 overflow-hidden hover:shadow-card-hover transition-all duration-200 block group">
+
+      {# Bandeau couleur statut #}
+      <div class="h-1.5
+        {% if project.status == 'AVANT_VENTE' %}bg-ardoise-400
+        {% elif project.status == 'ETUDE' %}bg-blue-500
+        {% elif project.status == 'PRODUCTION' %}bg-amber-500
+        {% elif project.status == 'LOGISTIQUE' %}bg-purple-500
+        {% elif project.status == 'POSE' %}bg-foret-500
+        {% elif project.status == 'CLOTURE' %}bg-ardoise-300
+        {% endif %}">
+      </div>
+
+      <div class="p-4 space-y-3">
+        {# Référence + badge statut #}
+        <div class="flex items-start justify-between gap-2">
+          <span class="text-xs font-mono font-medium text-ardoise-400">{{ project.reference }}</span>
+          {% if project.status == 'AVANT_VENTE' %}<span class="badge-avant-vente">{{ project.get_status_display }}</span>
+          {% elif project.status == 'ETUDE' %}<span class="badge-etude">{{ project.get_status_display }}</span>
+          {% elif project.status == 'PRODUCTION' %}<span class="badge-production">{{ project.get_status_display }}</span>
+          {% elif project.status == 'LOGISTIQUE' %}<span class="badge-logistique">{{ project.get_status_display }}</span>
+          {% elif project.status == 'POSE' %}<span class="badge-pose">{{ project.get_status_display }}</span>
+          {% elif project.status == 'CLOTURE' %}<span class="badge-cloture">{{ project.get_status_display }}</span>
+          {% endif %}
+        </div>
+
+        {# Nom + client #}
+        <div>
+          <p class="text-sm font-semibold text-ardoise-900 leading-snug group-hover:text-foret-700 transition-colors line-clamp-2">
+            {{ project.name }}
+          </p>
+          <p class="text-xs text-ardoise-400 mt-0.5 flex items-center gap-1">
+            <svg class="w-3 h-3 text-ardoise-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            {{ project.client_name }}
+          </p>
+        </div>
+
+        {# Progression #}
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-ardoise-400">Avancement</span>
+            <span class="text-xs font-semibold
+              {% if project.progress == 100 %}text-foret-600
+              {% elif project.progress >= 50 %}text-blue-600
+              {% else %}text-ardoise-500{% endif %}">
+              {{ project.progress }}%
+            </span>
+          </div>
+          <div class="h-1.5 rounded-full bg-ardoise-100 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-500
+              {% if project.progress == 100 %}bg-foret-500
+              {% elif project.progress >= 50 %}bg-blue-500
+              {% else %}bg-bois-400{% endif %}"
+                 style="width: {{ project.progress }}%">
+            </div>
+          </div>
+        </div>
+
+        {# Manager + date #}
+        <div class="border-t border-ardoise-100 pt-3 flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-6 h-6 rounded-full bg-bois-100 text-bois-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+              {{ project.manager.first_name|first|upper }}{{ project.manager.last_name|first|upper }}
+            </div>
+            <span class="text-xs text-ardoise-500 truncate">
+              {{ project.manager.get_full_name|default:project.manager.username }}
+            </span>
+          </div>
+          {% if project.end_date %}
+          <div class="flex items-center gap-1 text-xs text-ardoise-400 flex-shrink-0">
+            <svg class="w-3 h-3 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ project.end_date|date:"d/m/y" }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </a>
+    {% empty %}
+    <div class="col-span-full py-20 text-center">
+      <div class="flex flex-col items-center gap-3">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ardoise-100">
+          <svg class="w-8 h-8 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <p class="text-sm text-ardoise-500">
+          {% if active_filters_count %}Aucun projet ne correspond à votre recherche.
+          {% else %}Aucun projet trouvé.{% endif %}
+        </p>
+        {% if active_filters_count %}
+        <a href="{% url 'projects:list' %}" class="btn-secondary btn-sm">Effacer les filtres</a>
+        {% elif request.user.is_superuser %}
+        <a href="{% url 'projects:create' %}" class="btn-primary btn-sm">Créer un projet</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

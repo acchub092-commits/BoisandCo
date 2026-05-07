@@ -1,0 +1,35 @@
+# ============================================================
+# Bois&Co — Dépendances Python
+# Python 3.11+  |  Django 4.2 LTS
+# ============================================================
+
+# ── Django & extensions ─────────────────────────────────────
+Django==4.2.16
+django-extensions==3.2.3
+django-htmx==1.19.0
+django-browser-reload==1.13.0
+
+# ── Authentification ────────────────────────────────────────
+django-allauth==64.2.1
+
+# ── API REST ────────────────────────────────────────────────
+djangorestframework==3.15.2
+
+# ── Interface CSS ───────────────────────────────────────────
+django-tailwind==3.8.0
+
+# ── Base de données ─────────────────────────────────────────
+psycopg2-binary==2.9.10
+
+# ── Fichiers statiques (prod) ───────────────────────────────
+whitenoise==6.7.0
+
+# ── Médias / images ─────────────────────────────────────────
+Pillow==10.4.0
+
+# ── Configuration via .env ──────────────────────────────────
+python-decouple==3.8
+dj-database-url==2.2.0
+
+# ── Dev uniquement ──────────────────────────────────────────
+django-debug-toolbar==4.4.6

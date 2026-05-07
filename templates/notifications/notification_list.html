@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block topbar_actions %}
+{% if unread_count %}
+<button hx-post="{% url 'notifications:mark_all_read' %}"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-on::after-request="window.location.reload()"
+        class="btn-secondary btn-sm">
+  Tout marquer comme lu ({{ unread_count }})
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-2">
+
+  {% if unread_count %}
+  <p class="text-sm text-ardoise-500">
+    <span class="font-semibold text-foret-600">{{ unread_count }}</span>
+    notification{{ unread_count|pluralize }} non lue{{ unread_count|pluralize }}
+  </p>
+  {% endif %}
+
+  {% for notif in notifications %}
+  {% with target=notif.target_url %}
+  <div class="card py-4 flex items-start gap-4
+              {% if not notif.is_read %}border-l-4 border-foret-500 pl-4{% endif %}
+              {% if target %}group hover:shadow-md transition-shadow{% endif %}"
+       id="notif-{{ notif.pk }}">
+
+    {# Icône selon le type #}
+    <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+      {% if 'TASK' in notif.notification_type %}bg-amber-100 text-amber-600
+      {% elif 'PHASE' in notif.notification_type %}bg-blue-100 text-blue-600
+      {% elif notif.notification_type == 'DOCUMENT_ADDED' %}bg-purple-100 text-purple-600
+      {% else %}bg-foret-100 text-foret-600{% endif %}">
+      {% if 'TASK' in notif.notification_type %}
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+      </svg>
+      {% elif 'PHASE' in notif.notification_type %}
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+      {% elif notif.notification_type == 'DOCUMENT_ADDED' %}
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      {% else %}
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+      </svg>
+      {% endif %}
+    </div>
+
+    {# Contenu #}
+    <div class="flex-1 min-w-0">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold {% if not notif.is_read %}text-ardoise-900{% else %}text-ardoise-600{% endif %}">
+            {{ notif.title }}
+          </p>
+          <p class="text-sm text-ardoise-500 mt-0.5">{{ notif.message }}</p>
+          <div class="flex flex-wrap items-center gap-3 mt-1.5">
+            <span class="text-xs text-ardoise-400">{{ notif.created_at|timesince }}</span>
+            {% if notif.sender %}
+            <span class="text-xs text-ardoise-400">par {{ notif.sender.get_full_name }}</span>
+            {% endif %}
+            <span class="text-xs px-1.5 py-0.5 rounded bg-ardoise-100 text-ardoise-500">
+              {{ notif.get_notification_type_display }}
+            </span>
+          </div>
+        </div>
+
+        {# Actions #}
+        <div class="flex items-center gap-2 flex-shrink-0">
+          {% if target %}
+          <a href="{% url 'notifications:go' notif.pk %}"
+             class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5
+                    bg-foret-50 text-foret-700 border border-foret-200 rounded-lg
+                    hover:bg-foret-100 hover:border-foret-300 transition-colors whitespace-nowrap">
+            Voir
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </a>
+          {% endif %}
+
+          {% if not notif.is_read %}
+          <button hx-post="{% url 'notifications:mark_read' notif.pk %}"
+                  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                  hx-on::after-request="document.getElementById('notif-{{ notif.pk }}').classList.remove('border-l-4','border-foret-500','pl-4'); this.remove();"
+                  class="flex-shrink-0 text-xs text-ardoise-400 hover:text-ardoise-700 font-medium whitespace-nowrap transition-colors"
+                  title="Marquer comme lu">
+            ✓ Lu
+          </button>
+          {% else %}
+          <svg class="w-4 h-4 text-foret-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+  {% endwith %}
+  {% empty %}
+  <div class="card py-16 text-center">
+    <svg class="w-12 h-12 mx-auto text-ardoise-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+    </svg>
+    <p class="text-sm text-ardoise-400">Aucune notification pour le moment.</p>
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}{% if lead %}Modifier {{ lead.project_name }}{% else %}Nouveau lead{% endif %}{% endblock %}
+{% block page_title %}{% if lead %}Modifier le lead{% else %}Nouveau lead{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:pipeline' %}" class="btn-secondary btn-sm">← Pipeline</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <form method="post">
+    {% csrf_token %}
+    <div class="space-y-5">
+
+      {# ── Contact ─────────────────────────────────────────────── #}
+      <div class="card space-y-4">
+        <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+          Contact & projet
+        </h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Contact <span class="text-red-500">*</span></label>
+            <input type="text" name="contact_name" value="{{ vals.contact_name }}"
+                   class="form-input {% if 'contact_name' in errors %}border-red-400{% endif %}" required>
+            {% if 'contact_name' in errors %}<p class="text-xs text-red-500 mt-1">{{ errors.contact_name }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Entreprise</label>
+            <input type="text" name="company" value="{{ vals.company }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Nom du projet <span class="text-red-500">*</span></label>
+            <input type="text" name="project_name" value="{{ vals.project_name }}"
+                   class="form-input {% if 'project_name' in errors %}border-red-400{% endif %}" required>
+            {% if 'project_name' in errors %}<p class="text-xs text-red-500 mt-1">{{ errors.project_name }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Localisation</label>
+            <input type="text" name="location" value="{{ vals.location }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Email</label>
+            <input type="email" name="email" value="{{ vals.email }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Téléphone</label>
+            <input type="text" name="phone" value="{{ vals.phone }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Type de client</label>
+            <input type="text" name="client_type" value="{{ vals.client_type }}"
+                   placeholder="Promoteur, Hôtel, Particulier…" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Type de projet</label>
+            <input type="text" name="project_type" value="{{ vals.project_type }}"
+                   placeholder="Résidentiel, Bureaux, Hôtel…" class="form-input">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Produits concernés</label>
+          <input type="text" name="products" value="{{ vals.products }}"
+                 placeholder="Portes, Placards, Cuisines…" class="form-input">
+        </div>
+      </div>
+
+      {# ── Qualification ───────────────────────────────────────── #}
+      <div class="card space-y-4">
+        <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+          Qualification commerciale
+        </h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Statut pipeline</label>
+            <select name="status" class="form-input">
+              {% for val, lbl in statuses %}
+              <option value="{{ val }}" {% if vals.status == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Potentiel</label>
+            <select name="potential" class="form-input">
+              {% for val, lbl in potentials %}
+              <option value="{{ val }}" {% if vals.potential == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Canal d'origine</label>
+            <select name="canal_origine" class="form-input">
+              <option value="">— Sélectionner —</option>
+              {% for val, lbl in canaux %}
+              <option value="{{ val }}" {% if vals.canal_origine == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Type de flux</label>
+            <select name="flux_type" class="form-input">
+              <option value="">— Sélectionner —</option>
+              {% for val, lbl in flux_types %}
+              <option value="{{ val }}" {% if vals.flux_type == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Assigné à</label>
+            <select name="assigned_to" class="form-input">
+              <option value="">— Non assigné —</option>
+              {% for u in team %}
+              <option value="{{ u.pk }}" {% if vals.assigned_to == u.pk|stringformat:"s" %}selected{% endif %}>
+                {{ u.get_full_name|default:u.username }} ({{ u.get_role_display }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Prochaine relance</label>
+            <input type="date" name="next_followup_date"
+                   value="{{ vals.next_followup_date }}" class="form-input">
+          </div>
+        </div>
+      </div>
+
+      {# ── Opportunité ─────────────────────────────────────────── #}
+      <div class="card space-y-4">
+        <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+          Opportunité
+        </h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Budget estimé (MAD)</label>
+            <input type="number" name="budget_mad" step="1000"
+                   value="{{ vals.budget_mad }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Nb logements / unités</label>
+            <input type="number" name="nb_logements" value="{{ vals.nb_logements }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Début estimé</label>
+            <input type="date" name="start_date_est" value="{{ vals.start_date_est }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Fin estimée</label>
+            <input type="date" name="end_date_est" value="{{ vals.end_date_est }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Probabilité de gain</label>
+            <select name="probability" class="form-input">
+              <option value="">— Non définie —</option>
+              {% for val, lbl in probs %}
+              <option value="{{ val }}" {% if vals.probability == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Concurrent(s) identifié(s)</label>
+            <input type="text" name="competitor" value="{{ vals.competitor }}" class="form-input">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Commentaire stratégique</label>
+          <textarea name="strategic_comment" rows="2" class="form-input resize-none">{{ vals.strategic_comment }}</textarea>
+        </div>
+      </div>
+
+      {# ── Offre ───────────────────────────────────────────────── #}
+      <div class="card space-y-4">
+        <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">4</span>
+          Offre commerciale
+        </h2>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">Montant offre HT (MAD)</label>
+            <input type="number" name="offer_amount_ht" step="100"
+                   value="{{ vals.offer_amount_ht }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Date d'envoi</label>
+            <input type="date" name="offer_sent_date" value="{{ vals.offer_sent_date }}" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Validité (jours)</label>
+            <input type="number" name="offer_validity_days" value="{{ vals.offer_validity_days }}" class="form-input">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Motif si perdu</label>
+            <select name="loss_reason" class="form-input">
+              <option value="">—</option>
+              {% for val, lbl in loss_reasons %}
+              <option value="{{ val }}" {% if vals.loss_reason == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Notes</label>
+            <textarea name="loss_notes" rows="1" class="form-input resize-none">{{ vals.loss_notes }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      {# ── Actions ─────────────────────────────────────────────── #}
+      <div class="flex items-center justify-between">
+        <a href="{% url 'crm:pipeline' %}" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn-primary">
+          {% if lead %}Enregistrer les modifications{% else %}Créer le lead{% endif %}
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}

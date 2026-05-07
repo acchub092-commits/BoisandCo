@@ -1,0 +1,888 @@
+{% extends "base.html" %}
+{% block title %}{{ demande.reference }} — Chiffrage{% endblock %}
+{% block page_title %}{{ demande.reference }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── En-tête ────────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 text-sm text-ardoise-400 mb-1.5">
+        <a href="{% url 'chiffrage:dashboard' %}" class="hover:text-foret-600 transition-colors">← Chiffrage</a>
+        <span class="text-ardoise-300">/</span>
+        <span class="text-ardoise-600 font-medium">{{ demande.reference }}</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <h1 class="text-xl font-bold text-ardoise-900">{{ demande.client_nom }}</h1>
+        {% if demande.client_ref_affaire %}
+        <span class="text-sm text-ardoise-400">· {{ demande.client_ref_affaire }}</span>
+        {% endif %}
+        {# Badge statut #}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+          {% if demande.statut == 'EN_ATTENTE' %}bg-amber-100 text-amber-800
+          {% elif demande.statut == 'VALIDEE_DC' %}bg-blue-100 text-blue-800
+          {% elif demande.statut == 'REJETEE' %}bg-red-100 text-red-800
+          {% elif demande.statut == 'RETOURNEE' %}bg-orange-100 text-orange-800
+          {% elif demande.statut == 'EN_CHIFFRAGE' %}bg-indigo-100 text-indigo-800
+          {% elif demande.statut == 'SOUMIS_DG' %}bg-purple-100 text-purple-800
+          {% elif demande.statut == 'REVISION_DG' %}bg-orange-100 text-orange-800
+          {% elif demande.statut == 'DEVIS_VALIDE' or demande.statut == 'TRANSMIS' or demande.statut == 'ACCEPTE' %}bg-green-100 text-green-800
+          {% elif demande.statut == 'REFUSE_CLI' %}bg-red-100 text-red-800
+          {% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+          {{ demande.get_statut_display }}
+        </span>
+        {% if demande.urgence == 'URGENT' %}
+        <span class="px-2 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-700">URGENT</span>
+        {% elif demande.urgence == 'CRITIQUE' %}
+        <span class="px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700">CRITIQUE</span>
+        {% endif %}
+        {% if demande.is_retard %}
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          En retard
+        </span>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap gap-4 text-xs text-ardoise-400">
+        <span>Soumis par <strong class="text-ardoise-600">{{ demande.commercial.get_full_name }}</strong></span>
+        <span>{{ demande.created_at|date:"d/m/Y à H:i" }}</span>
+        {% if demande.delai_souhaite %}
+        <span class="{% if demande.is_retard %}text-red-600 font-semibold{% endif %}">Délai : {{ demande.delai_souhaite|date:"d/m/Y" }}</span>
+        {% endif %}
+        {% if demande.assigned_to %}
+        <span>Chiffreur : <strong class="text-ardoise-600">{{ demande.assigned_to.get_full_name }}</strong></span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      {% if demande.projet %}
+      <a href="{% url 'projects:gantt' demande.projet.pk %}"
+         class="inline-flex items-center gap-1.5 btn-primary text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+        </svg>
+        Voir le planning
+      </a>
+      {% endif %}
+      <a href="{% url 'chiffrage:dashboard' %}" class="btn-secondary text-sm">
+        Retour à la liste
+      </a>
+    </div>
+  </div>
+
+  {# ── Timeline workflow ──────────────────────────────────────── #}
+  {% with s=demande.statut %}
+  <div class="bg-white rounded-xl shadow-card px-6 py-4 overflow-x-auto">
+    <div class="relative min-w-[540px]">
+      <div class="absolute top-4 left-10 right-10 h-0.5 bg-ardoise-200 z-0"></div>
+      <div class="relative flex justify-between z-10">
+
+        {% comment %}Étape 1 — Soumise{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+          <div class="w-8 h-8 rounded-full border-2 border-foret-500 bg-foret-500 text-white flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <p class="text-xs font-semibold text-ardoise-700">Soumise</p>
+          <p class="text-xs {% if s == 'REJETEE' %}text-red-500{% elif s == 'RETOURNEE' %}text-orange-500{% else %}text-ardoise-400{% endif %}">
+            {% if s == 'REJETEE' %}Rejetée{% elif s == 'RETOURNEE' %}Retournée{% else %}{{ demande.created_at|date:"d/m" }}{% endif %}
+          </p>
+        </div>
+
+        {% comment %}Étape 2 — Validée DC{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+          <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
+            {% if s == 'REJETEE' %}border-red-300 bg-red-100 text-red-500
+            {% elif s == 'EN_ATTENTE' or s == 'RETOURNEE' %}border-ardoise-300 bg-white text-ardoise-400
+            {% else %}border-foret-500 bg-foret-500 text-white{% endif %}">
+            {% if s == 'REJETEE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            {% elif s == 'EN_ATTENTE' or s == 'RETOURNEE' %}<span class="text-xs font-bold">2</span>
+            {% else %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>{% endif %}
+          </div>
+          <p class="text-xs font-semibold text-ardoise-700">Validée DC</p>
+          <p class="text-xs text-ardoise-400">
+            {% if s == 'REJETEE' %}<span class="text-red-500">Rejetée</span>
+            {% elif demande.validated_dc_at %}{{ demande.validated_dc_at|date:"d/m" }}
+            {% else %}—{% endif %}
+          </p>
+        </div>
+
+        {% comment %}Étape 3 — En chiffrage{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+          <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
+            {% if s == 'EN_CHIFFRAGE' or s == 'REVISION_DG' %}border-indigo-500 bg-indigo-500 text-white ring-4 ring-indigo-100
+            {% elif s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-foret-500 bg-foret-500 text-white
+            {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
+            {% if s == 'EN_CHIFFRAGE' or s == 'REVISION_DG' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg>
+            {% elif s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            {% else %}<span class="text-xs font-bold">3</span>{% endif %}
+          </div>
+          <p class="text-xs font-semibold text-ardoise-700">En chiffrage</p>
+          <p class="text-xs text-ardoise-400">
+            {% if s == 'EN_CHIFFRAGE' and demande.jalon %}<span class="text-indigo-600">{{ demande.get_jalon_display }}</span>
+            {% elif s == 'REVISION_DG' %}<span class="text-orange-500">Révision</span>
+            {% else %}—{% endif %}
+          </p>
+        </div>
+
+        {% comment %}Étape 4 — Soumis DG{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+          <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
+            {% if s == 'SOUMIS_DG' %}border-purple-500 bg-purple-500 text-white ring-4 ring-purple-100
+            {% elif s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-foret-500 bg-foret-500 text-white
+            {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
+            {% if s == 'SOUMIS_DG' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {% elif s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            {% else %}<span class="text-xs font-bold">4</span>{% endif %}
+          </div>
+          <p class="text-xs font-semibold text-ardoise-700">Soumis DG</p>
+          <p class="text-xs text-ardoise-400">
+            {% if demande.validated_dg_at %}{{ demande.validated_dg_at|date:"d/m" }}{% else %}—{% endif %}
+          </p>
+        </div>
+
+        {% comment %}Étape 5 — Clôturé{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+          <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
+            {% if s == 'ACCEPTE' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' %}border-foret-500 bg-foret-500 text-white
+            {% elif s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-ardoise-400 bg-ardoise-400 text-white
+            {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
+            {% if s == 'ACCEPTE' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            {% elif s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
+            {% else %}<span class="text-xs font-bold">5</span>{% endif %}
+          </div>
+          <p class="text-xs font-semibold text-ardoise-700">Clôturé</p>
+          <p class="text-xs">
+            {% if s == 'ACCEPTE' %}<span class="text-foret-600 font-semibold">Accepté ✓</span>
+            {% elif s == 'TRANSMIS' %}<span class="text-foret-600">Transmis</span>
+            {% elif s == 'DEVIS_VALIDE' %}<span class="text-foret-600">Validé DG</span>
+            {% elif s == 'REFUSE_CLI' %}<span class="text-red-500">Refusé</span>
+            {% elif s == 'ARCHIVE' %}<span class="text-ardoise-400">Archivé</span>
+            {% else %}<span class="text-ardoise-300">—</span>{% endif %}
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+
+  {# ── Corps : 2 colonnes ─────────────────────────────────────── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+
+    {# ═══ COLONNE GAUCHE 2/3 ════════════════════════════════════ #}
+    <div class="lg:col-span-2 space-y-4">
+
+      {# Description #}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden">
+        <div class="px-5 py-3 bg-ardoise-50 border-b border-ardoise-100">
+          <h2 class="text-sm font-semibold text-ardoise-700">Description commerciale</h2>
+        </div>
+        <div class="px-5 py-4">
+          <p class="text-sm text-ardoise-700 whitespace-pre-wrap leading-relaxed">{{ demande.description }}</p>
+        </div>
+      </div>
+
+      {# Détails techniques #}
+      {% if demande.finitions or demande.kits_references or demande.quantites_estimees or demande.contraintes_techniques or demande.commentaires %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden">
+        <div class="px-5 py-3 bg-ardoise-50 border-b border-ardoise-100">
+          <h2 class="text-sm font-semibold text-ardoise-700">Détails techniques</h2>
+        </div>
+        <dl class="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {% if demande.finitions %}
+          <div><dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Finitions</dt><dd class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ demande.finitions }}</dd></div>
+          {% endif %}
+          {% if demande.kits_references %}
+          <div><dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Kits / références</dt><dd class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ demande.kits_references }}</dd></div>
+          {% endif %}
+          {% if demande.quantites_estimees %}
+          <div><dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Quantités estimées</dt><dd class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ demande.quantites_estimees }}</dd></div>
+          {% endif %}
+          {% if demande.contraintes_techniques %}
+          <div><dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Contraintes techniques</dt><dd class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ demande.contraintes_techniques }}</dd></div>
+          {% endif %}
+          {% if demande.commentaires %}
+          <div class="sm:col-span-2"><dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Commentaires</dt><dd class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ demande.commentaires }}</dd></div>
+          {% endif %}
+        </dl>
+      </div>
+      {% endif %}
+
+      {# Montant — visible DG et Méthodes toujours, DC et Commercial uniquement après validation DG #}
+      {% if demande.montant_ht %}
+        {% if user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.is_superuser or devis_visible %}
+        <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden">
+          <div class="px-5 py-3 bg-foret-50 border-b border-foret-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-foret-800">Montant du devis</h2>
+            {% if user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.is_superuser %}
+            <span class="text-xs {% if devis_visible %}text-foret-600{% else %}text-orange-500 font-medium{% endif %}">
+              {% if devis_visible %}Visible DC et commercial{% else %}Confidentiel — en attente validation DG{% endif %}
+            </span>
+            {% endif %}
+          </div>
+          <div class="px-5 py-5 flex items-center gap-4">
+            <div>
+              <p class="text-3xl font-bold text-foret-700">{{ demande.montant_ht|floatformat:2 }} <span class="text-lg font-normal text-ardoise-400">MAD HT</span></p>
+              {% if demande.validated_dg_at %}<p class="text-xs text-ardoise-400 mt-1">Validé par DG le {{ demande.validated_dg_at|date:"d/m/Y à H:i" }}</p>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      {% endif %}
+
+      {# ── Widget Devis final ───────────────────────────────────── #}
+      {% if devis_latest or devis_archives %}
+      <div x-data="{ histOpen: false }"
+           class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4
+                  {% if devis_visible %}border-foret-500{% else %}border-purple-400{% endif %}">
+
+        {# ── En-tête ── #}
+        <div class="px-5 py-3 flex items-center gap-2
+                    {% if devis_visible %}bg-foret-50 border-b border-foret-100
+                    {% else %}bg-purple-50 border-b border-purple-100{% endif %}">
+          {% if devis_visible %}
+          <svg class="w-4 h-4 text-foret-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h2 class="text-sm font-semibold text-foret-800">Devis final — Validé par la DG</h2>
+          {% if demande.validated_dg_at %}
+          <span class="ml-auto text-xs text-foret-500">{{ demande.validated_dg_at|date:"d/m/Y" }}</span>
+          {% endif %}
+          {% else %}
+          <svg class="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h2 class="text-sm font-semibold text-purple-800">Devis soumis — En attente validation DG</h2>
+          <span class="ml-auto text-xs text-purple-400">Confidentiel DC / Commercial</span>
+          {% endif %}
+        </div>
+
+        {# ── Version actuelle (aperçu + téléchargement) ── #}
+        {% if devis_latest %}
+        {% with f=devis_latest %}
+        <div class="flex items-center gap-4 px-5 py-4
+                    {% if devis_visible %}hover:bg-foret-50{% else %}hover:bg-purple-50{% endif %}
+                    transition-colors">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs uppercase
+            {% if f.ext == 'pdf' %}bg-red-100 text-red-600
+            {% elif f.ext == 'xlsx' or f.ext == 'xls' %}bg-green-100 text-green-700
+            {% elif f.ext == 'docx' or f.ext == 'doc' %}bg-blue-100 text-blue-700
+            {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+            {{ f.ext|upper|truncatechars:4 }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-sm font-semibold {% if devis_visible %}text-foret-900{% else %}text-ardoise-800{% endif %} truncate">
+                {{ f.nom }}
+              </p>
+              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-foret-100 text-foret-700">
+                Version actuelle
+              </span>
+            </div>
+            <p class="text-xs text-ardoise-400 mt-0.5">
+              {{ f.taille_human }} · {{ f.uploaded_at|date:"d/m/Y à H:i" }} · {{ f.uploaded_by.get_full_name|default:"—" }}
+            </p>
+          </div>
+          {# Boutons action #}
+          <div class="flex items-center gap-2 flex-shrink-0">
+            {# Aperçu — nouvelle page #}
+            <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}"
+               target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                      border border-ardoise-200 text-ardoise-600 bg-white hover:bg-ardoise-50">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              Aperçu
+            </a>
+            {# Télécharger #}
+            <a href="{{ f.fichier.url }}" download="{{ f.nom }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                      {% if devis_visible %}bg-foret-500 text-white hover:bg-foret-600
+                      {% else %}bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100{% endif %}">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Télécharger
+            </a>
+          </div>
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        {# ── Historique des versions ── #}
+        {% if devis_archives %}
+        <div class="border-t border-ardoise-100">
+
+          {# Accordion toggle #}
+          <button type="button" @click="histOpen = !histOpen"
+                  class="w-full flex items-center gap-2.5 px-5 py-3 text-left hover:bg-ardoise-50 transition-colors">
+            <svg class="w-4 h-4 text-ardoise-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            <span class="text-xs font-semibold text-ardoise-600">Historique des versions</span>
+            <span class="px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-500 text-xs font-medium">
+              {{ devis_archives|length }} archivée{{ devis_archives|length|pluralize }}
+            </span>
+            <span class="ml-auto text-xs text-ardoise-400 italic hidden sm:inline">Accès restreint · DG / Méthodes</span>
+            <svg class="w-4 h-4 text-ardoise-400 transition-transform duration-200 flex-shrink-0"
+                 :class="histOpen ? 'rotate-180' : ''"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          {# Liste des versions archivées #}
+          <div x-show="histOpen" x-cloak
+               class="border-t border-ardoise-100 bg-ardoise-50/60 divide-y divide-ardoise-100">
+
+            {# Bannière info #}
+            <div class="flex items-center gap-2 px-5 py-2.5 bg-amber-50 border-b border-amber-100">
+              <svg class="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                      clip-rule="evenodd"/>
+              </svg>
+              <p class="text-xs text-amber-700">
+                Aperçu interne uniquement — non téléchargeables. Accès réservé au <strong>DG</strong> et aux <strong>Méthodes</strong>.
+              </p>
+            </div>
+
+            {% for f in devis_archives %}
+            <div class="flex items-center gap-4 px-5 py-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                          font-bold text-xs uppercase bg-ardoise-200 text-ardoise-400">
+                {{ f.ext|upper|truncatechars:4 }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-ardoise-500 truncate">{{ f.nom }}</p>
+                <p class="text-xs text-ardoise-400 mt-0.5">
+                  {{ f.taille_human }}
+                  <span class="text-ardoise-300 mx-1">·</span>
+                  {{ f.uploaded_at|date:"d/m/Y à H:i" }}
+                  <span class="text-ardoise-300 mx-1">·</span>
+                  {{ f.uploaded_by.get_full_name|default:"—" }}
+                </p>
+              </div>
+              {# Aperçu — nouvelle page, lecture seule #}
+              <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}"
+                 target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium flex-shrink-0
+                        text-ardoise-500 bg-ardoise-100 hover:bg-ardoise-200 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                Voir
+              </a>
+            </div>
+            {% endfor %}
+
+          </div>
+        </div>
+        {% endif %}
+
+
+      </div>
+      {% endif %}
+
+      {# ── Documents du dossier ─────────────────────────────────── #}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden" x-data="{showUpload: false}">
+        <div class="px-5 py-3 bg-ardoise-50 border-b border-ardoise-100 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-ardoise-700">Documents du dossier</h2>
+            <span class="text-xs font-medium px-2 py-0.5 bg-ardoise-200 text-ardoise-600 rounded-full">{{ fichiers|length }}</span>
+          </div>
+          {% if not is_commercial or demande.can_commercial_edit %}
+          <button @click="showUpload = !showUpload"
+                  class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-ardoise-200 bg-white text-ardoise-600 hover:bg-ardoise-50 hover:border-ardoise-300 transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Ajouter un fichier
+          </button>
+          {% endif %}
+        </div>
+
+        {# Zone upload #}
+        <div x-show="showUpload" x-transition style="display:none"
+             class="px-5 py-4 border-b border-ardoise-100 bg-blue-50">
+          <form method="post" action="{% url 'chiffrage:fichier' demande.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="flex flex-wrap items-center gap-3">
+              <input type="file" name="fichiers" multiple
+                     class="flex-1 min-w-0 text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
+              {% if not is_commercial %}
+              <label class="flex items-center gap-2 text-xs text-ardoise-600 cursor-pointer whitespace-nowrap">
+                <input type="checkbox" name="is_internal" value="1" class="rounded border-ardoise-300">
+                Note interne (invisible commercial)
+              </label>
+              {% endif %}
+              <button type="submit" class="btn-primary btn-sm">Envoyer</button>
+            </div>
+          </form>
+        </div>
+
+        {# Liste des fichiers #}
+        {% if fichiers %}
+        <div class="divide-y divide-ardoise-100">
+          {% for f in fichiers %}
+          <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-ardoise-50 transition-colors">
+            {# Icône type fichier #}
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs uppercase
+              {% if f.ext == 'pdf' %}bg-red-100 text-red-600
+              {% elif f.ext == 'xlsx' or f.ext == 'xls' %}bg-green-100 text-green-700
+              {% elif f.ext == 'docx' or f.ext == 'doc' %}bg-blue-100 text-blue-700
+              {% elif f.ext == 'jpg' or f.ext == 'jpeg' or f.ext == 'png' %}bg-purple-100 text-purple-600
+              {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+              {{ f.ext|upper|truncatechars:4 }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-ardoise-800 truncate">{{ f.nom }}</p>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-xs text-ardoise-400">{{ f.taille_human }}</span>
+                <span class="text-ardoise-200">·</span>
+                <span class="text-xs text-ardoise-400">{{ f.uploaded_at|date:"d/m/Y" }}</span>
+                <span class="text-ardoise-200">·</span>
+                <span class="text-xs text-ardoise-400">{{ f.uploaded_by.get_full_name|default:"—" }}</span>
+                {% if f.is_internal %}<span class="px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded text-xs font-medium">Interne</span>{% endif %}
+                {% if f.is_devis %}<span class="px-1.5 py-0.5 bg-foret-100 text-foret-700 rounded text-xs font-medium">Devis final</span>{% endif %}
+              </div>
+            </div>
+            {# Bouton télécharger — toujours visible #}
+            <a href="{{ f.fichier.url }}" download="{{ f.nom }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foret-50 text-foret-700 border border-foret-200 text-xs font-medium hover:bg-foret-100 transition-colors flex-shrink-0">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Télécharger
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-5 py-10 text-center">
+          <svg class="w-10 h-10 mx-auto mb-2 text-ardoise-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+          <p class="text-sm text-ardoise-400">Aucune pièce jointe</p>
+          {% if not is_commercial or demande.can_commercial_edit %}
+          <button @click="showUpload = true" class="mt-2 text-xs text-foret-600 hover:text-foret-700 font-medium">Ajouter un fichier</button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# Demande de modification — commercial EN_CHIFFRAGE #}
+      {% if is_commercial and demande.statut == 'EN_CHIFFRAGE' %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-orange-400" x-data="{open: false}">
+        <button @click="open = !open" class="w-full flex items-center justify-between px-5 py-4 text-left">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            <span class="text-sm font-semibold text-ardoise-700">Demander une modification</span>
+          </div>
+          <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div x-show="open" x-transition style="display:none" class="px-5 pb-5 border-t border-orange-100">
+          <p class="text-xs text-ardoise-500 mt-3 mb-3">La demande sera soumise au DC pour arbitrage. Le chiffrage continue en parallèle.</p>
+          <form method="post" action="{% url 'chiffrage:modification' demande.pk %}">
+            {% csrf_token %}
+            <div class="space-y-3">
+              <div>
+                <label class="form-label">Nature de la modification *</label>
+                <textarea name="nature" rows="2" required class="form-input resize-none" placeholder="Décrivez la modification souhaitée…"></textarea>
+              </div>
+              <div>
+                <label class="form-label">Justification *</label>
+                <textarea name="justification" rows="2" required class="form-input resize-none" placeholder="Pourquoi cette modification est-elle nécessaire ?"></textarea>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <label class="form-label mb-0">Urgence :</label>
+                  <select name="urgence" class="form-input w-auto py-1 px-2 text-sm">
+                    {% for val, label in urgences %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+                  </select>
+                </div>
+                <button type="submit" class="btn-primary btn-sm">Soumettre</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>{# /col gauche #}
+
+    {# ═══ COLONNE DROITE 1/3 ════════════════════════════════════ #}
+    <div class="space-y-4">
+
+      {# ── PANEL DC (MANAGER) ──────────────────────────────────── #}
+
+      {# Arbitrage modification en attente #}
+      {% if modif_en_attente and user.role == 'MANAGER' or modif_en_attente and user.is_superuser %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-orange-400">
+        <div class="px-5 py-3 bg-orange-50 border-b border-orange-200">
+          <h3 class="text-sm font-bold text-orange-800">Modification en attente d'arbitrage</h3>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+          <div class="p-3 bg-ardoise-50 rounded-lg space-y-2">
+            <div><p class="text-xs text-ardoise-400 font-semibold uppercase mb-0.5">Nature</p><p class="text-sm text-ardoise-800">{{ modif_en_attente.nature }}</p></div>
+            <div><p class="text-xs text-ardoise-400 font-semibold uppercase mb-0.5">Justification</p><p class="text-sm text-ardoise-700">{{ modif_en_attente.justification }}</p></div>
+            <p class="text-xs text-ardoise-400">{{ modif_en_attente.soumis_par.get_full_name }} — {{ modif_en_attente.created_at|date:"d/m/Y H:i" }}</p>
+          </div>
+          <form method="post" action="{% url 'chiffrage:arbitrer_modif' modif_en_attente.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="accepter">
+            <button type="submit" class="w-full py-2 rounded-lg bg-foret-500 text-white text-sm font-semibold hover:bg-foret-600 transition-colors mb-2">Accepter la modification</button>
+          </form>
+          <div x-data="{show: false}">
+            <button type="button" @click="show = !show" class="w-full py-2 rounded-lg border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors" x-text="show ? 'Annuler' : 'Refuser'"></button>
+            <form x-show="show" x-transition style="display:none" method="post" action="{% url 'chiffrage:arbitrer_modif' modif_en_attente.pk %}" class="mt-2 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="refuser">
+              <textarea name="motif" rows="2" required class="form-input resize-none" placeholder="Motif de refus…"></textarea>
+              <button type="submit" class="w-full py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">Confirmer le refus</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Actions DC principales #}
+      {% if user.role == 'MANAGER' and demande.statut == 'EN_ATTENTE' or user.role == 'MANAGER' and demande.statut == 'RETOURNEE' or user.is_superuser and demande.statut == 'EN_ATTENTE' or user.is_superuser and demande.statut == 'RETOURNEE' %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-blue-400">
+        <div class="px-5 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <h3 class="text-sm font-bold text-blue-800">Décision requise — Directeur Commercial</h3>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+          {# Résumé #}
+          <div class="p-3 bg-ardoise-50 rounded-lg text-xs text-ardoise-600 space-y-1.5">
+            <div class="flex justify-between"><span>Client :</span><strong class="text-ardoise-800">{{ demande.client_nom }}</strong></div>
+            <div class="flex justify-between"><span>Urgence :</span><strong class="{% if demande.urgence == 'CRITIQUE' %}text-red-600{% elif demande.urgence == 'URGENT' %}text-orange-600{% else %}text-ardoise-800{% endif %}">{{ demande.get_urgence_display }}</strong></div>
+            {% if demande.delai_souhaite %}<div class="flex justify-between"><span>Délai :</span><strong class="{% if demande.is_retard %}text-red-600{% else %}text-ardoise-800{% endif %}">{{ demande.delai_souhaite|date:"d/m/Y" }}</strong></div>{% endif %}
+          </div>
+
+          {# Valider #}
+          <form method="post" action="{% url 'chiffrage:action_dc' demande.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="valider">
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-foret-500 text-white text-sm font-semibold hover:bg-foret-600 transition-colors flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Valider — Transmettre aux Méthodes
+            </button>
+          </form>
+
+          {# Retourner #}
+          <div x-data="{show: false}">
+            <button type="button" @click="show = !show"
+                    class="w-full py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition-colors"
+                    x-text="show ? 'Annuler' : 'Retourner pour complétion'"></button>
+            <form x-show="show" x-transition style="display:none" method="post" action="{% url 'chiffrage:action_dc' demande.pk %}" class="mt-2 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="retourner">
+              <label class="form-label">Éléments manquants *</label>
+              <textarea name="motif" rows="3" required class="form-input resize-none" placeholder="Précisez ce qui est attendu du commercial…"></textarea>
+              <button type="submit" class="w-full py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">Confirmer le retour</button>
+            </form>
+          </div>
+
+          {# Rejeter #}
+          <div x-data="{show: false}">
+            <button type="button" @click="show = !show"
+                    class="w-full py-2 rounded-lg border border-ardoise-200 text-ardoise-500 text-sm font-medium hover:bg-ardoise-50 transition-colors"
+                    x-text="show ? 'Annuler' : 'Rejeter définitivement'"></button>
+            <form x-show="show" x-transition style="display:none" method="post" action="{% url 'chiffrage:action_dc' demande.pk %}" class="mt-2 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="rejeter">
+              <label class="form-label">Motif de rejet *</label>
+              <textarea name="motif" rows="3" required class="form-input resize-none" placeholder="Motif de rejet obligatoire…"></textarea>
+              <button type="submit" class="w-full py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">Confirmer le rejet</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── PANEL MÉTHODES ──────────────────────────────────────── #}
+
+      {# Prise en charge VALIDEE_DC #}
+      {% if demande.statut == 'VALIDEE_DC' and user.role == 'ESTIMATEUR' or demande.statut == 'VALIDEE_DC' and user.role == 'MANAGER' or demande.statut == 'VALIDEE_DC' and user.is_superuser %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-indigo-400">
+        <div class="px-5 py-3 bg-indigo-50 border-b border-indigo-100">
+          <h3 class="text-sm font-bold text-indigo-800">Prise en charge — Service Méthodes</h3>
+        </div>
+        <div class="px-5 py-4">
+          <form method="post" action="{% url 'chiffrage:assigner' demande.pk %}">
+            {% csrf_token %}
+            {% if chiffreurs and user.role == 'MANAGER' or chiffreurs and user.is_superuser %}
+            <div class="mb-3">
+              <label class="form-label">Assigner à</label>
+              <select name="chiffreur" class="form-input">
+                <option value="">— Moi-même —</option>
+                {% for c in chiffreurs %}<option value="{{ c.pk }}">{{ c.get_full_name }}</option>{% endfor %}
+              </select>
+            </div>
+            {% endif %}
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">
+              Prendre en charge et démarrer le chiffrage
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Outils EN_CHIFFRAGE (ESTIMATEUR) #}
+      {% if demande.statut == 'EN_CHIFFRAGE' and user.role == 'ESTIMATEUR' %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-indigo-400">
+        <div class="px-5 py-3 bg-indigo-50 border-b border-indigo-100">
+          <h3 class="text-sm font-bold text-indigo-800">Outils Méthodes</h3>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <form method="post" action="{% url 'chiffrage:jalon' demande.pk %}" class="flex items-end gap-2">
+            {% csrf_token %}
+            <div class="flex-1">
+              <label class="form-label">Jalon actuel</label>
+              <select name="jalon" class="form-input">
+                {% for val, label in jalons %}<option value="{{ val }}" {% if demande.jalon == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn-secondary btn-sm mb-0.5">Mettre à jour</button>
+          </form>
+          <form method="post" action="{% url 'chiffrage:montant' demande.pk %}">
+            {% csrf_token %}
+            <label class="form-label">Montant HT brouillon (MAD)</label>
+            <div class="flex gap-2">
+              <input type="number" name="montant_ht" step="0.01" min="0"
+                     value="{% if demande.montant_ht %}{{ demande.montant_ht }}{% endif %}"
+                     class="form-input flex-1" placeholder="0.00">
+              <button type="submit" class="btn-secondary btn-sm">Enregistrer</button>
+            </div>
+            <p class="text-xs text-ardoise-400 mt-1">Confidentiel jusqu'à validation DG</p>
+          </form>
+        </div>
+      </div>
+
+      {# Soumettre à la DG #}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden" x-data="{open: false}">
+        <button @click="open = !open" class="w-full flex items-center justify-between px-5 py-4 text-left">
+          <span class="text-sm font-semibold text-ardoise-700">Soumettre le devis à la DG</span>
+          <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div x-show="open" x-transition style="display:none" class="px-5 pb-5 border-t border-ardoise-100">
+          <form method="post" action="{% url 'chiffrage:soumettre_dg' demande.pk %}" enctype="multipart/form-data" class="mt-3 space-y-3">
+            {% csrf_token %}
+            <div>
+              <label class="form-label">Fichier devis final (optionnel)</label>
+              <input type="file" name="fichier_devis" class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700">
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">
+              Soumettre à la Direction Générale
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Reprendre révision DG #}
+      {% if demande.statut == 'REVISION_DG' and user.role == 'ESTIMATEUR' or demande.statut == 'REVISION_DG' and user.role == 'MANAGER' or demande.statut == 'REVISION_DG' and user.is_superuser %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-orange-400">
+        <div class="px-5 py-4">
+          <p class="text-sm font-semibold text-ardoise-700 mb-1">Révision DG demandée</p>
+          <p class="text-xs text-ardoise-500 mb-3">Intégrez les remarques de la Direction Générale et re-soumettez.</p>
+          <form method="post" action="{% url 'chiffrage:reprendre' demande.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">Reprendre le chiffrage</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── PANEL DG (DIRECTEUR) ────────────────────────────────── #}
+      {% if user.role == 'DIRECTEUR' and demande.statut == 'SOUMIS_DG' or user.role == 'DIRECTEUR' and demande.statut == 'REVISION_DG' or user.is_superuser and demande.statut == 'SOUMIS_DG' or user.is_superuser and demande.statut == 'REVISION_DG' %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-purple-400">
+        <div class="px-5 py-3 bg-purple-50 border-b border-purple-100">
+          <h3 class="text-sm font-bold text-purple-800">Validation — Direction Générale</h3>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+          {% if demande.montant_ht %}
+          <div class="p-3 bg-ardoise-50 rounded-lg">
+            <p class="text-xs text-ardoise-500 mb-0.5">Montant HT proposé</p>
+            <p class="text-xl font-bold text-ardoise-900">{{ demande.montant_ht|floatformat:2 }} <span class="text-sm font-normal text-ardoise-400">MAD</span></p>
+          </div>
+          {% endif %}
+          <form method="post" action="{% url 'chiffrage:action_dg' demande.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="valider">
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-foret-500 text-white text-sm font-semibold hover:bg-foret-600 transition-colors flex items-center justify-center gap-2 mb-3">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Valider le devis
+            </button>
+          </form>
+          <div x-data="{show: false}">
+            <button type="button" @click="show = !show" class="w-full py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition-colors mb-2" x-text="show ? 'Annuler' : 'Demander une révision'"></button>
+            <form x-show="show" x-transition style="display:none" method="post" action="{% url 'chiffrage:action_dg' demande.pk %}" class="mb-2 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="revision">
+              <textarea name="motif" rows="3" required class="form-input resize-none" placeholder="Modifications à apporter…"></textarea>
+              <button type="submit" class="w-full py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">Confirmer la révision</button>
+            </form>
+          </div>
+          <div x-data="{show: false}">
+            <button type="button" @click="show = !show" class="w-full py-2 rounded-lg border border-ardoise-200 text-ardoise-500 text-sm font-medium hover:bg-ardoise-50 transition-colors" x-text="show ? 'Annuler' : 'Refuser et archiver'"></button>
+            <form x-show="show" x-transition style="display:none" method="post" action="{% url 'chiffrage:action_dg' demande.pk %}" class="mt-2 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="refuser">
+              <textarea name="motif" rows="2" required class="form-input resize-none" placeholder="Motif de refus…"></textarea>
+              <button type="submit" class="w-full py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">Confirmer le refus</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── PANEL COMMERCIAL — résultat ─────────────────────────── #}
+      {% if is_commercial %}
+        {% if demande.statut == 'DEVIS_VALIDE' or demande.statut == 'TRANSMIS' %}
+        <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-foret-400">
+          <div class="px-5 py-3 bg-foret-50 border-b border-foret-100">
+            <h3 class="text-sm font-bold text-foret-800">Votre devis est prêt</h3>
+          </div>
+          <div class="px-5 py-4 space-y-3">
+            {% if demande.montant_ht %}
+            <div class="p-3 bg-foret-50 rounded-lg text-center">
+              <p class="text-xs text-foret-600 mb-0.5">Montant HT</p>
+              <p class="text-2xl font-bold text-foret-800">{{ demande.montant_ht|floatformat:2 }} <span class="text-base font-normal text-foret-500">MAD</span></p>
+            </div>
+            {% endif %}
+            {% if demande.statut == 'DEVIS_VALIDE' %}
+            <form method="post" action="{% url 'chiffrage:resultat' demande.pk %}">
+              {% csrf_token %}
+              <button type="submit" name="action" value="transmettre" class="w-full py-2.5 rounded-lg bg-foret-500 text-white text-sm font-semibold hover:bg-foret-600 transition-colors">Marquer comme transmis au client</button>
+            </form>
+            {% elif demande.statut == 'TRANSMIS' %}
+            <p class="text-xs text-ardoise-400 text-center">Transmis le {{ demande.transmis_client_at|date:"d/m/Y" }}</p>
+            <form method="post" action="{% url 'chiffrage:resultat' demande.pk %}" class="space-y-2">
+              {% csrf_token %}
+              <button type="submit" name="action" value="accepte" class="w-full py-2.5 rounded-lg bg-foret-600 text-white text-sm font-semibold hover:bg-foret-700 transition-colors">Le client a accepté ✓</button>
+              <button type="submit" name="action" value="refuse" class="w-full py-2 rounded-lg border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors">Le client a refusé</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% elif demande.statut == 'ACCEPTE' %}
+        <div class="bg-foret-50 border border-foret-200 rounded-xl p-5 text-center">
+          <div class="w-12 h-12 rounded-full bg-foret-100 flex items-center justify-center mx-auto mb-2">
+            <svg class="w-6 h-6 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <p class="text-base font-bold text-foret-800">Devis accepté !</p>
+          <p class="text-sm text-foret-600 mt-1">Le client a retenu votre offre.</p>
+        </div>
+        {% elif demande.statut == 'REFUSE_CLI' %}
+        <div class="bg-red-50 border border-red-200 rounded-xl p-5 text-center">
+          <p class="text-base font-bold text-red-700">Devis refusé</p>
+          <p class="text-sm text-red-500 mt-1">Le client n'a pas retenu cette offre.</p>
+        </div>
+        {% endif %}
+      {% endif %}
+
+      {# ── FIL DE DISCUSSION ────────────────────────────────────── #}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden">
+        <div class="px-5 py-3 bg-ardoise-50 border-b border-ardoise-100 flex items-center gap-2">
+          <h3 class="text-sm font-semibold text-ardoise-700">Discussion</h3>
+          {% if messages %}<span class="text-xs font-medium px-2 py-0.5 bg-ardoise-200 text-ardoise-600 rounded-full">{{ messages|length }}</span>{% endif %}
+        </div>
+
+        <div class="max-h-96 overflow-y-auto divide-y divide-ardoise-100" id="msg-list">
+          {% if messages %}
+            {% for msg in messages %}
+            <div class="px-4 py-3 {% if msg.is_internal %}bg-amber-50{% endif %}">
+              <div class="flex items-start gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-foret-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                  {% if msg.auteur %}{{ msg.auteur.first_name|first|upper }}{{ msg.auteur.last_name|first|upper }}{% else %}?{% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-semibold text-ardoise-800">{% if msg.auteur %}{{ msg.auteur.get_full_name }}{% else %}Inconnu{% endif %}</span>
+                    {% if msg.is_internal %}<span class="px-1.5 py-0.5 bg-amber-200 text-amber-700 rounded text-xs">Note interne</span>{% endif %}
+                    <span class="text-xs text-ardoise-300 ml-auto">{{ msg.created_at|date:"d/m H:i" }}</span>
+                  </div>
+                  <p class="text-sm text-ardoise-700 whitespace-pre-wrap leading-snug">{{ msg.contenu }}</p>
+                  {% if msg.fichier %}
+                  <a href="{{ msg.fichier.url }}" download="{{ msg.nom_fichier }}" class="inline-flex items-center gap-1 mt-1.5 text-xs text-foret-600 hover:text-foret-800 font-medium">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    {{ msg.nom_fichier|default:"Pièce jointe" }}
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="px-5 py-8 text-center text-sm text-ardoise-400">Aucun message — démarrez la discussion</div>
+          {% endif %}
+        </div>
+
+        {# Formulaire message #}
+        <div class="px-4 py-3 border-t border-ardoise-100 bg-ardoise-50">
+          <form method="post" action="{% url 'chiffrage:message' demande.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <textarea name="contenu" rows="2" required class="form-input resize-none mb-2" placeholder="Votre message…"></textarea>
+            <div class="flex items-center gap-3">
+              <label class="cursor-pointer text-ardoise-400 hover:text-foret-600 transition-colors" title="Joindre un fichier">
+                <input type="file" name="fichier" class="sr-only">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              </label>
+              {% if not is_commercial %}
+              <label class="flex items-center gap-1.5 text-xs text-ardoise-500 cursor-pointer">
+                <input type="checkbox" name="is_internal" value="1" class="rounded border-ardoise-300">
+                Note interne
+              </label>
+              {% endif %}
+              <button type="submit" class="btn-primary btn-sm ml-auto">Envoyer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {# ── HISTORIQUE ───────────────────────────────────────────── #}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden" x-data="{open: false}">
+        <button @click="open = !open" class="w-full flex items-center justify-between px-5 py-4 text-left">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-ardoise-700">Historique des actions</span>
+            <span class="text-xs font-medium px-2 py-0.5 bg-ardoise-100 text-ardoise-500 rounded-full">{{ historique|length }}</span>
+          </div>
+          <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div x-show="open" x-transition style="display:none" class="border-t border-ardoise-100 max-h-72 overflow-y-auto divide-y divide-ardoise-100">
+          {% for h in historique reversed %}
+          <div class="flex items-start gap-3 px-5 py-3">
+            <div class="w-1.5 h-1.5 rounded-full bg-ardoise-300 mt-2 flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-ardoise-700">{{ h.action }}</p>
+              {% if h.detail %}<p class="text-xs text-ardoise-400 mt-0.5">{{ h.detail|truncatechars:80 }}</p>{% endif %}
+              <p class="text-xs text-ardoise-300 mt-0.5">{{ h.auteur.get_full_name|default:"Système" }} — {{ h.created_at|date:"d/m/Y H:i" }}</p>
+            </div>
+          </div>
+          {% empty %}
+          <div class="px-5 py-4 text-xs text-ardoise-400 text-center">Aucun historique.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>{# /col droite #}
+  </div>{# /grid #}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('msg-list');
+    if (el) el.scrollTop = el.scrollHeight;
+  });
+</script>
+{% endblock %}
