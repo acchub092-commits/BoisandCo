@@ -29,7 +29,8 @@
           {% elif demande.statut == 'REVISION_DG' %}bg-orange-100 text-orange-800
           {% elif demande.statut == 'DEVIS_VALIDE' or demande.statut == 'TRANSMIS' or demande.statut == 'ACCEPTE' %}bg-green-100 text-green-800
           {% elif demande.statut == 'REFUSE_CLI' %}bg-red-100 text-red-800
-          {% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+          {% else %}bg-ardoise-100 text-ardoise-600{% endif %}"
+          {% if demande.statut == 'SOUMIS_RM' %}style="background-color:#ede9fe; color:#5b21b6;"{% endif %}>
           {{ demande.get_statut_display }}
         </span>
         {% if demande.urgence == 'URGENT' %}
@@ -75,12 +76,12 @@
   {# ── Timeline workflow ──────────────────────────────────────── #}
   {% with s=demande.statut %}
   <div class="bg-white rounded-xl shadow-card px-6 py-4 overflow-x-auto">
-    <div class="relative min-w-[540px]">
-      <div class="absolute top-4 left-10 right-10 h-0.5 bg-ardoise-200 z-0"></div>
+    <div class="relative min-w-[660px]">
+      <div class="absolute top-4 left-8 right-8 h-0.5 bg-ardoise-200 z-0"></div>
       <div class="relative flex justify-between z-10">
 
         {% comment %}Étape 1 — Soumise{% endcomment %}
-        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+        <div class="flex flex-col items-center gap-1.5 w-20 text-center">
           <div class="w-8 h-8 rounded-full border-2 border-foret-500 bg-foret-500 text-white flex items-center justify-center">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
           </div>
@@ -91,7 +92,7 @@
         </div>
 
         {% comment %}Étape 2 — Validée DC{% endcomment %}
-        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+        <div class="flex flex-col items-center gap-1.5 w-20 text-center">
           <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
             {% if s == 'REJETEE' %}border-red-300 bg-red-100 text-red-500
             {% elif s == 'EN_ATTENTE' or s == 'RETOURNEE' %}border-ardoise-300 bg-white text-ardoise-400
@@ -109,16 +110,16 @@
         </div>
 
         {% comment %}Étape 3 — En chiffrage{% endcomment %}
-        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+        <div class="flex flex-col items-center gap-1.5 w-20 text-center">
           <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
             {% if s == 'EN_CHIFFRAGE' or s == 'REVISION_DG' %}border-indigo-500 bg-indigo-500 text-white ring-4 ring-indigo-100
-            {% elif s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-foret-500 bg-foret-500 text-white
+            {% elif s == 'SOUMIS_RM' or s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-foret-500 bg-foret-500 text-white
             {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
             {% if s == 'EN_CHIFFRAGE' or s == 'REVISION_DG' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg>
-            {% elif s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            {% elif s == 'SOUMIS_RM' or s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
             {% else %}<span class="text-xs font-bold">3</span>{% endif %}
           </div>
-          <p class="text-xs font-semibold text-ardoise-700">En chiffrage</p>
+          <p class="text-xs font-semibold text-ardoise-700">Chiffrage</p>
           <p class="text-xs text-ardoise-400">
             {% if s == 'EN_CHIFFRAGE' and demande.jalon %}<span class="text-indigo-600">{{ demande.get_jalon_display }}</span>
             {% elif s == 'REVISION_DG' %}<span class="text-orange-500">Révision</span>
@@ -126,15 +127,32 @@
           </p>
         </div>
 
-        {% comment %}Étape 4 — Soumis DG{% endcomment %}
-        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+        {% comment %}Étape 4 — Soumis RM{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-20 text-center">
+          <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
+            {% if s == 'SOUMIS_RM' %}text-white
+            {% elif s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-foret-500 bg-foret-500 text-white
+            {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}"
+            {% if s == 'SOUMIS_RM' %}style="border-color:#8b5cf6;background-color:#8b5cf6;box-shadow:0 0 0 4px #ede9fe;"{% endif %}>
+            {% if s == 'SOUMIS_RM' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {% elif s == 'SOUMIS_DG' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            {% else %}<span class="text-xs font-bold">4</span>{% endif %}
+          </div>
+          <p class="text-xs font-semibold text-ardoise-700">Resp. Mét.</p>
+          <p class="text-xs text-ardoise-400">
+            {% if s == 'SOUMIS_RM' %}<span style="color:#7c3aed;">En attente</span>{% else %}—{% endif %}
+          </p>
+        </div>
+
+        {% comment %}Étape 5 — Soumis DG{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-20 text-center">
           <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
             {% if s == 'SOUMIS_DG' %}border-purple-500 bg-purple-500 text-white ring-4 ring-purple-100
             {% elif s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-foret-500 bg-foret-500 text-white
             {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
             {% if s == 'SOUMIS_DG' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             {% elif s == 'DEVIS_VALIDE' or s == 'TRANSMIS' or s == 'ACCEPTE' or s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-            {% else %}<span class="text-xs font-bold">4</span>{% endif %}
+            {% else %}<span class="text-xs font-bold">5</span>{% endif %}
           </div>
           <p class="text-xs font-semibold text-ardoise-700">Soumis DG</p>
           <p class="text-xs text-ardoise-400">
@@ -142,15 +160,15 @@
           </p>
         </div>
 
-        {% comment %}Étape 5 — Clôturé{% endcomment %}
-        <div class="flex flex-col items-center gap-1.5 w-24 text-center">
+        {% comment %}Étape 6 — Clôturé{% endcomment %}
+        <div class="flex flex-col items-center gap-1.5 w-20 text-center">
           <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
             {% if s == 'ACCEPTE' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' %}border-foret-500 bg-foret-500 text-white
             {% elif s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-ardoise-400 bg-ardoise-400 text-white
             {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
             {% if s == 'ACCEPTE' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
             {% elif s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
-            {% else %}<span class="text-xs font-bold">5</span>{% endif %}
+            {% else %}<span class="text-xs font-bold">6</span>{% endif %}
           </div>
           <p class="text-xs font-semibold text-ardoise-700">Clôturé</p>
           <p class="text-xs">
@@ -233,7 +251,7 @@
       {% endif %}
 
       {# ── Widget Devis final ───────────────────────────────────── #}
-      {% if devis_latest or devis_archives %}
+      {% if devis_detail or devis_public %}
       <div x-data="{ histOpen: false }"
            class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4
                   {% if devis_visible %}border-foret-500{% else %}border-purple-400{% endif %}">
@@ -244,8 +262,7 @@
                     {% else %}bg-purple-50 border-b border-purple-100{% endif %}">
           {% if devis_visible %}
           <svg class="w-4 h-4 text-foret-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
           <h2 class="text-sm font-semibold text-foret-800">Devis final — Validé par la DG</h2>
           {% if demande.validated_dg_at %}
@@ -253,17 +270,61 @@
           {% endif %}
           {% else %}
           <svg class="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <h2 class="text-sm font-semibold text-purple-800">Devis soumis — En attente validation DG</h2>
+          <h2 class="text-sm font-semibold text-purple-800">
+            {% if demande.statut == 'SOUMIS_RM' %}Devis soumis — En attente Responsable Méthodes
+            {% else %}Devis soumis — En attente validation DG{% endif %}
+          </h2>
           <span class="ml-auto text-xs text-purple-400">Confidentiel DC / Commercial</span>
           {% endif %}
         </div>
 
-        {# ── Version actuelle (aperçu + téléchargement) ── #}
-        {% if devis_latest %}
-        {% with f=devis_latest %}
+        {# ── Chiffrage détaillé (interne — DG/Méthodes uniquement) ── #}
+        {% if devis_detail %}
+        {% with f=devis_detail %}
+        <div class="flex items-center gap-4 px-5 py-4 hover:bg-ardoise-50 transition-colors border-b border-ardoise-100">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs uppercase
+            {% if f.ext == 'pdf' %}bg-red-100 text-red-600
+            {% elif f.ext == 'xlsx' or f.ext == 'xls' %}bg-green-100 text-green-700
+            {% elif f.ext == 'docx' or f.ext == 'doc' %}bg-blue-100 text-blue-700
+            {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+            {{ f.ext|upper|truncatechars:4 }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-sm font-semibold text-ardoise-800 truncate">{{ f.nom }}</p>
+              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Chiffrage détaillé</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-ardoise-100 text-ardoise-500">Interne</span>
+            </div>
+            <p class="text-xs text-ardoise-400 mt-0.5">
+              {{ f.taille_human }} · {{ f.uploaded_at|date:"d/m/Y à H:i" }} · {{ f.uploaded_by.get_full_name|default:"—" }}
+            </p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border border-ardoise-200 text-ardoise-600 bg-white hover:bg-ardoise-50">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              Aperçu
+            </a>
+            <a href="{{ f.fichier.url }}" download="{{ f.nom }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-ardoise-100 text-ardoise-700 hover:bg-ardoise-200">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Télécharger
+            </a>
+          </div>
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        {# ── Devis client sans détail (public) ── #}
+        {% if devis_public %}
+        {% with f=devis_public %}
         <div class="flex items-center gap-4 px-5 py-4
                     {% if devis_visible %}hover:bg-foret-50{% else %}hover:bg-purple-50{% endif %}
                     transition-colors">
@@ -279,37 +340,32 @@
               <p class="text-sm font-semibold {% if devis_visible %}text-foret-900{% else %}text-ardoise-800{% endif %} truncate">
                 {{ f.nom }}
               </p>
-              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-foret-100 text-foret-700">
-                Version actuelle
-              </span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-foret-100 text-foret-700">Devis client</span>
+              {% if devis_visible %}
+              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Visible DC/Commercial</span>
+              {% else %}
+              <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-600">En attente validation DG</span>
+              {% endif %}
             </div>
             <p class="text-xs text-ardoise-400 mt-0.5">
               {{ f.taille_human }} · {{ f.uploaded_at|date:"d/m/Y à H:i" }} · {{ f.uploaded_by.get_full_name|default:"—" }}
             </p>
           </div>
-          {# Boutons action #}
           <div class="flex items-center gap-2 flex-shrink-0">
-            {# Aperçu — nouvelle page #}
-            <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}"
-               target="_blank" rel="noopener noreferrer"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                      border border-ardoise-200 text-ardoise-600 bg-white hover:bg-ardoise-50">
+            <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border border-ardoise-200 text-ardoise-600 bg-white hover:bg-ardoise-50">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
               </svg>
               Aperçu
             </a>
-            {# Télécharger #}
             <a href="{{ f.fichier.url }}" download="{{ f.nom }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
                       {% if devis_visible %}bg-foret-500 text-white hover:bg-foret-600
                       {% else %}bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100{% endif %}">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
               </svg>
               Télécharger
             </a>
@@ -318,81 +374,46 @@
         {% endwith %}
         {% endif %}
 
-        {# ── Historique des versions ── #}
+        {# ── Historique des versions (chiffrage détaillé) ── #}
         {% if devis_archives %}
         <div class="border-t border-ardoise-100">
-
-          {# Accordion toggle #}
           <button type="button" @click="histOpen = !histOpen"
                   class="w-full flex items-center gap-2.5 px-5 py-3 text-left hover:bg-ardoise-50 transition-colors">
             <svg class="w-4 h-4 text-ardoise-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
-            <span class="text-xs font-semibold text-ardoise-600">Historique des versions</span>
-            <span class="px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-500 text-xs font-medium">
-              {{ devis_archives|length }} archivée{{ devis_archives|length|pluralize }}
-            </span>
-            <span class="ml-auto text-xs text-ardoise-400 italic hidden sm:inline">Accès restreint · DG / Méthodes</span>
+            <span class="text-xs font-semibold text-ardoise-600">Versions précédentes</span>
+            <span class="px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-500 text-xs font-medium">{{ devis_archives|length }}</span>
+            <span class="ml-auto text-xs text-ardoise-400 italic hidden sm:inline">Interne — DG / Méthodes</span>
             <svg class="w-4 h-4 text-ardoise-400 transition-transform duration-200 flex-shrink-0"
                  :class="histOpen ? 'rotate-180' : ''"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-
-          {# Liste des versions archivées #}
-          <div x-show="histOpen" x-cloak
-               class="border-t border-ardoise-100 bg-ardoise-50/60 divide-y divide-ardoise-100">
-
-            {# Bannière info #}
-            <div class="flex items-center gap-2 px-5 py-2.5 bg-amber-50 border-b border-amber-100">
-              <svg class="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd"
-                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                      clip-rule="evenodd"/>
-              </svg>
-              <p class="text-xs text-amber-700">
-                Aperçu interne uniquement — non téléchargeables. Accès réservé au <strong>DG</strong> et aux <strong>Méthodes</strong>.
-              </p>
-            </div>
-
+          <div x-show="histOpen" x-cloak class="border-t border-ardoise-100 bg-ardoise-50/60 divide-y divide-ardoise-100">
             {% for f in devis_archives %}
             <div class="flex items-center gap-4 px-5 py-3">
-              <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                          font-bold text-xs uppercase bg-ardoise-200 text-ardoise-400">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-xs uppercase bg-ardoise-200 text-ardoise-400">
                 {{ f.ext|upper|truncatechars:4 }}
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm text-ardoise-500 truncate">{{ f.nom }}</p>
-                <p class="text-xs text-ardoise-400 mt-0.5">
-                  {{ f.taille_human }}
-                  <span class="text-ardoise-300 mx-1">·</span>
-                  {{ f.uploaded_at|date:"d/m/Y à H:i" }}
-                  <span class="text-ardoise-300 mx-1">·</span>
-                  {{ f.uploaded_by.get_full_name|default:"—" }}
-                </p>
+                <p class="text-xs text-ardoise-400 mt-0.5">{{ f.taille_human }} · {{ f.uploaded_at|date:"d/m/Y à H:i" }} · {{ f.uploaded_by.get_full_name|default:"—" }}</p>
               </div>
-              {# Aperçu — nouvelle page, lecture seule #}
-              <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}"
-                 target="_blank" rel="noopener noreferrer"
-                 class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium flex-shrink-0
-                        text-ardoise-500 bg-ardoise-100 hover:bg-ardoise-200 transition-colors">
+              <a href="{% url 'chiffrage:devis_preview' demande.pk f.pk %}" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 text-ardoise-500 bg-ardoise-100 hover:bg-ardoise-200 transition-colors">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                 </svg>
                 Voir
               </a>
             </div>
             {% endfor %}
-
           </div>
         </div>
         {% endif %}
-
 
       </div>
       {% endif %}
@@ -612,7 +633,7 @@
       {# ── PANEL MÉTHODES ──────────────────────────────────────── #}
 
       {# Prise en charge VALIDEE_DC #}
-      {% if demande.statut == 'VALIDEE_DC' and user.role == 'ESTIMATEUR' or demande.statut == 'VALIDEE_DC' and user.role == 'MANAGER' or demande.statut == 'VALIDEE_DC' and user.is_superuser %}
+      {% if demande.statut == 'VALIDEE_DC' and user.role == 'RESP_METHODES' or demande.statut == 'VALIDEE_DC' and user.is_superuser %}
       <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-indigo-400">
         <div class="px-5 py-3 bg-indigo-50 border-b border-indigo-100">
           <h3 class="text-sm font-bold text-indigo-800">Prise en charge — Service Méthodes</h3>
@@ -620,19 +641,55 @@
         <div class="px-5 py-4">
           <form method="post" action="{% url 'chiffrage:assigner' demande.pk %}">
             {% csrf_token %}
-            {% if chiffreurs and user.role == 'MANAGER' or chiffreurs and user.is_superuser %}
             <div class="mb-3">
-              <label class="form-label">Assigner à</label>
-              <select name="chiffreur" class="form-input">
-                <option value="">— Moi-même —</option>
+              <label class="form-label">Assigner à un méthodiste <span class="text-red-500">*</span></label>
+              <select name="chiffreur" class="form-input" required>
+                <option value="">— Sélectionner un méthodiste —</option>
                 {% for c in chiffreurs %}<option value="{{ c.pk }}">{{ c.get_full_name }}</option>{% endfor %}
               </select>
             </div>
-            {% endif %}
             <button type="submit" class="w-full py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">
-              Prendre en charge et démarrer le chiffrage
+              Assigner et démarrer le chiffrage
             </button>
           </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Approbation SOUMIS_RM (RESP_METHODES) #}
+      {% if demande.statut == 'SOUMIS_RM' and user.role == 'RESP_METHODES' or demande.statut == 'SOUMIS_RM' and user.is_superuser %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4" style="border-color:#8b5cf6;">
+        <div class="px-5 py-3 border-b" style="background-color:#f5f3ff;border-color:#ddd6fe;">
+          <h3 class="text-sm font-bold" style="color:#5b21b6;">Approbation — Responsable Méthodes</h3>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+          <p class="text-xs text-ardoise-500">Vérifiez les deux fichiers ci-dessus avant de statuer.</p>
+          {% if demande.montant_ht %}
+          <div class="p-3 bg-ardoise-50 rounded-lg">
+            <p class="text-xs text-ardoise-500 mb-0.5">Montant HT proposé</p>
+            <p class="text-xl font-bold text-ardoise-900">{{ demande.montant_ht|floatformat:2 }} <span class="text-sm font-normal text-ardoise-400">MAD</span></p>
+          </div>
+          {% endif %}
+          <form method="post" action="{% url 'chiffrage:valider_rm' demande.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approuver">
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-foret-500 text-white text-sm font-semibold hover:bg-foret-600 transition-colors flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Approuver — Soumettre à la DG
+            </button>
+          </form>
+          <div x-data="{show: false}">
+            <button type="button" @click="show = !show"
+                    class="w-full py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition-colors"
+                    x-text="show ? 'Annuler' : 'Retourner au méthodiste'"></button>
+            <form x-show="show" x-transition style="display:none" method="post" action="{% url 'chiffrage:valider_rm' demande.pk %}" class="mt-2 space-y-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="rejeter">
+              <label class="form-label">Corrections demandées *</label>
+              <textarea name="motif" rows="3" required class="form-input resize-none" placeholder="Décrivez les corrections à apporter…"></textarea>
+              <button type="submit" class="w-full py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors">Retourner pour correction</button>
+            </form>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -668,21 +725,30 @@
         </div>
       </div>
 
-      {# Soumettre à la DG #}
-      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden" x-data="{open: false}">
+      {# Soumettre au Responsable Méthodes #}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4" style="border-color:#8b5cf6;" x-data="{open: false}">
         <button @click="open = !open" class="w-full flex items-center justify-between px-5 py-4 text-left">
-          <span class="text-sm font-semibold text-ardoise-700">Soumettre le devis à la DG</span>
+          <span class="text-sm font-semibold text-ardoise-700">Soumettre le devis au Resp. Méthodes</span>
           <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div x-show="open" x-transition style="display:none" class="px-5 pb-5 border-t border-ardoise-100">
-          <form method="post" action="{% url 'chiffrage:soumettre_dg' demande.pk %}" enctype="multipart/form-data" class="mt-3 space-y-3">
+          <p class="text-xs text-ardoise-500 mt-3 mb-3">Les deux fichiers sont obligatoires. Le chiffrage détaillé reste confidentiel ; seul le devis sans détail sera partagé avec le DC et le commercial après validation DG.</p>
+          <form method="post" action="{% url 'chiffrage:soumettre_dg' demande.pk %}" enctype="multipart/form-data" class="space-y-3">
             {% csrf_token %}
             <div>
-              <label class="form-label">Fichier devis final (optionnel)</label>
-              <input type="file" name="fichier_devis" class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700">
+              <label class="form-label">Chiffrage détaillé (interne) <span class="text-red-500">*</span></label>
+              <input type="file" name="fichier_detail" required
+                     class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
+              <p class="text-xs text-ardoise-400 mt-1">Visible uniquement par les Méthodes et la DG</p>
             </div>
-            <button type="submit" class="w-full py-2.5 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">
-              Soumettre à la Direction Générale
+            <div>
+              <label class="form-label">Devis sans détail (version client) <span class="text-red-500">*</span></label>
+              <input type="file" name="fichier_public" required
+                     class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
+              <p class="text-xs text-ardoise-400 mt-1">Partagé avec le DC et le commercial après validation DG</p>
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-lg text-white text-sm font-semibold transition-colors" style="background-color:#8b5cf6;" onmouseover="this.style.backgroundColor='#7c3aed'" onmouseout="this.style.backgroundColor='#8b5cf6'">
+              Soumettre au Responsable Méthodes
             </button>
           </form>
         </div>
@@ -690,7 +756,7 @@
       {% endif %}
 
       {# Reprendre révision DG #}
-      {% if demande.statut == 'REVISION_DG' and user.role == 'ESTIMATEUR' or demande.statut == 'REVISION_DG' and user.role == 'MANAGER' or demande.statut == 'REVISION_DG' and user.is_superuser %}
+      {% if demande.statut == 'REVISION_DG' and user.role == 'ESTIMATEUR' or demande.statut == 'REVISION_DG' and user.role == 'RESP_METHODES' or demande.statut == 'REVISION_DG' and user.role == 'MANAGER' or demande.statut == 'REVISION_DG' and user.is_superuser %}
       <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-orange-400">
         <div class="px-5 py-4">
           <p class="text-sm font-semibold text-ardoise-700 mb-1">Révision DG demandée</p>

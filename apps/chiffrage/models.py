@@ -23,6 +23,7 @@ class DemandeChiffrage(models.Model):
         REJETEE      = 'REJETEE',      'Rejetée — À corriger'
         RETOURNEE    = 'RETOURNEE',    'Retournée pour complétion'
         EN_CHIFFRAGE = 'EN_CHIFFRAGE', 'En cours de chiffrage'
+        SOUMIS_RM    = 'SOUMIS_RM',   'Soumis au Responsable Méthodes'
         SOUMIS_DG    = 'SOUMIS_DG',   'Soumis à la DG'
         REVISION_DG  = 'REVISION_DG',  'En révision — Retour DG'
         DEVIS_VALIDE = 'DEVIS_VALIDE', 'Devis validé'
@@ -188,6 +189,8 @@ class FichierChiffrage(models.Model):
                                       verbose_name='Interne (invisible commercial)')
     is_devis    = models.BooleanField(default=False,
                                       verbose_name='Fichier devis final')
+    is_public   = models.BooleanField(default=False,
+                                      verbose_name='Devis sans détail (visible DC/Commercial après validation DG)')
 
     class Meta:
         ordering = ['-uploaded_at']

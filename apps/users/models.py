@@ -10,17 +10,18 @@ class User(AbstractUser):
     """
 
     class Role(models.TextChoices):
-        ADMIN      = 'ADMIN',      'Administrateur'
-        DIRECTEUR  = 'DIRECTEUR',  'Directeur Général (DG)'
-        MANAGER    = 'MANAGER',    'Directeur Commercial (DC)'
-        ESTIMATEUR = 'ESTIMATEUR', 'Méthodes / Estimateur'
-        COMMERCIAL = 'COMMERCIAL', 'Commercial'
-        ADV        = 'ADV',        'ADV'
-        ATELIER    = 'ATELIER',    'Usine'
-        CHAUFFEUR  = 'CHAUFFEUR',  'Logistique'
-        POSEUR     = 'POSEUR',     'Poseur'
-        FINANCE    = 'FINANCE',    'Finance'
-        SAV        = 'SAV',        'SAV'
+        ADMIN         = 'ADMIN',         'Administrateur'
+        DIRECTEUR     = 'DIRECTEUR',     'Directeur Général (DG)'
+        MANAGER       = 'MANAGER',       'Directeur Commercial (DC)'
+        RESP_METHODES = 'RESP_METHODES', 'Responsable Méthodes'
+        ESTIMATEUR    = 'ESTIMATEUR',    'Méthodes / Estimateur'
+        COMMERCIAL    = 'COMMERCIAL',    'Commercial'
+        ADV           = 'ADV',           'ADV'
+        ATELIER       = 'ATELIER',       'Usine'
+        CHAUFFEUR     = 'CHAUFFEUR',     'Logistique'
+        POSEUR        = 'POSEUR',        'Poseur'
+        FINANCE       = 'FINANCE',       'Finance'
+        SAV           = 'SAV',           'SAV'
 
     role = models.CharField(
         max_length=20,

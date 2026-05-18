@@ -64,11 +64,11 @@
   <div class="flex flex-wrap gap-2">
     <a href="{% url 'users:list' %}"
        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
-              {% if not selected_role %}bg-ardoise-800 text-white border-ardoise-800
+              {% if not selected_role and not show_inactive %}bg-ardoise-800 text-white border-ardoise-800
               {% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
       Tous
       <span class="px-1.5 py-0.5 rounded-full text-xs
-             {% if not selected_role %}bg-white/20{% else %}bg-ardoise-100{% endif %}">
+             {% if not selected_role and not show_inactive %}bg-white/20{% else %}bg-ardoise-100{% endif %}">
         {{ total }}
       </span>
     </a>
@@ -100,6 +100,18 @@
     </a>
     {% endif %}
     {% endfor %}
+    {% if user.is_manager_or_above and inactive_count %}
+    <a href="?inactifs=1"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+              {% if show_inactive %}bg-red-600 text-white border-red-600
+              {% else %}bg-white text-red-500 border-red-200 hover:border-red-400{% endif %}">
+      Désactivés
+      <span class="px-1.5 py-0.5 rounded-full text-xs
+             {% if show_inactive %}bg-white/20{% else %}bg-red-50 text-red-600{% endif %}">
+        {{ inactive_count }}
+      </span>
+    </a>
+    {% endif %}
   </div>
 
   {# ════════════════════════════════════════════════════════════ #}
@@ -187,11 +199,11 @@
           {% endif %}
         </div>
 
-        {# Bouton Modifier #}
+        {# Boutons actions #}
         {% if user.is_manager_or_above or user.pk == member.pk %}
-        <div class="mt-3 pt-3 border-t border-ardoise-100">
+        <div class="mt-3 pt-3 border-t border-ardoise-100 flex gap-2">
           <a href="{% url 'users:update' member.pk %}"
-             class="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-xs font-medium
+             class="flex items-center justify-center gap-1.5 flex-1 py-1.5 rounded-lg text-xs font-medium
                     text-ardoise-500 hover:text-bois-700 hover:bg-bois-50 border border-ardoise-200
                     hover:border-bois-300 transition-all">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,6 +212,28 @@
             </svg>
             {% if user.pk == member.pk %}Mon profil{% else %}Modifier{% endif %}
           </a>
+          {% if user.is_manager_or_above and user.pk != member.pk %}
+          <form method="post" action="{% url 'users:toggle_active' member.pk %}"
+                x-data
+                @submit.prevent="if(confirm('{% if member.is_active_employee %}Désactiver{% else %}Réactiver{% endif %} le compte de {{ member.get_full_name }} ?')) $el.submit()">
+            {% csrf_token %}
+            <button type="submit"
+                    title="{% if member.is_active_employee %}Désactiver{% else %}Réactiver{% endif %}"
+                    class="flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium border transition-all
+                           {% if member.is_active_employee %}text-red-400 border-ardoise-200 hover:bg-red-50 hover:border-red-300 hover:text-red-600
+                           {% else %}text-green-500 border-green-200 hover:bg-green-50 hover:border-green-300{% endif %}">
+              {% if member.is_active_employee %}
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+              </svg>
+              {% else %}
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {% endif %}
+            </button>
+          </form>
+          {% endif %}
         </div>
         {% endif %}
       </div>
@@ -328,20 +362,46 @@
               {% endif %}
             </td>
 
-            {# Action Modifier #}
+            {# Actions #}
             <td class="px-4 py-3 text-right">
-              {% if user.is_manager_or_above or user.pk == member.pk %}
-              <a href="{% url 'users:update' member.pk %}"
-                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                        text-ardoise-500 hover:text-bois-700 hover:bg-bois-50 border border-transparent
-                        group-hover:border-ardoise-200 hover:border-bois-300 transition-all">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                </svg>
-                {% if user.pk == member.pk %}Mon profil{% else %}Modifier{% endif %}
-              </a>
-              {% endif %}
+              <div class="inline-flex items-center gap-2">
+                {% if user.is_manager_or_above or user.pk == member.pk %}
+                <a href="{% url 'users:update' member.pk %}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                          text-ardoise-500 hover:text-bois-700 hover:bg-bois-50 border border-transparent
+                          group-hover:border-ardoise-200 hover:border-bois-300 transition-all">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                  {% if user.pk == member.pk %}Mon profil{% else %}Modifier{% endif %}
+                </a>
+                {% endif %}
+                {% if user.is_manager_or_above and user.pk != member.pk %}
+                <form method="post" action="{% url 'users:toggle_active' member.pk %}"
+                      x-data
+                      @submit.prevent="if(confirm('{% if member.is_active_employee %}Désactiver{% else %}Réactiver{% endif %} le compte de {{ member.get_full_name }} ?')) $el.submit()">
+                  {% csrf_token %}
+                  <button type="submit"
+                          title="{% if member.is_active_employee %}Désactiver{% else %}Réactiver{% endif %}"
+                          class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all
+                                 {% if member.is_active_employee %}text-red-500 border-red-200 hover:bg-red-50 hover:border-red-400
+                                 {% else %}text-green-600 border-green-200 hover:bg-green-50 hover:border-green-400{% endif %}">
+                    {% if member.is_active_employee %}
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                    Désactiver
+                    {% else %}
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Réactiver
+                    {% endif %}
+                  </button>
+                </form>
+                {% endif %}
+              </div>
             </td>
 
           </tr>

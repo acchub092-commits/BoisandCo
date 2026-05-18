@@ -154,6 +154,19 @@
               </div>
             </label>
 
+            {# RESP_METHODES #}
+            <label class="relative flex items-start gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all bg-white"
+                   :class="role === 'RESP_METHODES' ? 'border-ardoise-200' : 'border-ardoise-200'"
+                   :style="role === 'RESP_METHODES' ? 'border-color:#8b5cf6; background-color:#f5f3ff;' : ''"
+                   @click="role = 'RESP_METHODES'">
+              <input type="radio" name="role" value="RESP_METHODES" x-model="role" class="sr-only">
+              <span class="w-3 h-3 rounded-full flex-shrink-0 mt-0.5" style="background-color:#8b5cf6;"></span>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-ardoise-800">Responsable Méthodes</p>
+                <p class="text-xs text-ardoise-500 mt-0.5">Assigne les méthodistes · Approuve les devis avant DG</p>
+              </div>
+            </label>
+
             {# ESTIMATEUR = Méthodes #}
             <label class="relative flex items-start gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all"
                    :class="role === 'ESTIMATEUR' ? 'border-blue-500 bg-blue-50' : 'border-ardoise-200 hover:border-blue-300 bg-white'"
@@ -162,7 +175,7 @@
               <span class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0 mt-0.5"></span>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-bold text-ardoise-800">Méthodes / Estimateur</p>
-                <p class="text-xs text-ardoise-500 mt-0.5">Chiffre les devis · Soumet à la DG</p>
+                <p class="text-xs text-ardoise-500 mt-0.5">Chiffre les devis · Soumet au Resp. Méthodes</p>
               </div>
             </label>
 

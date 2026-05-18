@@ -21,6 +21,9 @@ django-tailwind==3.8.0
 # ── Base de données ─────────────────────────────────────────
 psycopg2-binary==2.9.10
 
+# ── Serveur WSGI (production) ───────────────────────────────
+gunicorn==23.0.0
+
 # ── Fichiers statiques (prod) ───────────────────────────────
 whitenoise==6.7.0
 

@@ -42,7 +42,7 @@
   </a>
 
   {# ── Chiffrage ── #}
-  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.is_superuser %}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.is_superuser %}
   <a href="{% url 'chiffrage:dashboard' %}"
      class="nav-link {% if 'chiffrage' in request.path %}nav-link-active{% endif %}"
      :class="sidebarOpen ? '' : 'justify-center px-0'"
@@ -190,6 +190,21 @@
 
   {% endwith %}
 </nav>
+
+{# Version / Copyright ───────────────────────────────────────── #}
+<div class="px-3 pb-2 flex-shrink-0" :class="sidebarOpen ? '' : 'flex justify-center'">
+  <div :class="sidebarOpen ? 'block' : 'hidden'">
+    <p class="text-[10px] font-mono" style="color: rgba(242,232,213,0.35);">
+      &copy; Bois&amp;Co &middot; v{{ APP_VERSION }}
+    </p>
+  </div>
+  <span :class="sidebarOpen ? 'hidden' : 'inline-flex items-center justify-center'"
+        class="rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold"
+        style="background-color: rgba(242,232,213,0.08); color: rgba(242,232,213,0.30); border: 1px solid rgba(242,232,213,0.10);"
+        title="© Bois&Co · v{{ APP_VERSION }}">
+    v{{ APP_VERSION }}
+  </span>
+</div>
 
 {# Profil ─────────────────────────────────────────────────────── #}
 <div class="p-3 flex-shrink-0" style="border-top: 1px solid rgba(242,232,213,0.12);">

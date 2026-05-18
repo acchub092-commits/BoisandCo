@@ -24,7 +24,12 @@ class UserListView(LoginRequiredMixin, ListView):
     context_object_name = 'users'
 
     def get_queryset(self):
-        qs = User.objects.filter(is_active_employee=True).order_by('last_name', 'first_name')
+        show_inactive = (
+            self.request.GET.get('inactifs') == '1'
+            and (self.request.user.is_manager_or_above or self.request.user.is_superuser)
+        )
+        self._show_inactive = show_inactive
+        qs = User.objects.filter(is_active_employee=not show_inactive).order_by('last_name', 'first_name')
         role = self.request.GET.get('role', '')
         if role:
             qs = qs.filter(role=role)
@@ -32,11 +37,13 @@ class UserListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        show_inactive = getattr(self, '_show_inactive', False)
         ctx['selected_role'] = self.request.GET.get('role', '')
-        ctx['total'] = User.objects.filter(is_active_employee=True).count()
-        # Tuples (val, label, count) pour les pills de filtre
+        ctx['show_inactive'] = show_inactive
+        ctx['total'] = User.objects.filter(is_active_employee=not show_inactive).count()
+        ctx['inactive_count'] = User.objects.filter(is_active_employee=False).count()
         ctx['role_stats'] = [
-            (r, label, User.objects.filter(is_active_employee=True, role=r).count())
+            (r, label, User.objects.filter(is_active_employee=not show_inactive, role=r).count())
             for r, label in User.Role.choices
         ]
         return ctx
@@ -210,3 +217,20 @@ class UserUpdateView(LoginRequiredMixin, View):
                 'role': member.role,
             },
         }
+
+
+class UserToggleActiveView(ManagerRequiredMixin, View):
+    def post(self, request, pk):
+        member = get_object_or_404(User, pk=pk)
+        if member.pk == request.user.pk:
+            messages.error(request, 'Vous ne pouvez pas désactiver votre propre compte.')
+            return redirect('users:list')
+        if member.is_superuser and not request.user.is_superuser:
+            messages.error(request, 'Action non autorisée.')
+            return redirect('users:list')
+        member.is_active_employee = not member.is_active_employee
+        member.is_active = member.is_active_employee
+        member.save(update_fields=['is_active_employee', 'is_active'])
+        action = 'réactivé' if member.is_active_employee else 'désactivé'
+        messages.success(request, f'Compte de « {member.get_full_name()} » {action}.')
+        return redirect(request.META.get('HTTP_REFERER', 'users:list'))

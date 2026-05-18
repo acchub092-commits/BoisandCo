@@ -16,6 +16,7 @@ urlpatterns = [
     path('<int:pk>/jalon/',               views.JalonView.as_view(),         name='jalon'),
     path('<int:pk>/montant/',             views.MontantView.as_view(),       name='montant'),
     path('<int:pk>/soumettre-dg/',        views.SoumettreDevisView.as_view(),name='soumettre_dg'),
+    path('<int:pk>/valider-rm/',          views.ValiderRMView.as_view(),     name='valider_rm'),
     path('<int:pk>/reprendre/',           views.RepriseRevisionView.as_view(),name='reprendre'),
 
     # Actions DG

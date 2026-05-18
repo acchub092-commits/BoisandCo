@@ -21,7 +21,7 @@ from .models import (
 )
 from apps.users.models import User
 
-ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'ADMIN')
+ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES', 'ADMIN')
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ def _qs_for_user(user):
     )
     if user.role == 'COMMERCIAL' and not user.is_superuser:
         return qs.filter(commercial=user)
-    # MANAGER, DIRECTEUR, ESTIMATEUR, ADMIN voient tout
+    # MANAGER, DIRECTEUR, ESTIMATEUR, RESP_METHODES, ADMIN voient tout
     return qs
 
 
@@ -255,7 +255,10 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
 
         # Fichiers — séparés en deux widgets distincts
         is_commercial = request.user.role == 'COMMERCIAL' and not request.user.is_superuser
-        is_manager    = request.user.role == 'MANAGER' or request.user.is_superuser
+        is_internal   = (
+            request.user.role in ('DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES')
+            or request.user.is_superuser
+        )
         POST_DG = {'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE'}
         devis_visible = demande.statut in POST_DG
 
@@ -265,18 +268,23 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
             dossier_qs = dossier_qs.filter(is_internal=False)
         fichiers = dossier_qs
 
-        # Widget 2 — Devis final (is_devis=True)
-        # DG + Méthodes + Admin : dernière version + historique lecture seule
-        # DC + Commercial : dernière version uniquement, seulement après validation DG
-        all_devis = demande.fichiers.filter(is_devis=True).order_by('-uploaded_at')
-        if request.user.role in ('DIRECTEUR', 'ESTIMATEUR') or request.user.is_superuser:
-            devis_latest   = all_devis.first()
-            devis_archives = list(all_devis[1:])   # versions antérieures, lecture seule
+        # Widget 2 — Devis (is_devis=True)
+        # Utilisateurs internes (DG/Méthodes/RM) : chiffrage détaillé + devis public + archives
+        # DC/Commercial : uniquement le fichier public (is_public=True) après validation DG
+        all_devis_detail = demande.fichiers.filter(is_devis=True, is_public=False).order_by('-uploaded_at')
+        all_devis_public = demande.fichiers.filter(is_devis=True, is_public=True).order_by('-uploaded_at')
+
+        if is_internal:
+            devis_detail   = all_devis_detail.first()
+            devis_public   = all_devis_public.first()
+            devis_archives = list(all_devis_detail[1:])
         elif devis_visible:
-            devis_latest   = all_devis.first()
+            devis_detail   = None
+            devis_public   = all_devis_public.first()
             devis_archives = []
         else:
-            devis_latest   = None
+            devis_detail   = None
+            devis_public   = None
             devis_archives = []
 
         # Messages filtrés (commerciaux ne voient pas les notes internes)
@@ -298,7 +306,9 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
             'modif_en_attente':  modif_en_attente,
             'chiffreurs':        chiffreurs,
             'is_commercial':     is_commercial,
-            'devis_latest':      devis_latest,
+            'is_internal':       is_internal,
+            'devis_detail':      devis_detail,
+            'devis_public':      devis_public,
             'devis_archives':    devis_archives,
             'devis_visible':     devis_visible,
             'jalons':            DemandeChiffrage.Jalon.choices,
@@ -327,11 +337,11 @@ class ActionDCView(ChiffrageRequiredMixin, View):
             demande.validated_dc_at = timezone.now()
             demande.save()
             _log(demande, request.user, 'Validée par DC', nouveau=demande.statut, ancien=ancien)
-            # Notification → Méthodes
-            methodes = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
-            _notify(methodes,
-                f'Nouvelle demande à chiffrer — {demande.reference}',
-                f'La demande {demande.reference} ({demande.client_nom}) est prête à être chiffrée.',
+            # Notification → Responsable Méthodes
+            resp_methodes = User.objects.filter(role='RESP_METHODES', is_active_employee=True)
+            _notify(resp_methodes,
+                f'Nouvelle demande à assigner — {demande.reference}',
+                f'La demande {demande.reference} ({demande.client_nom}) est prête à être assignée à un méthodiste.',
                 sender=request.user, demande=demande)
             django_messages.success(request, 'Demande validée et transmise au Service Méthodes.')
 
@@ -372,13 +382,19 @@ class ActionDCView(ChiffrageRequiredMixin, View):
 
 class AssignerView(ChiffrageRequiredMixin, View):
     def post(self, request, pk):
-        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+        if not request.user.is_superuser and request.user.role not in ('RESP_METHODES', 'DIRECTEUR'):
             return HttpResponseForbidden()
         demande = get_object_or_404(DemandeChiffrage, pk=pk,
                                     statut=DemandeChiffrage.Statut.VALIDEE_DC)
         chiffreur_id = request.POST.get('chiffreur') or None
         ancien = demande.statut
-        demande.assigned_to = User.objects.get(pk=chiffreur_id) if chiffreur_id else request.user
+        if chiffreur_id:
+            demande.assigned_to = User.objects.get(pk=chiffreur_id)
+        elif request.user.role == 'RESP_METHODES':
+            django_messages.error(request, 'Veuillez sélectionner un méthodiste.')
+            return redirect('chiffrage:detail', pk=pk)
+        else:
+            demande.assigned_to = request.user
         demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
         demande.jalon  = DemandeChiffrage.Jalon.ANALYSE
         demande.save()
@@ -421,30 +437,78 @@ class MontantView(ChiffrageRequiredMixin, View):
 
 class SoumettreDevisView(ChiffrageRequiredMixin, View):
     def post(self, request, pk):
-        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR',):
             return HttpResponseForbidden()
         demande = get_object_or_404(
             DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.EN_CHIFFRAGE
         )
-        # Fichier devis optionnel
-        fichier = request.FILES.get('fichier_devis')
-        if fichier:
-            FichierChiffrage.objects.create(
-                demande=demande, fichier=fichier, nom=fichier.name,
-                uploaded_by=request.user, is_devis=True,
-            )
+        fichier_detail = request.FILES.get('fichier_detail')
+        fichier_public = request.FILES.get('fichier_public')
+        if not fichier_detail or not fichier_public:
+            django_messages.error(request, 'Les deux fichiers (chiffrage détaillé et devis sans détail) sont obligatoires.')
+            return redirect('chiffrage:detail', pk=pk)
+        FichierChiffrage.objects.create(
+            demande=demande, fichier=fichier_detail, nom=fichier_detail.name,
+            uploaded_by=request.user, is_devis=True, is_public=False,
+        )
+        FichierChiffrage.objects.create(
+            demande=demande, fichier=fichier_public, nom=fichier_public.name,
+            uploaded_by=request.user, is_devis=True, is_public=True,
+        )
         ancien = demande.statut
-        demande.statut = DemandeChiffrage.Statut.SOUMIS_DG
+        demande.statut = DemandeChiffrage.Statut.SOUMIS_RM
         demande.jalon  = ''
         demande.save()
-        _log(demande, request.user, 'Devis soumis à la DG',
+        _log(demande, request.user, 'Devis soumis au Responsable Méthodes',
              nouveau=demande.statut, ancien=ancien)
-        dg_users = User.objects.filter(role='DIRECTEUR', is_active_employee=True)
-        _notify(dg_users,
-            f'Devis à valider — {demande.reference}',
-            f'Le devis {demande.reference} ({demande.client_nom}) est prêt pour votre validation.',
+        resp_methodes = User.objects.filter(role='RESP_METHODES', is_active_employee=True)
+        _notify(resp_methodes,
+            f'Devis à approuver — {demande.reference}',
+            f'Le devis {demande.reference} ({demande.client_nom}) est prêt pour votre approbation.',
             sender=request.user, demande=demande)
-        django_messages.success(request, 'Devis soumis à la Direction Générale pour validation.')
+        django_messages.success(request, 'Devis soumis au Responsable Méthodes pour approbation.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+class ValiderRMView(ChiffrageRequiredMixin, View):
+    """Approbation ou rejet par le Responsable Méthodes."""
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role != 'RESP_METHODES':
+            return HttpResponseForbidden()
+        demande = get_object_or_404(
+            DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.SOUMIS_RM
+        )
+        action = request.POST.get('action')
+        motif  = request.POST.get('motif', '').strip()
+        ancien = demande.statut
+
+        if action == 'approuver':
+            demande.statut = DemandeChiffrage.Statut.SOUMIS_DG
+            demande.save()
+            _log(demande, request.user, 'Approuvé par Responsable Méthodes — soumis DG',
+                 nouveau=demande.statut, ancien=ancien)
+            dg_users = User.objects.filter(role='DIRECTEUR', is_active_employee=True)
+            _notify(dg_users,
+                f'Devis à valider — {demande.reference}',
+                f'Le devis {demande.reference} ({demande.client_nom}) est prêt pour votre validation.',
+                sender=request.user, demande=demande)
+            django_messages.success(request, 'Devis soumis à la Direction Générale.')
+
+        elif action == 'rejeter':
+            if not motif:
+                django_messages.error(request, 'Un motif est requis pour retourner le devis.')
+                return redirect('chiffrage:detail', pk=pk)
+            demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
+            demande.save()
+            _log(demande, request.user, f'Retourné par RM : {motif}',
+                 nouveau=demande.statut, ancien=ancien)
+            if demande.assigned_to:
+                _notify([demande.assigned_to],
+                    f'Devis retourné — {demande.reference}',
+                    f'Le Responsable Méthodes demande des corrections : {motif}',
+                    sender=request.user, demande=demande)
+            django_messages.warning(request, 'Devis retourné au méthodiste pour correction.')
+
         return redirect('chiffrage:detail', pk=pk)
 
 
@@ -726,12 +790,14 @@ class DevisPreviewView(ChiffrageRequiredMixin, View):
 
         devis_visible = demande.statut in self.POST_DG
 
-        if request.user.role in ('DIRECTEUR', 'ESTIMATEUR'):
+        if request.user.role in ('DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES') or request.user.is_superuser:
             pass  # accès complet à toutes les versions
         elif devis_visible:
-            # DC et Commercial : uniquement la version la plus récente
+            # DC et Commercial : uniquement le fichier public (sans détail), version la plus récente
+            if not fichier.is_public:
+                raise Http404
             latest = (
-                demande.fichiers.filter(is_devis=True)
+                demande.fichiers.filter(is_devis=True, is_public=True)
                 .order_by('-uploaded_at')
                 .first()
             )
