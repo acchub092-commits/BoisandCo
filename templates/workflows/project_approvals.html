@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Validations — {{ project.reference }}{% endblock %}
+{% block page_title %}Historique des validations{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'workflows:project_workflows' project.pk %}" class="btn-secondary btn-sm">← Configuration</a>
+<a href="{% url 'projects:detail' project.pk %}" class="btn-secondary btn-sm">Projet</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  {# ── En-tête #}
+  <div class="card py-3 flex items-center gap-3">
+    <div class="flex-1">
+      <p class="text-sm font-semibold text-ardoise-800">{{ project.name }}</p>
+      <p class="text-xs text-ardoise-500">{{ project.reference }} · {{ project.client_name }}</p>
+    </div>
+    <p class="text-sm text-ardoise-500">{{ approval_requests|length }} demande{{ approval_requests|length|pluralize }}</p>
+  </div>
+
+  {% if not approval_requests %}
+  <div class="card text-center py-12">
+    <svg class="w-10 h-10 mx-auto text-ardoise-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <p class="text-ardoise-500 text-sm">Aucune demande de validation sur ce projet.</p>
+  </div>
+  {% else %}
+
+  <div class="space-y-3">
+    {% for req in approval_requests %}
+    <div class="card">
+      {# ── En-tête de la demande #}
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            {# Badge statut #}
+            {% if req.status == 'IN_PROGRESS' %}
+            <span class="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">En cours</span>
+            {% elif req.status == 'APPROVED' %}
+            <span class="text-xs px-2.5 py-1 rounded-full bg-foret-100 text-foret-700 font-semibold">Approuvé</span>
+            {% elif req.status == 'REJECTED' %}
+            <span class="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-700 font-semibold">Rejeté</span>
+            {% else %}
+            <span class="text-xs px-2.5 py-1 rounded-full bg-ardoise-100 text-ardoise-500 font-semibold">Annulé</span>
+            {% endif %}
+
+            <span class="text-sm font-semibold text-ardoise-800">
+              {% if req.phase %}Phase : {{ req.phase.name }}{% else %}Tâche : {{ req.task.name }}{% endif %}
+            </span>
+          </div>
+
+          <p class="text-xs text-ardoise-400">
+            Workflow : {{ req.template.name }}
+            · Lancé par <span class="font-medium">{{ req.initiated_by.get_full_name|default:req.initiated_by.username }}</span>
+            le {{ req.initiated_at|date:"d/m/Y à H:i" }}
+          </p>
+          {% if req.completed_at %}
+          <p class="text-xs text-ardoise-400">Terminé le {{ req.completed_at|date:"d/m/Y à H:i" }}</p>
+          {% endif %}
+        </div>
+
+        {# Bouton décision si en cours et utilisateur concerné #}
+        {% if req.status == 'IN_PROGRESS' %}
+        <div class="flex-shrink-0">
+          {% with step=req.current_step %}
+          {% if step %}
+          <p class="text-xs text-ardoise-500 text-right mb-1">
+            Étape en cours : <span class="font-medium">{{ step.name }}</span>
+          </p>
+          {% endif %}
+          {% endwith %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── Décisions enregistrées #}
+      {% if req.decisions.all %}
+      <div class="border-t border-ardoise-100 pt-3 mt-3">
+        <p class="text-xs font-semibold text-ardoise-500 uppercase tracking-wide mb-2">Décisions</p>
+        <div class="space-y-2">
+          {% for decision in req.decisions.all %}
+          <div class="flex items-start gap-3 text-sm">
+            <div class="flex-shrink-0 mt-0.5">
+              {% if decision.decision == 'APPROVED' %}
+              <svg class="w-4 h-4 text-foret-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clip-rule="evenodd"/>
+              </svg>
+              {% else %}
+              <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clip-rule="evenodd"/>
+              </svg>
+              {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-ardoise-800">
+                <span class="font-medium">{{ decision.decided_by.get_full_name|default:decision.decided_by.username }}</span>
+                — {{ decision.step.name }}
+                <span class="text-ardoise-400 text-xs ml-1">{{ decision.decided_at|date:"d/m H:i" }}</span>
+              </p>
+              {% if decision.comment %}
+              <p class="text-ardoise-500 text-xs mt-0.5">{{ decision.comment }}</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Formulaire de décision (si l'utilisateur courant est validateur) #}
+      {% if req.status == 'IN_PROGRESS' %}
+      <div class="border-t border-ardoise-100 pt-3 mt-3">
+        <form method="post" action="{% url 'workflows:approval_decision' req.pk %}"
+              x-data="{ decision: '' }">
+          {% csrf_token %}
+          <p class="text-xs font-semibold text-ardoise-500 uppercase tracking-wide mb-2">Soumettre ma décision</p>
+          <div class="flex items-end gap-3">
+            <div class="flex-1">
+              <label class="form-label">Commentaire (optionnel)</label>
+              <input type="text" name="comment" class="form-input" placeholder="Précisez si nécessaire…">
+            </div>
+            <div class="flex gap-2">
+              <button type="submit" name="decision" value="APPROVED"
+                      class="btn-sm bg-foret-500 text-white hover:bg-foret-600 rounded-lg px-4 py-2 font-medium transition-colors">
+                Approuver
+              </button>
+              <button type="submit" name="decision" value="REJECTED"
+                      class="btn-sm bg-red-500 text-white hover:bg-red-600 rounded-lg px-4 py-2 font-medium transition-colors">
+                Rejeter
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

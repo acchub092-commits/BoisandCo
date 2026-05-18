@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Ajouter un document — {{ lead.project_name }}{% endblock %}
+{% block page_title %}Documents{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:lead_detail' lead.pk %}" class="btn-secondary btn-sm">← {{ lead.project_name }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <div class="card p-0 overflow-hidden"
+       x-data="{
+         preview: null, fileName: '', fileSize: '',
+         onFile(e) {
+           const f = e.target.files[0];
+           if (!f) return;
+           this.fileName = f.name;
+           this.fileSize = (f.size/1024).toFixed(0) + ' Ko';
+           const imgs = ['image/jpeg','image/png','image/webp'];
+           if (imgs.includes(f.type)) {
+             const r = new FileReader();
+             r.onload = ev => this.preview = ev.target.result;
+             r.readAsDataURL(f);
+           } else { this.preview = null; }
+         }
+       }">
+
+    <div class="px-6 py-4 border-b border-ardoise-100 bg-ardoise-50">
+      <h2 class="text-base font-semibold text-ardoise-900">Ajouter un document</h2>
+      <p class="text-xs text-ardoise-500 mt-0.5">{{ lead.project_name }} · {{ lead.contact_name }}</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5">
+      {% csrf_token %}
+
+      {# Zone de dépôt / sélection #}
+      <div>
+        <label class="form-label">Fichier <span class="text-red-400">*</span></label>
+        <label class="block border-2 border-dashed border-ardoise-200 rounded-xl p-6 text-center cursor-pointer hover:border-foret-400 hover:bg-foret-50 transition-colors"
+               :class="fileName ? 'border-foret-400 bg-foret-50' : ''">
+          <template x-if="!fileName">
+            <div>
+              <svg class="w-10 h-10 mx-auto text-ardoise-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p class="text-sm text-ardoise-500">Cliquez pour sélectionner un fichier</p>
+              <p class="text-xs text-ardoise-400 mt-1">PDF, DOCX, XLSX, JPG, PNG, DWG, DXF — max 20 Mo</p>
+            </div>
+          </template>
+          <template x-if="fileName">
+            <div class="flex flex-col items-center gap-2">
+              <template x-if="preview">
+                <img :src="preview" class="h-32 object-contain rounded-lg">
+              </template>
+              <template x-if="!preview">
+                <svg class="w-12 h-12 text-foret-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </template>
+              <p class="text-sm font-medium text-ardoise-800" x-text="fileName"></p>
+              <p class="text-xs text-ardoise-400" x-text="fileSize"></p>
+              <p class="text-xs text-foret-600 hover:underline">Changer de fichier</p>
+            </div>
+          </template>
+          <input type="file" name="file" class="hidden" required
+                 @change="onFile($event)"
+                 accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.dxf">
+        </label>
+      </div>
+
+      {# Type #}
+      <div>
+        <label class="form-label">Type de document</label>
+        <select name="doc_type" class="form-input w-full">
+          {% for val, label in doc_types %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Titre #}
+      <div>
+        <label class="form-label">Titre</label>
+        <input type="text" name="title" class="form-input w-full"
+               placeholder="Laisser vide pour utiliser le nom du fichier">
+      </div>
+
+      {# Description #}
+      <div>
+        <label class="form-label">Description <span class="text-ardoise-400 font-normal">(optionnelle)</span></label>
+        <textarea name="description" rows="2" class="form-input w-full resize-none"
+                  placeholder="Notes sur ce document…"></textarea>
+      </div>
+
+      {# Actions #}
+      <div class="flex justify-between pt-2 border-t border-ardoise-100">
+        <a href="{% url 'crm:lead_detail' lead.pk %}" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

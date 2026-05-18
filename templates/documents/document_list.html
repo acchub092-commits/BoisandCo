@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}Documents{% endblock %}
+{% block page_title %}Documents{% endblock %}
+
+{% block content %}
+<div class="space-y-5" x-data="gedList()">
+
+  {# ── En-tête page ─────────────────────────────────────────── #}
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold text-ardoise-900">GED — Documents</h1>
+      <p class="text-sm text-ardoise-500 mt-0.5">Gestion électronique des documents projets</p>
+    </div>
+    <a href="{% url 'documents:upload' %}{% if selected_project %}?project={{ selected_project }}{% endif %}"
+       class="btn-primary">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+      </svg>
+      {% if selected_project %}Déposer dans ce projet{% else %}Déposer un document{% endif %}
+    </a>
+  </div>
+
+  {# ── Statistiques ─────────────────────────────────────────── #}
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-bois-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-bois-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">{{ total_docs }}</p>
+        <p class="text-xs text-ardoise-400">Document{{ total_docs|pluralize }}</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-foret-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">{{ total_size_human }}</p>
+        <p class="text-xs text-ardoise-400">Stockage total</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">
+          {{ documents|length }}
+        </p>
+        <p class="text-xs text-ardoise-400">Résultat{{ documents|length|pluralize }} filtre</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M7 7h.01M7 3h5l7 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">
+          {{ projects|length }}
+        </p>
+        <p class="text-xs text-ardoise-400">Projet{{ projects|length|pluralize }}</p>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Barre de recherche & filtres ────────────────────────── #}
+  <form method="get" id="filter-form" class="card py-4 px-5 space-y-3">
+
+    {# Ligne 1 : recherche + projet + catégorie #}
+    <div class="flex flex-wrap gap-3 items-end">
+
+      {# Recherche texte #}
+      <div class="flex-1 min-w-52 relative">
+        <label class="form-label">Rechercher</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ardoise-400 pointer-events-none"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+          </svg>
+          <input type="text" name="q" value="{{ search }}"
+                 placeholder="Nom, projet, description…"
+                 class="form-input pl-9">
+        </div>
+      </div>
+
+      {# Projet #}
+      <div class="flex-1 min-w-44">
+        <label class="form-label">Projet</label>
+        <select name="project" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous les projets</option>
+          {% for p in projects %}
+          <option value="{{ p.pk }}"
+                  {% if selected_project == p.pk|stringformat:"s" %}selected{% endif %}>
+            {{ p.reference }} — {{ p.name|truncatechars:35 }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Catégorie #}
+      <div class="flex-1 min-w-40">
+        <label class="form-label">Catégorie</label>
+        <select name="category" class="form-input" onchange="this.form.submit()">
+          <option value="">Toutes les catégories</option>
+          {% for cat in categories %}
+          <optgroup label="{{ cat.name }}">
+            {% for child in cat.children.all %}
+            <option value="{{ child.pk }}"
+                    {% if selected_category == child.pk|stringformat:"s" %}selected{% endif %}>
+              {{ child.name }}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Boutons #}
+      <div class="flex gap-2 items-end pb-0.5">
+        <button type="submit" class="btn-primary btn-sm">Filtrer</button>
+        {% if selected_project or selected_category or selected_file_type or search %}
+        <a href="{% url 'documents:list' %}" class="btn-secondary btn-sm">Réinitialiser</a>
+        {% endif %}
+      </div>
+
+    </div>
+
+    {# Ligne 2 : pills type de fichier #}
+    <div class="flex flex-wrap gap-2 items-center pt-1">
+      <span class="text-xs text-ardoise-400 font-medium mr-1">Type :</span>
+
+      <a href="?{% if selected_project %}project={{ selected_project }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if search %}q={{ search }}&{% endif %}sort={{ sort }}"
+         class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors
+                {% if not selected_file_type %}bg-ardoise-800 text-white border-ardoise-800{% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
+        Tous
+      </a>
+
+      {% for ft_val, ft_label in file_types %}
+      <a href="?{% if selected_project %}project={{ selected_project }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if search %}q={{ search }}&{% endif %}file_type={{ ft_val }}&sort={{ sort }}"
+         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors
+                {% if selected_file_type == ft_val %}
+                  {% if ft_val == 'pdf' %}bg-red-500 text-white border-red-500
+                  {% elif ft_val == 'word' %}bg-blue-500 text-white border-blue-500
+                  {% elif ft_val == 'excel' %}bg-green-600 text-white border-green-600
+                  {% elif ft_val == 'image' %}bg-purple-500 text-white border-purple-500
+                  {% elif ft_val == 'cad' %}bg-amber-500 text-white border-amber-500
+                  {% else %}bg-ardoise-500 text-white border-ardoise-500{% endif %}
+                {% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
+        <span class="w-2 h-2 rounded-full
+          {% if ft_val == 'pdf' %}bg-red-400
+          {% elif ft_val == 'word' %}bg-blue-400
+          {% elif ft_val == 'excel' %}bg-green-500
+          {% elif ft_val == 'image' %}bg-purple-400
+          {% elif ft_val == 'cad' %}bg-amber-400
+          {% else %}bg-ardoise-400{% endif %}
+          {% if selected_file_type == ft_val %}opacity-0{% endif %}">
+        </span>
+        {{ ft_label }}
+      </a>
+      {% endfor %}
+
+    </div>
+  </form>
+
+  {# ── Tableau ─────────────────────────────────────────────── #}
+  <div class="card p-0 overflow-hidden">
+
+    {% if documents %}
+    {# En-tête avec compteur #}
+    <div class="px-5 py-2.5 border-b border-ardoise-100 bg-ardoise-50 flex items-center justify-between">
+      <p class="text-xs text-ardoise-500">
+        <span class="font-semibold text-ardoise-700">{{ documents|length }}</span>
+        document{{ documents|length|pluralize }}
+      </p>
+      <p class="text-xs text-ardoise-400">Tri :
+        <a href="?{% if selected_project %}project={{ selected_project }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_file_type %}file_type={{ selected_file_type }}&{% endif %}{% if search %}q={{ search }}&{% endif %}sort={% if sort == '-uploaded_at' %}uploaded_at{% else %}-uploaded_at{% endif %}"
+           class="text-bois-600 hover:underline">
+          Date {% if sort == '-uploaded_at' %}↓{% elif sort == 'uploaded_at' %}↑{% endif %}
+        </a>
+        ·
+        <a href="?{% if selected_project %}project={{ selected_project }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_file_type %}file_type={{ selected_file_type }}&{% endif %}{% if search %}q={{ search }}&{% endif %}sort={% if sort == 'name' %}-name{% else %}name{% endif %}"
+           class="text-bois-600 hover:underline">
+          Nom {% if sort == 'name' %}↑{% elif sort == '-name' %}↓{% endif %}
+        </a>
+        ·
+        <a href="?{% if selected_project %}project={{ selected_project }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}{% if selected_file_type %}file_type={{ selected_file_type }}&{% endif %}{% if search %}q={{ search }}&{% endif %}sort={% if sort == '-file_size' %}file_size{% else %}-file_size{% endif %}"
+           class="text-bois-600 hover:underline">
+          Taille {% if sort == '-file_size' %}↓{% elif sort == 'file_size' %}↑{% endif %}
+        </a>
+      </p>
+    </div>
+
+    <table class="min-w-full divide-y divide-ardoise-100">
+      <thead class="bg-white">
+        <tr>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider w-2/5">Document</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Projet</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden lg:table-cell">Catégorie</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden md:table-cell">Taille</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden sm:table-cell">Déposé</th>
+          <th class="px-5 py-3 text-right text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100 bg-white">
+        {% for doc in documents %}
+        <tr class="hover:bg-ardoise-50/60 transition-colors group">
+
+          {# Icône + nom + version + description #}
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+
+              {# Icône type #}
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                {% if doc.file_type == 'pdf' %}bg-red-50 text-red-500
+                {% elif doc.file_type == 'word' %}bg-blue-50 text-blue-500
+                {% elif doc.file_type == 'excel' %}bg-green-50 text-green-600
+                {% elif doc.file_type == 'image' %}bg-purple-50 text-purple-500
+                {% elif doc.file_type == 'cad' %}bg-amber-50 text-amber-600
+                {% else %}bg-ardoise-100 text-ardoise-400{% endif %}">
+                {% if doc.file_type == 'pdf' %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+                {% elif doc.file_type == 'word' %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                {% elif doc.file_type == 'excel' %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M3 10h18M3 14h18M10 3v18M6 3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6a3 3 0 013-3z"/>
+                </svg>
+                {% elif doc.file_type == 'image' %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                {% elif doc.file_type == 'cad' %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+                </svg>
+                {% else %}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                </svg>
+                {% endif %}
+              </div>
+
+              <div class="min-w-0">
+                <a href="{{ doc.file.url }}" target="_blank"
+                   class="text-sm font-semibold text-ardoise-900 hover:text-bois-600 truncate block transition-colors">
+                  {{ doc.name }}
+                </a>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-xs font-mono text-ardoise-400">v{{ doc.version }}</span>
+                  <span class="text-ardoise-200">·</span>
+                  <span class="text-xs text-ardoise-400">{{ doc.get_file_type_display }}</span>
+                  {% if doc.description %}
+                  <span class="text-ardoise-200">·</span>
+                  <span class="text-xs text-ardoise-400 truncate max-w-xs">{{ doc.description }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </td>
+
+          {# Projet #}
+          <td class="px-5 py-3.5">
+            <a href="{% url 'projects:detail' doc.project.pk %}"
+               class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bois-50 hover:bg-bois-100 transition-colors">
+              <span class="text-xs font-mono font-semibold text-bois-700">{{ doc.project.reference }}</span>
+            </a>
+            <p class="text-xs text-ardoise-400 mt-0.5 truncate max-w-32">{{ doc.project.name|truncatechars:25 }}</p>
+          </td>
+
+          {# Catégorie #}
+          <td class="px-5 py-3.5 hidden lg:table-cell">
+            {% if doc.category %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-ardoise-100 text-ardoise-600 text-xs font-medium">
+              {{ doc.category.name }}
+            </span>
+            {% else %}
+            <span class="text-xs text-ardoise-300">—</span>
+            {% endif %}
+          </td>
+
+          {# Taille #}
+          <td class="px-5 py-3.5 text-xs text-ardoise-500 whitespace-nowrap hidden md:table-cell">
+            {{ doc.file_size_human }}
+          </td>
+
+          {# Date + auteur #}
+          <td class="px-5 py-3.5 hidden sm:table-cell">
+            <p class="text-xs text-ardoise-600">{{ doc.uploaded_at|date:"d/m/Y" }}</p>
+            <p class="text-xs text-ardoise-400">{{ doc.uploaded_by.get_full_name|default:"—" }}</p>
+          </td>
+
+          {# Actions #}
+          <td class="px-5 py-3.5 text-right">
+            <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+
+              {# Télécharger #}
+              <a href="{{ doc.file.url }}" target="_blank" download
+                 title="Télécharger"
+                 class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-ardoise-500
+                        hover:bg-bois-50 hover:text-bois-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+              </a>
+
+              {# Supprimer #}
+              <form method="post"
+                    action="{% url 'documents:delete' doc.pk %}"
+                    x-data
+                    @submit.prevent="if(confirm('Supprimer « {{ doc.name|escapejs }} » ?\nCette action est irréversible.')) $el.submit()">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit"
+                        title="Supprimer"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-ardoise-400
+                               hover:bg-red-50 hover:text-red-500 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </form>
+
+            </div>
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    {# Empty state #}
+    <div class="py-20 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ardoise-100 mb-4">
+        <svg class="w-8 h-8 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      {% if search or selected_project or selected_category or selected_file_type %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun résultat</h3>
+      <p class="text-sm text-ardoise-400 mb-4">Aucun document ne correspond à vos filtres.</p>
+      <a href="{% url 'documents:list' %}" class="btn-secondary btn-sm">Effacer les filtres</a>
+      {% else %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun document déposé</h3>
+      <p class="text-sm text-ardoise-400 mb-4">Commencez par déposer votre premier document.</p>
+      <a href="{% url 'documents:upload' %}" class="btn-primary btn-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Déposer un document
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+function gedList() {
+  return {};
+}
+</script>
+{% endblock %}

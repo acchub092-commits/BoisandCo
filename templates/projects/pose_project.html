@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Pose — {{ project.reference }}{% endblock %}
+{% block page_title %}Pose · {{ project.reference }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_dashboard' %}" class="btn-secondary btn-sm">← Pose</a>
+<a href="{% url 'projects:detail' project.pk %}" class="btn-secondary btn-sm">Dossier projet</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  {# ── En-tête projet ────────────────────────────────────────────── #}
+  <div class="card">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-bold text-ardoise-900">{{ project.name }}</h2>
+        <p class="text-ardoise-500 mt-0.5">{{ project.client_name }}{% if project.address %} · {{ project.address }}{% endif %}</p>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-bois-100 text-bois-700">
+            {{ project.get_status_display }}
+          </span>
+          <span class="text-sm text-ardoise-500">Manager : {{ project.manager.get_full_name|default:project.manager.username }}</span>
+        </div>
+      </div>
+      {% if project.start_date %}
+      <div class="text-right text-sm text-ardoise-500">
+        <p>Début : <strong>{{ project.start_date|date:"d/m/Y" }}</strong></p>
+        {% if project.end_date %}<p>Fin prévue : <strong>{{ project.end_date|date:"d/m/Y" }}</strong></p>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-5 gap-4">
+
+    {# ── Plan de pose (gauche) ──────────────────────────────────── #}
+    <div class="md:col-span-2 space-y-4">
+
+      <div class="card" x-data="{ editing: {{ plan|yesno:'false,true' }} }">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-ardoise-800">Plan de pose</h3>
+          <button @click="editing = !editing"
+                  class="text-xs text-foret-600 hover:underline"
+                  x-text="editing ? 'Annuler' : 'Modifier'"></button>
+        </div>
+
+        {# Lecture #}
+        <div x-show="!editing" class="space-y-2 text-sm">
+          {% if plan %}
+            {% if plan.chef_chantier %}
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-bois-400 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
+                {{ plan.chef_chantier.first_name|first|upper }}{{ plan.chef_chantier.last_name|first|upper }}
+              </div>
+              <div>
+                <p class="font-semibold">{{ plan.chef_chantier.get_full_name|default:plan.chef_chantier.username }}</p>
+                <p class="text-xs text-ardoise-400">Chef de chantier</p>
+              </div>
+            </div>
+            {% else %}
+            <p class="text-ardoise-400">Chef de chantier non désigné</p>
+            {% endif %}
+
+            {% if plan.planned_start or plan.planned_end %}
+            <div class="flex items-center gap-2 text-ardoise-600">
+              <svg class="w-4 h-4 text-ardoise-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              {% if plan.planned_start %}{{ plan.planned_start|date:"d/m/Y" }}{% endif %}
+              {% if plan.planned_start and plan.planned_end %} → {% endif %}
+              {% if plan.planned_end %}{{ plan.planned_end|date:"d/m/Y" }}{% endif %}
+            </div>
+            {% endif %}
+
+            {% with members=plan.team_members.all %}
+            {% if members %}
+            <div>
+              <p class="text-ardoise-400 text-xs mb-1">Équipe ({{ members|length }} personne{{ members|length|pluralize }})</p>
+              <div class="flex flex-wrap gap-1">
+                {% for m in members %}
+                <span class="px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-700 text-xs">
+                  {{ m.get_full_name|default:m.username }}
+                </span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            {% if plan.notes %}
+            <div class="p-2 bg-bois-50 rounded text-xs text-ardoise-600">{{ plan.notes }}</div>
+            {% endif %}
+          {% else %}
+            <p class="text-ardoise-400 text-center py-4">Aucun plan configuré</p>
+          {% endif %}
+        </div>
+
+        {# Édition #}
+        <form x-show="editing" method="post" action="{% url 'projects:pose_plan_update' project.pk %}">
+          {% csrf_token %}
+          <div class="space-y-3">
+            <div>
+              <label class="form-label text-xs">Chef de chantier</label>
+              <select name="chef_chantier" class="form-input text-sm">
+                <option value="">— Non désigné —</option>
+                {% for u in poseurs %}
+                <option value="{{ u.pk }}"
+                  {% if plan and plan.chef_chantier_id == u.pk %}selected{% endif %}>
+                  {{ u.get_full_name|default:u.username }} ({{ u.get_role_display }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label text-xs">Début prévu</label>
+                <input type="date" name="planned_start"
+                       value="{{ plan.planned_start|date:'Y-m-d'|default:'' }}" class="form-input text-sm">
+              </div>
+              <div>
+                <label class="form-label text-xs">Fin prévue</label>
+                <input type="date" name="planned_end"
+                       value="{{ plan.planned_end|date:'Y-m-d'|default:'' }}" class="form-input text-sm">
+              </div>
+            </div>
+            <div>
+              <label class="form-label text-xs">Équipe de pose</label>
+              <div class="space-y-1 max-h-40 overflow-y-auto border border-ardoise-200 rounded-lg p-2">
+                {% for u in poseurs %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-ardoise-50 rounded px-1">
+                  <input type="checkbox" name="team_members" value="{{ u.pk }}"
+                    {% if plan and u in plan.team_members.all %}checked{% endif %}
+                    class="rounded border-ardoise-300 text-foret-600">
+                  <span>{{ u.get_full_name|default:u.username }}</span>
+                  <span class="text-xs text-ardoise-400 ml-auto">{{ u.get_role_display }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            <div>
+              <label class="form-label text-xs">Instructions chantier</label>
+              <textarea name="notes" rows="2" class="form-input text-sm resize-none"
+                        placeholder="Accès, consignes, matériel…">{{ plan.notes|default:'' }}</textarea>
+            </div>
+            <button type="submit" class="btn-primary btn-sm w-full">Enregistrer le plan</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+
+    {# ── Rapports hebdomadaires (droite) ───────────────────────── #}
+    <div class="md:col-span-3 space-y-4">
+
+      {# Nouveau rapport #}
+      <div class="card" x-data="{ open: false }">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-ardoise-800">Rapport de la semaine</h3>
+          <button @click="open = !open"
+                  class="text-xs px-3 py-1.5 rounded-lg bg-foret-500 text-white hover:bg-foret-600 transition-colors"
+                  x-text="open ? 'Annuler' : '+ Nouveau rapport'"></button>
+        </div>
+
+        <form x-show="open" method="post" action="{% url 'projects:pose_report_create' project.pk %}"
+              enctype="multipart/form-data" class="mt-3 space-y-3">
+          {% csrf_token %}
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="form-label text-xs">Semaine</label>
+              <input type="number" name="week_number" value="{{ current_week }}" min="1" max="53" class="form-input text-sm">
+            </div>
+            <div>
+              <label class="form-label text-xs">Année</label>
+              <input type="number" name="year" value="{{ current_year }}" class="form-input text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="form-label text-xs">Avancement global (%)</label>
+            <div class="flex items-center gap-3">
+              <input type="range" name="progress_percent" min="0" max="100" step="5" value="0"
+                     class="flex-1" x-data x-ref="prog"
+                     x-on:input="$el.nextElementSibling.textContent = $el.value + '%'">
+              <span class="text-sm font-bold w-10 text-center">0%</span>
+            </div>
+          </div>
+          <div>
+            <label class="form-label text-xs">Travaux réalisés cette semaine</label>
+            <textarea name="notes" rows="2" class="form-input text-sm resize-none" placeholder="Décrivez les travaux effectués…"></textarea>
+          </div>
+          <div>
+            <label class="form-label text-xs">Difficultés rencontrées</label>
+            <textarea name="difficulties" rows="1" class="form-input text-sm resize-none" placeholder="Retards, problèmes…"></textarea>
+          </div>
+          <div class="flex items-center gap-3" x-data="{ hasIncident: false }">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" name="incident" @change="hasIncident = $event.target.checked"
+                     class="rounded border-ardoise-300 text-red-500">
+              <span class="text-ardoise-700">Incident à signaler</span>
+            </label>
+          </div>
+          <div x-data x-show="document.querySelector('[name=incident]')?.checked" class="hidden" id="incident-block">
+            <label class="form-label text-xs text-red-600">Description de l'incident</label>
+            <textarea name="incident_description" rows="2" class="form-input text-sm resize-none border-red-200"></textarea>
+          </div>
+          <div>
+            <label class="form-label text-xs">Photo de chantier</label>
+            <input type="file" name="photo" accept="image/*" class="form-input text-sm">
+          </div>
+          <button type="submit" class="btn-primary btn-sm w-full">Enregistrer le rapport</button>
+        </form>
+      </div>
+
+      {# Historique des rapports #}
+      <div class="space-y-3">
+        {% for report in reports %}
+        <div class="card">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <p class="text-sm font-semibold text-ardoise-800">
+                Semaine {{ report.week_number }} / {{ report.year }}
+                {% if report.incident %}
+                <span class="ml-2 px-1.5 py-0.5 rounded bg-red-100 text-red-600 text-xs">⚠ Incident</span>
+                {% endif %}
+              </p>
+              <p class="text-xs text-ardoise-400">
+                {{ report.date_report|date:"d/m/Y" }}
+                {% if report.reported_by %}
+                · {{ report.reported_by.get_full_name|default:report.reported_by.username }}
+                {% endif %}
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-20 bg-ardoise-100 rounded-full h-2">
+                <div class="h-2 rounded-full {% if report.incident %}bg-red-400{% else %}bg-foret-400{% endif %}"
+                     style="width:{{ report.progress_percent }}%"></div>
+              </div>
+              <span class="text-sm font-bold text-ardoise-700 w-10">{{ report.progress_percent }}%</span>
+            </div>
+          </div>
+
+          {% if report.notes %}
+          <p class="text-sm text-ardoise-700 mb-1">{{ report.notes }}</p>
+          {% endif %}
+          {% if report.difficulties %}
+          <p class="text-sm text-bois-700 bg-bois-50 rounded px-2 py-1 mb-1">⚠ {{ report.difficulties }}</p>
+          {% endif %}
+          {% if report.incident and report.incident_description %}
+          <p class="text-sm text-red-700 bg-red-50 rounded px-2 py-1">🚨 {{ report.incident_description }}</p>
+          {% endif %}
+          {% if report.photo %}
+          <div class="mt-2">
+            <img src="{{ report.photo.url }}" alt="Photo chantier"
+                 class="rounded-lg max-h-40 object-cover w-full">
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="card text-center py-8 text-ardoise-400 text-sm">
+          Aucun rapport enregistré
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Incident toggle
+  const incidentBox = document.querySelector('[name=incident]');
+  const incidentBlock = document.getElementById('incident-block');
+  if (incidentBox && incidentBlock) {
+    incidentBox.addEventListener('change', () => {
+      incidentBlock.classList.toggle('hidden', !incidentBox.checked);
+    });
+  }
+</script>
+{% endblock %}

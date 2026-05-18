@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Dashboard CRM{% endblock %}
+{% block page_title %}Dashboard Commercial{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── KPIs ─────────────────────────────────────────────────────────────── #}
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+
+    <div class="card py-4 text-center">
+      <p class="text-3xl font-extrabold text-ardoise-800">{{ kpis.actifs }}</p>
+      <p class="text-xs text-ardoise-400 mt-1">Opportunités actives</p>
+    </div>
+
+    <div class="card py-4 text-center">
+      <p class="text-2xl font-extrabold text-foret-600">
+        {{ kpis.pipeline_value|floatformat:0 }}
+        <span class="text-sm font-normal text-ardoise-400">MAD</span>
+      </p>
+      <p class="text-xs text-ardoise-400 mt-1">Pipeline total</p>
+    </div>
+
+    <div class="card py-4 text-center">
+      <p class="text-3xl font-extrabold text-blue-600">{{ kpis.rdv_semaine }}</p>
+      <p class="text-xs text-ardoise-400 mt-1">RDV cette semaine</p>
+    </div>
+
+    <div class="card py-4 text-center">
+      <p class="text-3xl font-extrabold text-amber-500">{{ kpis.gagnes_mois }}</p>
+      <p class="text-xs text-ardoise-400 mt-1">Gagnés ce mois</p>
+    </div>
+
+    {% if is_director %}
+    <div class="card py-4 text-center border {% if kpis.a_valider > 0 %}border-orange-300 bg-orange-50{% endif %}">
+      <p class="text-3xl font-extrabold {% if kpis.a_valider > 0 %}text-orange-500{% else %}text-ardoise-400{% endif %}">
+        {{ kpis.a_valider }}
+      </p>
+      <p class="text-xs text-ardoise-400 mt-1">À valider</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Ligne 2 : Pipeline + Activités ──────────────────────────────────── #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    {# Répartition pipeline (2/3) #}
+    <div class="lg:col-span-2">
+      <div class="card p-0 overflow-hidden h-full">
+        <div class="px-5 py-3.5 border-b border-ardoise-100">
+          <h2 class="text-sm font-semibold text-ardoise-800">Répartition du pipeline</h2>
+        </div>
+        <div class="p-5 space-y-3">
+          {% with total=kpis.actifs %}
+          {% for stage, count in status_counts.items %}
+          {% if count > 0 %}
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-ardoise-500 w-32 truncate flex-shrink-0">
+              {% if stage == 'VISITE' %}Visites
+              {% elif stage == 'OPPORTUNITE' %}Opportunités
+              {% elif stage == 'QUALIFICATION' %}Qualification
+              {% elif stage == 'CHIFFRAGE' %}Chiffrage
+              {% elif stage == 'OFFRE' %}Offre envoyée
+              {% elif stage == 'GAGNEE' %}Gagnées
+              {% elif stage == 'PERDUE' %}Perdues
+              {% endif %}
+            </span>
+            <div class="flex-1 bg-ardoise-100 rounded-full h-2.5">
+              {% if total > 0 %}
+              <div class="h-2.5 rounded-full
+                {% if stage == 'VISITE' %}bg-ardoise-400
+                {% elif stage == 'OPPORTUNITE' %}bg-blue-400
+                {% elif stage == 'QUALIFICATION' %}bg-purple-400
+                {% elif stage == 'CHIFFRAGE' %}bg-amber-400
+                {% elif stage == 'OFFRE' %}bg-cyan-400
+                {% elif stage == 'GAGNEE' %}bg-foret-500
+                {% elif stage == 'PERDUE' %}bg-red-400
+                {% endif %}"
+                   style="width: {% widthratio count total 100 %}%"></div>
+              {% endif %}
+            </div>
+            <span class="text-xs font-semibold text-ardoise-700 w-6 text-right flex-shrink-0">{{ count }}</span>
+          </div>
+          {% endif %}
+          {% endfor %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+
+    {# Journal d'activité (1/3) #}
+    <div>
+      <div class="card p-0 overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-ardoise-100">
+          <h2 class="text-sm font-semibold text-ardoise-800">Activités récentes</h2>
+        </div>
+        <div class="divide-y divide-ardoise-50 max-h-[420px] overflow-y-auto">
+          {% for log in recent_logs %}
+          <div class="flex items-start gap-3 px-4 py-3">
+            <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5
+              {% with ic=log.icon_color %}{{ ic.1 }}{% endwith %}">
+              <svg class="w-3.5 h-3.5 {% with ic=log.icon_color %}{{ ic.0 }}{% endwith %}"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {% if log.log_type == 'VALIDATION' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                {% elif log.log_type == 'ASSIGNMENT' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                {% elif log.log_type == 'RDV_ADDED' or log.log_type == 'RDV_DONE' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                {% elif log.log_type == 'DOCUMENT_ADDED' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                {% endif %}
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-ardoise-700 leading-snug">{{ log.content }}</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[10px] text-ardoise-500 truncate">{{ log.lead.project_name }}</span>
+                <span class="text-[10px] text-ardoise-300">·</span>
+                <span class="text-[10px] text-ardoise-400">{{ log.created_at|timesince }}</span>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="px-5 py-10 text-center">
+            <p class="text-sm text-ardoise-400">Aucune activité récente.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Ligne 3 : Prochains RDV + Leads à valider ────────────────────────── #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    {# Prochains RDV (7 jours) #}
+    <div class="card p-0 overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-ardoise-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-ardoise-800">Prochains rendez-vous</h2>
+        <span class="text-xs text-ardoise-400">7 jours</span>
+      </div>
+      <div class="divide-y divide-ardoise-50">
+        {% for rdv in prochains_rdv %}
+        <a href="{% url 'crm:lead_detail' pk=rdv.lead_id %}"
+           class="flex items-start gap-3 px-4 py-3 hover:bg-ardoise-50 transition-colors">
+          <div class="w-9 h-9 rounded-lg bg-blue-50 flex-shrink-0 flex flex-col items-center justify-center">
+            <span class="text-[10px] font-bold text-blue-600 leading-none">{{ rdv.scheduled_at|date:"d" }}</span>
+            <span class="text-[9px] text-blue-400 uppercase leading-none">{{ rdv.scheduled_at|date:"M" }}</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-ardoise-800 truncate">{{ rdv.title }}</p>
+            <p class="text-[11px] text-ardoise-500 truncate">{{ rdv.lead.project_name }}</p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[10px] text-ardoise-400">{{ rdv.scheduled_at|date:"H:i" }}</span>
+              {% if rdv.location %}
+              <span class="text-[10px] text-ardoise-300">·</span>
+              <span class="text-[10px] text-ardoise-400 truncate">{{ rdv.location }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 {{ rdv.status_color }}">
+            {{ rdv.get_status_display }}
+          </span>
+        </a>
+        {% empty %}
+        <div class="px-5 py-10 text-center">
+          <p class="text-sm text-ardoise-400">Aucun rendez-vous prévu.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Leads à valider (directeur uniquement) #}
+    {% if is_director %}
+    <div class="card p-0 overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-ardoise-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-ardoise-800">Opportunités à valider</h2>
+        {% if kpis.a_valider > 0 %}
+        <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+          {{ kpis.a_valider }}
+        </span>
+        {% endif %}
+      </div>
+      <div class="divide-y divide-ardoise-50">
+        {% for lead in pending_leads %}
+        <div class="flex items-start gap-3 px-4 py-3">
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-ardoise-800 truncate">{{ lead.project_name }}</p>
+            <p class="text-[11px] text-ardoise-500 truncate">{{ lead.contact_name }}{% if lead.company %} — {{ lead.company }}{% endif %}</p>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full {{ lead.potential_color }}">
+                {{ lead.get_potential_display }}
+              </span>
+              {% if lead.assigned_to %}
+              <span class="text-[10px] text-ardoise-400">{{ lead.assigned_to.get_full_name }}</span>
+              {% endif %}
+              <span class="text-[10px] text-ardoise-300">·</span>
+              <span class="text-[10px] text-ardoise-400">{{ lead.updated_at|timesince }}</span>
+            </div>
+          </div>
+          <div class="flex flex-col gap-1 flex-shrink-0">
+            <form method="post" action="{% url 'crm:lead_validate' pk=lead.pk %}">
+              {% csrf_token %}
+              <button type="submit"
+                      class="text-[10px] px-2 py-1 rounded bg-foret-100 text-foret-700 hover:bg-foret-200 font-semibold transition-colors w-full">
+                Valider
+              </button>
+            </form>
+            <a href="{% url 'crm:lead_detail' pk=lead.pk %}"
+               class="text-[10px] px-2 py-1 rounded bg-ardoise-100 text-ardoise-600 hover:bg-ardoise-200 font-semibold transition-colors text-center">
+              Voir
+            </a>
+          </div>
+        </div>
+        {% empty %}
+        <div class="px-5 py-10 text-center">
+          <p class="text-sm text-ardoise-400">Aucune opportunité en attente.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    {# Pour les commerciaux : leurs leads actifs récents #}
+    <div class="card p-0 overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-ardoise-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-ardoise-800">Mes opportunités actives</h2>
+        <a href="{% url 'crm:pipeline' %}" class="text-xs text-foret-600 hover:underline">Voir tout</a>
+      </div>
+      <div class="divide-y divide-ardoise-50">
+        {% for stage, count in status_counts.items %}
+        {% if count > 0 and stage != 'GAGNEE' and stage != 'PERDUE' %}
+        <div class="flex items-center gap-3 px-4 py-2.5">
+          <span class="text-xs text-ardoise-600 flex-1">
+            {% if stage == 'VISITE' %}Visites
+            {% elif stage == 'OPPORTUNITE' %}Opportunités
+            {% elif stage == 'QUALIFICATION' %}Qualification
+            {% elif stage == 'CHIFFRAGE' %}Chiffrage
+            {% elif stage == 'OFFRE' %}Offre envoyée
+            {% endif %}
+          </span>
+          <span class="text-sm font-bold text-ardoise-800">{{ count }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+        <div class="px-4 py-3">
+          <a href="{% url 'crm:pipeline' %}"
+             class="block text-center text-xs font-semibold text-foret-600 hover:text-foret-800 transition-colors">
+            Ouvrir le pipeline →
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

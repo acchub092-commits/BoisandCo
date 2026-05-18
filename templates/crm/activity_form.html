@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Activité — {{ activity.subject }}{% endblock %}
+{% block page_title %}Activité{% endblock %}
+
+{% block topbar_actions %}
+{% if activity.lead %}
+<a href="{% url 'crm:lead_detail' activity.lead.pk %}" class="btn-secondary btn-sm">← Opportunité</a>
+{% else %}
+<a href="{% url 'crm:agenda' %}" class="btn-secondary btn-sm">← Agenda</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-5">
+
+  <div class="card p-0 overflow-hidden">
+    {# En-tête colorée selon le type #}
+    <div class="px-6 py-4 border-b border-ardoise-100 flex items-center gap-3
+      {% if activity.activity_type == 'VISITE' %}bg-foret-50
+      {% elif activity.activity_type == 'APPEL' %}bg-blue-50
+      {% elif activity.activity_type == 'REUNION' %}bg-purple-50
+      {% elif activity.activity_type == 'DEMO' %}bg-bois-50
+      {% elif activity.activity_type == 'RELANCE' %}bg-amber-50
+      {% else %}bg-ardoise-50{% endif %}">
+      <span class="inline-flex items-center justify-center w-10 h-10 rounded-full
+        {% if activity.activity_type == 'VISITE' %}bg-foret-100 text-foret-700
+        {% elif activity.activity_type == 'APPEL' %}bg-blue-100 text-blue-700
+        {% elif activity.activity_type == 'REUNION' %}bg-purple-100 text-purple-700
+        {% elif activity.activity_type == 'DEMO' %}bg-bois-100 text-bois-700
+        {% elif activity.activity_type == 'RELANCE' %}bg-amber-100 text-amber-700
+        {% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ activity.icon_path }}"/>
+        </svg>
+      </span>
+      <div>
+        <p class="text-base font-bold text-ardoise-900">{{ activity.subject }}</p>
+        <p class="text-xs text-ardoise-500">
+          {{ activity.get_activity_type_display }} · {{ activity.planned_at|date:"d/m/Y à H:i" }}
+          {% if activity.location %} · {{ activity.location }}{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'crm:activity_update' activity.pk %}" class="p-6 space-y-4">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Type</label>
+          <select name="activity_type" class="form-input w-full">
+            {% for val, label in activity_types %}
+            <option value="{{ val }}" {% if activity.activity_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Statut</label>
+          <select name="status" class="form-input w-full">
+            <option value="PLANIFIE" {% if activity.status == 'PLANIFIE' %}selected{% endif %}>Planifié</option>
+            <option value="REALISE"  {% if activity.status == 'REALISE'  %}selected{% endif %}>Réalisé</option>
+            <option value="ANNULE"   {% if activity.status == 'ANNULE'   %}selected{% endif %}>Annulé</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Objet</label>
+        <input type="text" name="subject" value="{{ activity.subject }}" class="form-input w-full">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Date</label>
+          <input type="date" name="planned_date" value="{{ activity.planned_at|date:'Y-m-d' }}" class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Heure</label>
+          <input type="time" name="planned_time" value="{{ activity.planned_at|date:'H:i' }}" class="form-input w-full">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Durée (min)</label>
+          <input type="number" name="duration_min" value="{{ activity.duration_min }}" min="15" step="15" class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Lieu</label>
+          <input type="text" name="location" value="{{ activity.location }}" class="form-input w-full">
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Opportunité liée</label>
+        <select name="lead_id" class="form-input w-full">
+          <option value="">— Aucune —</option>
+          {% for lead in leads %}
+          <option value="{{ lead.pk }}" {% if activity.lead_id == lead.pk %}selected{% endif %}>
+            {{ lead.project_name }} ({{ lead.contact_name }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Assigné à</label>
+        <select name="assigned_to" class="form-input w-full">
+          {% for member in team %}
+          <option value="{{ member.pk }}" {% if activity.assigned_to_id == member.pk %}selected{% endif %}>
+            {{ member.get_full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Compte rendu — zone principale #}
+      <div>
+        <label class="form-label text-foret-700 font-semibold">
+          Compte rendu
+          {% if activity.status != 'REALISE' %}
+          <span class="text-xs font-normal text-ardoise-400 ml-1">(passer en « Réalisé » après complétion)</span>
+          {% endif %}
+        </label>
+        <textarea name="compte_rendu" rows="6"
+                  class="w-full form-input resize-none"
+                  placeholder="Résumé de l'activité, points abordés, décisions prises, prochaines actions…">{{ activity.compte_rendu }}</textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button type="button"
+                onclick="if(confirm('Supprimer cette activité ?')) { document.getElementById('delete-form-{{ activity.pk }}').submit(); }"
+                class="text-xs text-red-500 hover:text-red-700 font-medium">
+          Supprimer
+        </button>
+        <div class="flex gap-3">
+          {% if activity.lead %}
+          <a href="{% url 'crm:lead_detail' activity.lead.pk %}" class="btn-secondary">Annuler</a>
+          {% else %}
+          <a href="{% url 'crm:agenda' %}" class="btn-secondary">Annuler</a>
+          {% endif %}
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </div>
+    </form>
+
+    {# Formulaire de suppression séparé (hors du formulaire principal) #}
+    <form id="delete-form-{{ activity.pk }}"
+          method="post" action="{% url 'crm:activity_delete' activity.pk %}"
+          class="hidden">
+      {% csrf_token %}
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Gabarits de projet{% endblock %}
+{% block page_title %}Gabarits de projet{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:template_create' %}"
+   class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600
+          text-white font-semibold text-sm transition-colors shadow-sm">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+  </svg>
+  Nouveau gabarit
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  {# Barre titre + bouton #}
+  <div class="flex items-center justify-between">
+    <p class="text-sm text-ardoise-500">{{ templates|length }} gabarit{{ templates|length|pluralize }} configuré{{ templates|length|pluralize }}</p>
+    <a href="{% url 'projects:template_create' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600
+              text-white font-semibold text-sm transition-colors shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nouveau gabarit
+    </a>
+  </div>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="px-4 py-3 rounded-lg text-sm font-medium
+              {% if msg.tags == 'success' %}bg-foret-50 text-foret-700 border border-foret-200
+              {% else %}bg-red-50 text-red-700 border border-red-200{% endif %}">
+    {{ msg }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if not templates %}
+  <div class="card py-16 text-center">
+    <svg class="w-12 h-12 mx-auto text-ardoise-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+    </svg>
+    <p class="text-sm text-ardoise-400 mb-4">Aucun gabarit créé.</p>
+    <a href="{% url 'projects:template_create' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600
+              text-white font-semibold text-sm transition-colors">
+      Créer le premier gabarit
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="space-y-3">
+  {% for tmpl in templates %}
+  <div class="card p-0 overflow-hidden" x-data="{ open: false }">
+
+    {# En-tête gabarit #}
+    <div class="flex items-center gap-4 px-5 py-4">
+      <button @click="open = !open" class="flex-1 flex items-center gap-3 text-left min-w-0">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                    {% if tmpl.is_active %}bg-foret-100 text-foret-600{% else %}bg-ardoise-100 text-ardoise-400{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-ardoise-900">{{ tmpl.name }}</h3>
+            {% if not tmpl.is_active %}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-500">Inactif</span>
+            {% endif %}
+          </div>
+          {% if tmpl.description %}
+          <p class="text-xs text-ardoise-400 truncate mt-0.5">{{ tmpl.description }}</p>
+          {% endif %}
+        </div>
+      </button>
+
+      {# Compteurs #}
+      <div class="flex items-center gap-4 flex-shrink-0 text-sm">
+        <div class="text-center hidden sm:block">
+          <p class="text-lg font-bold text-ardoise-800">{{ tmpl.phases_count }}</p>
+          <p class="text-xs text-ardoise-400">phase{{ tmpl.phases_count|pluralize }}</p>
+        </div>
+        <div class="text-center hidden sm:block">
+          <p class="text-lg font-bold text-ardoise-800">{{ tmpl.tasks_count }}</p>
+          <p class="text-xs text-ardoise-400">tâche{{ tmpl.tasks_count|pluralize }}</p>
+        </div>
+      </div>
+
+      {# Actions #}
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <a href="{% url 'projects:template_edit' tmpl.pk %}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ardoise-200
+                  text-xs font-medium text-ardoise-600 hover:border-foret-300 hover:text-foret-700 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+          </svg>
+          Modifier
+        </a>
+        <form method="post" action="{% url 'projects:template_delete' tmpl.pk %}"
+              onsubmit="return confirm('Supprimer « {{ tmpl.name }} » ? Cette action est irréversible.')">
+          {% csrf_token %}
+          <button type="submit"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200
+                         text-xs font-medium text-red-500 hover:bg-red-50 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Supprimer
+          </button>
+        </form>
+        <button @click="open = !open" class="p-1.5 text-ardoise-400 hover:text-ardoise-600">
+          <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': open}"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    {# Détail phases #}
+    <div x-show="open" x-transition class="border-t border-ardoise-100">
+      {% for phase in tmpl.phase_templates.all %}
+      <div class="{% if not forloop.first %}border-t border-ardoise-50{% endif %}">
+        <div class="flex items-center gap-3 px-5 py-2.5 bg-ardoise-50">
+          <span class="w-5 h-5 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
+            {{ forloop.counter }}
+          </span>
+          <span class="text-sm font-semibold text-ardoise-800">{{ phase.name }}</span>
+          {% if phase.estimated_days %}
+          <span class="text-xs text-ardoise-400">{{ phase.estimated_days }} j estimés</span>
+          {% endif %}
+          <span class="ml-auto text-xs text-ardoise-400">{{ phase.task_templates.count }} tâche{{ phase.task_templates.count|pluralize }}</span>
+        </div>
+        {% if phase.task_templates.exists %}
+        <ul class="divide-y divide-ardoise-50">
+          {% for task in phase.task_templates.all %}
+          <li class="flex items-center gap-3 px-5 py-2 pl-14">
+            <span class="w-1.5 h-1.5 rounded-full bg-ardoise-300 flex-shrink-0"></span>
+            <span class="text-sm text-ardoise-700 flex-1">{{ task.name }}</span>
+            {% if task.required_role != 'ANY' %}
+            <span class="text-xs px-1.5 py-0.5 rounded bg-ardoise-100 text-ardoise-500">{{ task.get_required_role_display }}</span>
+            {% endif %}
+            {% if task.estimated_hours %}
+            <span class="text-xs text-ardoise-400">{{ task.estimated_hours }}h</span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% empty %}
+      <p class="px-5 py-3 text-xs text-ardoise-400">Aucune phase dans ce gabarit.</p>
+      {% endfor %}
+    </div>
+
+  </div>
+  {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

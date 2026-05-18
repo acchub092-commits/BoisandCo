@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}{% if tmpl %}Modifier {{ tmpl.name }}{% else %}Nouveau gabarit{% endif %}{% endblock %}
+{% block page_title %}{% if tmpl %}Modifier le gabarit{% else %}Nouveau gabarit{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:template_list' %}" class="btn-secondary btn-sm">← Retour</a>
+{% endblock %}
+
+{% block content %}
+{# Phases JSON dans un script pour éviter les conflits de guillemets dans x-data #}
+<script>window.__PHASES__ = {{ phases_json|safe }};</script>
+
+<div class="max-w-3xl mx-auto" x-data="templateForm(window.__PHASES__)">
+
+  {# Erreur #}
+  {% if error %}
+  <div class="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" @submit="onSubmit">
+    {% csrf_token %}
+    <input type="hidden" name="phases_json" :value="JSON.stringify(phases)">
+
+    <div class="space-y-5">
+
+      {# ── Informations générales ─────────────────────────────── #}
+      <div class="card space-y-4">
+        <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+          <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+          Informations générales
+        </h2>
+
+        <div>
+          <label class="form-label">Nom du gabarit <span class="text-red-500">*</span></label>
+          <input type="text" name="name" value="{{ tmpl.name|default:'' }}"
+                 placeholder="Ex : Escalier sur mesure, Cuisine standard…"
+                 class="form-input text-base" required>
+        </div>
+
+        <div>
+          <label class="form-label">Description</label>
+          <textarea name="description" rows="2"
+                    placeholder="Décrivez les cas d'usage de ce gabarit…"
+                    class="form-input resize-none">{{ tmpl.description|default:'' }}</textarea>
+        </div>
+
+        <div class="flex items-center gap-3" x-data="{ active: {% if tmpl %}{{ tmpl.is_active|yesno:'true,false' }}{% else %}true{% endif %} }">
+          {# Input caché pour la soumission du formulaire #}
+          <input type="hidden" name="is_active" :value="active ? 'on' : ''">
+          {# Toggle visuel #}
+          <button type="button" @click="active = !active"
+                  class="relative w-10 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-foret-400 focus:ring-offset-1"
+                  :class="active ? 'bg-foret-500' : 'bg-ardoise-200'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                  :class="active ? 'translate-x-4' : 'translate-x-0'"></span>
+          </button>
+          <span class="text-sm font-medium text-ardoise-700"
+                :class="active ? 'text-foret-700' : 'text-ardoise-400'"
+                x-text="active ? 'Gabarit actif — disponible lors de la création de projet' : 'Gabarit inactif — masqué lors de la création de projet'">
+          </span>
+        </div>
+      </div>
+
+      {# ── Phases & tâches — Alpine.js ────────────────────────── #}
+      <div class="card space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+            Phases & tâches
+          </h2>
+          <span class="text-xs text-ardoise-400"
+                x-text="`${phases.length} phase${phases.length !== 1 ? 's' : ''} · ${totalTasks()} tâche${totalTasks() !== 1 ? 's' : ''}`">
+          </span>
+        </div>
+
+        {# Liste des phases #}
+        <div class="space-y-3">
+          <template x-for="(phase, pi) in phases" :key="pi">
+            <div class="border border-ardoise-200 rounded-xl overflow-hidden shadow-sm">
+
+              {# En-tête phase #}
+              <div class="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-ardoise-50 to-white">
+                <div class="w-7 h-7 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0"
+                     x-text="pi + 1"></div>
+
+                <input type="text" x-model="phase.name"
+                       placeholder="Nom de la phase (ex : Conception, Fabrication, Pose…)"
+                       class="flex-1 text-sm font-semibold bg-transparent border-none outline-none
+                              text-ardoise-800 placeholder-ardoise-300 min-w-0">
+
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <input type="number" x-model="phase.days" min="0"
+                         class="w-14 text-xs bg-white border border-ardoise-200 rounded-lg px-2 py-1.5
+                                text-center text-ardoise-600 focus:border-foret-400 focus:outline-none">
+                  <span class="text-xs text-ardoise-400">j</span>
+                </div>
+
+                {# Déplacer #}
+                <div class="flex flex-col gap-0.5 flex-shrink-0">
+                  <button type="button" @click="movePhase(pi, -1)" :disabled="pi === 0"
+                          class="p-0.5 text-ardoise-300 hover:text-foret-500 disabled:opacity-30 transition-colors">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                  </button>
+                  <button type="button" @click="movePhase(pi, 1)" :disabled="pi === phases.length - 1"
+                          class="p-0.5 text-ardoise-300 hover:text-foret-500 disabled:opacity-30 transition-colors">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <button type="button" @click="removePhase(pi)"
+                        class="p-1 text-ardoise-300 hover:text-red-400 transition-colors flex-shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              {# Tâches #}
+              <div class="bg-white">
+                <template x-for="(task, ti) in phase.tasks" :key="ti">
+                  <div class="flex items-center gap-2 px-4 py-2.5 pl-12 border-t border-ardoise-50 hover:bg-ardoise-50">
+                    <span class="w-1.5 h-1.5 rounded-full bg-ardoise-300 flex-shrink-0"></span>
+
+                    <input type="text" x-model="task.name"
+                           placeholder="Nom de la tâche"
+                           class="flex-1 text-sm bg-transparent border-none outline-none
+                                  text-ardoise-700 placeholder-ardoise-300 min-w-0">
+
+                    <select x-model="task.role"
+                            class="text-xs border border-ardoise-200 rounded-lg px-2 py-1.5 text-ardoise-500
+                                   bg-white focus:border-foret-400 focus:outline-none flex-shrink-0">
+                      <option value="ANY">Tout rôle</option>
+                      <option value="DIRECTEUR">Directeur</option>
+                      <option value="MANAGER">Manager</option>
+                      <option value="ESTIMATEUR">Estimateur</option>
+                      <option value="ATELIER">Atelier</option>
+                      <option value="CHAUFFEUR">Chauffeur</option>
+                      <option value="POSEUR">Poseur</option>
+                    </select>
+
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <input type="number" x-model="task.hours" min="0" step="0.5"
+                             class="w-14 text-xs bg-white border border-ardoise-200 rounded-lg px-2 py-1.5
+                                    text-center text-ardoise-500 focus:border-foret-400 focus:outline-none">
+                      <span class="text-xs text-ardoise-400">h</span>
+                    </div>
+
+                    {# Déplacer tâche — toujours visible #}
+                    <div class="flex flex-col gap-0.5 flex-shrink-0">
+                      <button type="button" @click="moveTask(pi, ti, -1)" :disabled="ti === 0"
+                              class="p-0.5 text-ardoise-300 hover:text-foret-500 disabled:opacity-30 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                        </svg>
+                      </button>
+                      <button type="button" @click="moveTask(pi, ti, 1)" :disabled="ti === phase.tasks.length - 1"
+                              class="p-0.5 text-ardoise-300 hover:text-foret-500 disabled:opacity-30 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {# Supprimer tâche — toujours visible #}
+                    <button type="button" @click="removeTask(pi, ti)"
+                            class="p-1 text-ardoise-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+
+                {# Bouton ajouter tâche #}
+                <div class="px-4 py-2 pl-12 border-t border-ardoise-50">
+                  <button type="button" @click="addTask(pi)"
+                          class="flex items-center gap-1.5 text-xs text-foret-600 hover:text-foret-700
+                                 font-medium transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Ajouter une tâche
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        {# Bouton ajouter phase #}
+        <button type="button" @click="addPhase()"
+                class="flex items-center gap-2 text-sm text-foret-600 hover:text-foret-700 font-semibold
+                       border-2 border-dashed border-foret-200 hover:border-foret-400
+                       rounded-xl px-4 py-3 w-full justify-center transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/>
+          </svg>
+          Ajouter une phase
+        </button>
+
+        <p x-show="phases.length === 0" class="text-xs text-ardoise-400 text-center -mt-2">
+          Un gabarit sans phase peut être créé et complété plus tard.
+        </p>
+      </div>
+
+      {# ── Actions ──────────────────────────────────────────────── #}
+      <div class="flex items-center justify-between">
+        <a href="{% url 'projects:template_list' %}" class="btn-secondary">Annuler</a>
+        <button type="submit"
+                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-foret-500 hover:bg-foret-600
+                       text-white font-semibold text-sm transition-colors shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          {% if tmpl %}Enregistrer les modifications{% else %}Créer le gabarit{% endif %}
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function templateForm(initialPhases) {
+  return {
+    phases: initialPhases || [],
+
+    totalTasks() {
+      return this.phases.reduce((sum, p) => sum + p.tasks.length, 0);
+    },
+
+    addPhase() {
+      this.phases.push({ name: '', days: 0, tasks: [] });
+    },
+
+    removePhase(pi) {
+      this.phases = this.phases.filter((_, i) => i !== pi);
+    },
+
+    movePhase(pi, dir) {
+      const target = pi + dir;
+      if (target < 0 || target >= this.phases.length) return;
+      const arr = [...this.phases];
+      [arr[pi], arr[target]] = [arr[target], arr[pi]];
+      this.phases = arr;
+    },
+
+    addTask(pi) {
+      const arr = [...this.phases];
+      arr[pi] = { ...arr[pi], tasks: [...arr[pi].tasks, { name: '', role: 'ANY', hours: 0 }] };
+      this.phases = arr;
+    },
+
+    removeTask(pi, ti) {
+      const arr = [...this.phases];
+      arr[pi] = { ...arr[pi], tasks: arr[pi].tasks.filter((_, i) => i !== ti) };
+      this.phases = arr;
+    },
+
+    moveTask(pi, ti, dir) {
+      const target = ti + dir;
+      const tasks = [...this.phases[pi].tasks];
+      if (target < 0 || target >= tasks.length) return;
+      [tasks[ti], tasks[target]] = [tasks[target], tasks[ti]];
+      const arr = [...this.phases];
+      arr[pi] = { ...arr[pi], tasks };
+      this.phases = arr;
+    },
+
+    onSubmit() {
+      // phases_json is bound via :value — nothing extra needed
+    },
+  };
+}
+</script>
+{% endblock %}

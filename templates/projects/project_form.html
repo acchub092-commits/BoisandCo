@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nouveau projet{% endblock %}
+{% block page_title %}Nouveau projet{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:list' %}" class="btn-secondary btn-sm">← Retour</a>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-4xl mx-auto space-y-6"
+      x-data="projectForm()" @submit="onSubmit">
+  {% csrf_token %}
+  {# Champ caché pour les phases/tâches saisies manuellement #}
+  <input type="hidden" name="phases_json" :value="JSON.stringify(phases)">
+
+  {# ── Étapes visuelles ──────────────────────────────────────────────────── #}
+  <div class="flex items-center overflow-x-auto pb-1 gap-1">
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-foret-500 text-white"><span class="w-4 h-4 rounded-full bg-white text-foret-600 flex items-center justify-center font-bold text-[10px]">1</span>Identité</div>
+    <div class="w-5 h-px bg-ardoise-200 flex-shrink-0"></div>
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-ardoise-100 text-ardoise-500"><span class="w-4 h-4 rounded-full bg-ardoise-300 text-white flex items-center justify-center font-bold text-[10px]">2</span>Client</div>
+    <div class="w-5 h-px bg-ardoise-200 flex-shrink-0"></div>
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-ardoise-100 text-ardoise-500"><span class="w-4 h-4 rounded-full bg-ardoise-300 text-white flex items-center justify-center font-bold text-[10px]">3</span>Équipe</div>
+    <div class="w-5 h-px bg-ardoise-200 flex-shrink-0"></div>
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-ardoise-100 text-ardoise-500"><span class="w-4 h-4 rounded-full bg-ardoise-300 text-white flex items-center justify-center font-bold text-[10px]">4</span>Phases</div>
+    <div class="w-5 h-px bg-ardoise-200 flex-shrink-0"></div>
+    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-ardoise-100 text-ardoise-500"><span class="w-4 h-4 rounded-full bg-ardoise-300 text-white flex items-center justify-center font-bold text-[10px]">5</span>Documents</div>
+  </div>
+
+  {# ── Section 1 : Identité du projet ───────────────────────────────────── #}
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Identité du projet</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label class="form-label">Intitulé du projet <span class="text-red-500">*</span></label>
+        <input type="text" name="name" value="{{ post.name|default:'' }}"
+               placeholder="Ex : Cuisine équipée — Résidence Martin"
+               class="form-input text-base {% if errors.name %}border-red-400{% endif %}">
+        {% if errors.name %}<p class="form-error">{{ errors.name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Statut initial</label>
+        <select name="status" class="form-input">
+          {% for value, label in statuses %}
+          <option value="{{ value }}" {% if post.status == value or not post and value == 'AVANT_VENTE' %}selected{% endif %}>
+            {{ label }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Date de début</label>
+        <input type="date" name="start_date" value="{{ post.start_date|default:'' }}" class="form-input">
+      </div>
+
+      <div>
+        <label class="form-label">Date de fin prévue</label>
+        <input type="date" name="end_date" value="{{ post.end_date|default:'' }}" class="form-input">
+      </div>
+
+      <div>
+        <label class="form-label">Budget (MAD)</label>
+        <input type="number" name="budget" value="{{ post.budget|default:'' }}"
+               placeholder="0.00" step="0.01" min="0" class="form-input">
+      </div>
+    </div>
+  </div>
+
+  {# ── Section 2 : Client ────────────────────────────────────────────────── #}
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Informations client</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="form-label">Nom du client <span class="text-red-500">*</span></label>
+        <input type="text" name="client_name" value="{{ post.client_name|default:'' }}"
+               placeholder="M. et Mme Dupont"
+               class="form-input {% if errors.client_name %}border-red-400{% endif %}">
+        {% if errors.client_name %}<p class="form-error">{{ errors.client_name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Email client</label>
+        <input type="email" name="client_email" value="{{ post.client_email|default:'' }}"
+               placeholder="client@exemple.fr" class="form-input">
+      </div>
+
+      <div>
+        <label class="form-label">Téléphone</label>
+        <input type="tel" name="client_phone" value="{{ post.client_phone|default:'' }}"
+               placeholder="+33 6 XX XX XX XX" class="form-input">
+      </div>
+
+      <div>
+        <label class="form-label">Adresse du chantier</label>
+        <input type="text" name="address" value="{{ post.address|default:'' }}"
+               placeholder="12 rue des Lilas, 75011 Paris" class="form-input">
+      </div>
+    </div>
+  </div>
+
+  {# ── Section 3 : Équipe ────────────────────────────────────────────────── #}
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Équipe projet</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="form-label">Manager <span class="text-red-500">*</span></label>
+        <select name="manager" class="form-input {% if errors.manager %}border-red-400{% endif %}">
+          <option value="">— Sélectionner —</option>
+          {% for member in teams %}
+          {% if member.is_manager_or_above %}
+          <option value="{{ member.pk }}"
+                  {% if post.manager == member.pk|stringformat:"s" or member == request.user %}selected{% endif %}>
+            {{ member.get_full_name|default:member.username }} — {{ member.get_role_display }}
+          </option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        {% if errors.manager %}<p class="form-error">{{ errors.manager }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Estimateur</label>
+        <select name="estimator" class="form-input">
+          <option value="">— Optionnel —</option>
+          {% for member in teams %}
+          <option value="{{ member.pk }}" {% if post.estimator == member.pk|stringformat:"s" %}selected{% endif %}>
+            {{ member.get_full_name|default:member.username }} — {{ member.get_role_display }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    {# Sélection des membres de l'équipe par rôle #}
+    <div>
+      <p class="form-label mb-2">Membres de l'équipe affectés au projet</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {% for member in teams %}
+        <label class="flex items-center gap-3 p-3 rounded-xl border border-ardoise-100
+                      hover:border-foret-300 hover:bg-foret-50 cursor-pointer transition-colors
+                      has-[:checked]:border-foret-400 has-[:checked]:bg-foret-50">
+          <input type="checkbox" name="members" value="{{ member.pk }}"
+                 {% if post and member.pk|stringformat:"s" in post.getlist|default:'' %}checked{% endif %}
+                 class="w-4 h-4 accent-foret-500 flex-shrink-0">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white
+            {% if member.role == 'DIRECTEUR' %}bg-ardoise-700
+            {% elif member.role == 'MANAGER' %}bg-foret-600
+            {% elif member.role == 'ESTIMATEUR' %}bg-blue-500
+            {% elif member.role == 'ATELIER' %}bg-amber-500
+            {% elif member.role == 'CHAUFFEUR' %}bg-purple-500
+            {% else %}bg-foret-400{% endif %}">
+            {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-ardoise-800 truncate">{{ member.get_full_name|default:member.username }}</p>
+            <p class="text-xs text-ardoise-400">{{ member.get_role_display }}</p>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Section 4 : Gabarit ou phases manuelles ───────────────────────────── #}
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">4</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Phases & tâches</h2>
+    </div>
+
+    {# Choix : gabarit ou manuel #}
+    <div x-data="{ mode: 'template' }" class="space-y-4">
+      <div class="flex gap-4">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" x-model="mode" value="template" class="accent-foret-500">
+          <span class="text-sm font-medium text-ardoise-700">Utiliser un gabarit</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" x-model="mode" value="manual" class="accent-foret-500">
+          <span class="text-sm font-medium text-ardoise-700">Saisir les phases manuellement</span>
+        </label>
+      </div>
+
+      {# Sélection gabarit #}
+      <div x-show="mode === 'template'" x-transition>
+        <label class="form-label">Gabarit de projet</label>
+        <select name="template" class="form-input">
+          <option value="">— Sans gabarit —</option>
+          {% for tmpl in templates %}
+          <option value="{{ tmpl.pk }}" {% if post.template == tmpl.pk|stringformat:"s" %}selected{% endif %}>
+            {{ tmpl.name }} ({{ tmpl.phases_count }} phases · {{ tmpl.tasks_count }} tâches)
+          </option>
+          {% endfor %}
+        </select>
+        <p class="text-xs text-ardoise-400 mt-1">Les phases et tâches du gabarit seront créées automatiquement.</p>
+      </div>
+
+      {# Saisie manuelle — Alpine.js #}
+      <div x-show="mode === 'manual'" x-transition class="space-y-3">
+        <template x-for="(phase, pi) in phases" :key="pi">
+          <div class="border border-ardoise-200 rounded-xl overflow-hidden">
+            {# En-tête phase #}
+            <div class="flex items-center gap-3 px-4 py-3 bg-ardoise-50">
+              <span class="w-6 h-6 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0"
+                    x-text="pi + 1"></span>
+              <input type="text" x-model="phase.name"
+                     placeholder="Nom de la phase (ex : Conception, Fabrication…)"
+                     class="flex-1 text-sm font-semibold bg-transparent border-none outline-none text-ardoise-800 placeholder-ardoise-300">
+              <input type="number" x-model="phase.days" min="0" placeholder="0 j"
+                     class="w-16 text-xs bg-white border border-ardoise-200 rounded-lg px-2 py-1 text-center text-ardoise-600">
+              <span class="text-xs text-ardoise-400 flex-shrink-0">jours</span>
+              <button type="button" @click="removePhase(pi)"
+                      class="p-1 text-ardoise-300 hover:text-red-400 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {# Tâches de la phase #}
+            <div class="divide-y divide-ardoise-50">
+              <template x-for="(task, ti) in phase.tasks" :key="ti">
+                <div class="flex items-center gap-3 px-4 py-2.5 pl-10 bg-white hover:bg-ardoise-50">
+                  <span class="w-1.5 h-1.5 rounded-full bg-ardoise-300 flex-shrink-0"></span>
+                  <input type="text" x-model="task.name"
+                         placeholder="Nom de la tâche"
+                         class="flex-1 text-sm bg-transparent border-none outline-none text-ardoise-700 placeholder-ardoise-300">
+                  <select x-model="task.role"
+                          class="text-xs border border-ardoise-200 rounded-lg px-2 py-1 text-ardoise-500 bg-white">
+                    <option value="ANY">Tout rôle</option>
+                    <option value="DIRECTEUR">Directeur</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="ESTIMATEUR">Estimateur</option>
+                    <option value="ATELIER">Atelier</option>
+                    <option value="CHAUFFEUR">Chauffeur</option>
+                    <option value="POSEUR">Poseur</option>
+                  </select>
+                  <input type="number" x-model="task.hours" min="0" placeholder="0h"
+                         class="w-14 text-xs bg-white border border-ardoise-200 rounded-lg px-2 py-1 text-center text-ardoise-500">
+                  <span class="text-xs text-ardoise-400 flex-shrink-0">h</span>
+                  <button type="button" @click="removeTask(pi, ti)"
+                          class="p-0.5 text-ardoise-300 hover:text-red-400 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </template>
+
+              <div class="px-4 py-2 pl-10">
+                <button type="button" @click="addTask(pi)"
+                        class="flex items-center gap-1.5 text-xs text-foret-600 hover:text-foret-700 font-medium">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/>
+                  </svg>
+                  Ajouter une tâche
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <button type="button" @click="addPhase()"
+                class="flex items-center gap-2 text-sm text-foret-600 hover:text-foret-700 font-semibold
+                       border-2 border-dashed border-foret-200 hover:border-foret-400
+                       rounded-xl px-4 py-3 w-full justify-center transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/>
+          </svg>
+          Ajouter une phase
+        </button>
+
+        <p x-show="phases.length === 0" class="text-xs text-ardoise-400 text-center">
+          Cliquez sur « Ajouter une phase » pour structurer votre projet.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# ── Section 5 : Commande initiale & Notes ────────────────────────────── #}
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">5</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Documents & notes</h2>
+    </div>
+
+    {# Upload commande initiale #}
+    <div x-data="{ fileName: '' }">
+      <label class="form-label">Commande / Marché initial</label>
+      <p class="text-xs text-ardoise-400 mb-2">Bon de commande, marché signé, devis accepté… (PDF, Word, image)</p>
+      <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-ardoise-200
+                    hover:border-foret-400 rounded-xl py-6 cursor-pointer transition-colors
+                    bg-ardoise-50 hover:bg-foret-50"
+             :class="fileName ? 'border-foret-400 bg-foret-50' : ''">
+        <input type="file" name="initial_order" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+               class="hidden" @change="fileName = $event.target.files[0]?.name || ''">
+        <svg class="w-8 h-8" :class="fileName ? 'text-foret-500' : 'text-ardoise-300'"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p class="text-sm font-medium" :class="fileName ? 'text-foret-700' : 'text-ardoise-400'"
+           x-text="fileName || 'Cliquer pour déposer un fichier'"></p>
+        <p class="text-xs text-ardoise-400" x-show="!fileName">PDF, Word, Excel, image — max 20 Mo</p>
+      </label>
+    </div>
+
+    {# Notes internes #}
+    <div>
+      <label class="form-label">Notes internes</label>
+      <textarea name="notes" rows="3"
+                placeholder="Informations complémentaires, contraintes particulières, historique du projet…"
+                class="form-input resize-none">{{ post.notes|default:'' }}</textarea>
+    </div>
+  </div>
+
+  {# ── Actions ───────────────────────────────────────────────────────────── #}
+  <div class="flex items-center justify-between">
+    <a href="{% url 'projects:list' %}" class="btn-secondary">Annuler</a>
+    <button type="submit"
+            class="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-foret-500 hover:bg-foret-600
+                   text-white font-semibold text-sm transition-colors
+                   focus:outline-none focus:ring-2 focus:ring-foret-400 focus:ring-offset-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+      Créer le projet
+    </button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function projectForm() {
+  return {
+    phases: [],
+
+    addPhase() {
+      this.phases = [...this.phases, { name: '', days: 0, tasks: [] }];
+    },
+
+    removePhase(pi) {
+      this.phases = this.phases.filter((_, i) => i !== pi);
+    },
+
+    addTask(pi) {
+      const arr = [...this.phases];
+      arr[pi] = { ...arr[pi], tasks: [...arr[pi].tasks, { name: '', role: 'ANY', hours: 0 }] };
+      this.phases = arr;
+    },
+
+    removeTask(pi, ti) {
+      const arr = [...this.phases];
+      arr[pi] = { ...arr[pi], tasks: arr[pi].tasks.filter((_, i) => i !== ti) };
+      this.phases = arr;
+    },
+
+    onSubmit(e) {
+      // phases_json is already bound via :value — nothing extra needed
+    },
+  };
+}
+</script>
+{% endblock %}

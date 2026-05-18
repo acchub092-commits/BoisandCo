@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Chiffrage{% endblock %}
+{% block page_title %}Chiffrage{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── En-tête ──────────────────────────────────────────────────── #}
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold text-ardoise-900">Gestion du Chiffrage</h1>
+      <p class="text-sm text-ardoise-500 mt-0.5">Suivi des demandes de devis clients</p>
+    </div>
+    {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
+    <a href="{% url 'chiffrage:create' %}" class="btn-primary">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nouvelle demande
+    </a>
+    {% endif %}
+  </div>
+
+  {# ── Stats cards ───────────────────────────────────────────────── #}
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">{{ stats.en_attente }}</p>
+        <p class="text-xs text-ardoise-400">En attente DC</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">{{ stats.en_chiffrage }}</p>
+        <p class="text-xs text-ardoise-400">En chiffrage</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">{{ stats.soumis_dg }}</p>
+        <p class="text-xs text-ardoise-400">Soumis DG</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-foret-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-foret-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold text-ardoise-900 leading-tight">{{ stats.valides }}</p>
+        <p class="text-xs text-ardoise-400">Devis validés</p>
+      </div>
+    </div>
+
+    <div class="card py-3 px-4 flex items-center gap-3 {% if stats.retard %}border border-red-200 bg-red-50/30{% endif %}">
+      <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xl font-bold {% if stats.retard %}text-red-600{% else %}text-ardoise-900{% endif %} leading-tight">{{ stats.retard }}</p>
+        <p class="text-xs {% if stats.retard %}text-red-500{% else %}text-ardoise-400{% endif %}">En retard</p>
+      </div>
+    </div>
+  </div>
+
+  {# ── Filtres ───────────────────────────────────────────────────── #}
+  <form method="get" class="card py-3 px-5">
+    <div class="flex flex-wrap gap-3 items-end">
+
+      {# Recherche #}
+      <div class="flex-1 min-w-48 relative">
+        <label class="form-label">Rechercher</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ardoise-400 pointer-events-none"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+          </svg>
+          <input type="text" name="q" value="{{ search }}" placeholder="Référence, client…"
+                 class="form-input pl-9">
+        </div>
+      </div>
+
+      {# Statut #}
+      <div class="min-w-44">
+        <label class="form-label">Statut</label>
+        <select name="statut" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous les statuts</option>
+          {% for val, label in statuts %}
+          <option value="{{ val }}" {% if sel_statut == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Urgence #}
+      <div class="min-w-36">
+        <label class="form-label">Urgence</label>
+        <select name="urgence" class="form-input" onchange="this.form.submit()">
+          <option value="">Toutes</option>
+          {% for val, label in urgences %}
+          <option value="{{ val }}" {% if sel_urgence == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Retard #}
+      <div class="flex items-end gap-2 pb-0.5">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="retard" value="1" {% if sel_retard %}checked{% endif %}
+                 class="w-4 h-4 rounded accent-red-500" onchange="this.form.submit()">
+          <span class="text-xs font-medium text-ardoise-600">En retard uniquement</span>
+        </label>
+      </div>
+
+      {# Boutons #}
+      <div class="flex gap-2 pb-0.5">
+        <button type="submit" class="btn-primary btn-sm">Filtrer</button>
+        {% if sel_statut or sel_urgence or search or sel_retard %}
+        <a href="{% url 'chiffrage:dashboard' %}" class="btn-secondary btn-sm">Réinitialiser</a>
+        {% endif %}
+      </div>
+
+    </div>
+  </form>
+
+  {# ── Liste demandes ────────────────────────────────────────────── #}
+  <div class="card p-0 overflow-hidden">
+    {% if demandes %}
+    <div class="px-5 py-2.5 border-b border-ardoise-100 bg-ardoise-50">
+      <p class="text-xs text-ardoise-500">
+        <span class="font-semibold text-ardoise-700">{{ demandes|length }}</span>
+        demande{{ demandes|length|pluralize }}
+      </p>
+    </div>
+
+    <table class="min-w-full divide-y divide-ardoise-100">
+      <thead class="bg-white">
+        <tr>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Demande</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden sm:table-cell">Client</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Statut</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden md:table-cell">Commercial</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden lg:table-cell">Délai</th>
+          <th class="px-5 py-3 text-right text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100 bg-white">
+        {% for d in demandes %}
+        <tr class="hover:bg-ardoise-50/50 transition-colors cursor-pointer"
+            onclick="window.location='{% url 'chiffrage:detail' d.pk %}'">
+
+          {# Référence + urgence #}
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-2">
+              {# Badge urgence #}
+              {% if d.urgence == 'CRITIQUE' %}
+              <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>CRITIQUE
+              </span>
+              {% elif d.urgence == 'URGENT' %}
+              <span class="inline-flex px-1.5 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700">URGENT</span>
+              {% endif %}
+              {# Retard #}
+              {% if d.is_retard %}
+              <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              {% endif %}
+            </div>
+            <p class="text-sm font-mono font-semibold text-ardoise-800 mt-0.5">{{ d.reference }}</p>
+            <p class="text-xs text-ardoise-400">{{ d.created_at|date:"d/m/Y" }}</p>
+          </td>
+
+          {# Client #}
+          <td class="px-5 py-3.5 hidden sm:table-cell">
+            <p class="text-sm font-medium text-ardoise-800">{{ d.client_nom }}</p>
+            {% if d.client_ref_affaire %}
+            <p class="text-xs text-ardoise-400">{{ d.client_ref_affaire }}</p>
+            {% endif %}
+          </td>
+
+          {# Statut badge #}
+          <td class="px-5 py-3.5">
+            {% with color=d.get_statut_color %}
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+              {% if color == 'amber' %}bg-amber-100 text-amber-700
+              {% elif color == 'blue' %}bg-blue-100 text-blue-700
+              {% elif color == 'indigo' %}bg-indigo-100 text-indigo-700
+              {% elif color == 'purple' %}bg-purple-100 text-purple-700
+              {% elif color == 'foret' %}bg-foret-100 text-foret-700
+              {% elif color == 'red' %}bg-red-100 text-red-700
+              {% elif color == 'orange' %}bg-orange-100 text-orange-700
+              {% else %}bg-ardoise-100 text-ardoise-600{% endif %}">
+              {{ d.get_statut_display }}
+            </span>
+            {% endwith %}
+            {% if d.jalon %}
+            <p class="text-xs text-ardoise-400 mt-1">{{ d.get_jalon_display }}</p>
+            {% endif %}
+          </td>
+
+          {# Commercial #}
+          <td class="px-5 py-3.5 hidden md:table-cell">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-bois-500 text-white text-xs flex items-center justify-center font-semibold flex-shrink-0">
+                {{ d.commercial.first_name|first|upper }}{{ d.commercial.last_name|first|upper }}
+              </div>
+              <span class="text-sm text-ardoise-700">{{ d.commercial.get_full_name|truncatechars:20 }}</span>
+            </div>
+          </td>
+
+          {# Délai #}
+          <td class="px-5 py-3.5 hidden lg:table-cell">
+            {% if d.delai_souhaite %}
+            <p class="text-sm {% if d.is_retard %}text-red-600 font-semibold{% else %}text-ardoise-600{% endif %}">
+              {{ d.delai_souhaite|date:"d/m/Y" }}
+            </p>
+            {% if d.is_retard %}
+            <p class="text-xs text-red-500">En retard</p>
+            {% endif %}
+            {% else %}
+            <span class="text-xs text-ardoise-300">—</span>
+            {% endif %}
+          </td>
+
+          {# Action #}
+          <td class="px-5 py-3.5 text-right" onclick="event.stopPropagation()">
+            <a href="{% url 'chiffrage:detail' d.pk %}" class="btn-secondary btn-sm">
+              Ouvrir →
+            </a>
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <div class="py-20 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ardoise-100 mb-4">
+        <svg class="w-8 h-8 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      {% if sel_statut or sel_urgence or search or sel_retard %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun résultat</h3>
+      <a href="{% url 'chiffrage:dashboard' %}" class="btn-secondary btn-sm mt-2">Effacer les filtres</a>
+      {% else %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucune demande de chiffrage</h3>
+      {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
+      <p class="text-sm text-ardoise-400 mb-3">Soumettez votre première demande.</p>
+      <a href="{% url 'chiffrage:create' %}" class="btn-primary btn-sm">Nouvelle demande</a>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

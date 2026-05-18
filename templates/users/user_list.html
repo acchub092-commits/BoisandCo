@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Équipe{% endblock %}
+{% block page_title %}Équipe{% endblock %}
+
+{% block content %}
+<div class="space-y-5"
+     x-data="{
+       viewMode: localStorage.getItem('users_view') || 'grid',
+       setView(m) { this.viewMode = m; localStorage.setItem('users_view', m); }
+     }">
+
+  {# ── En-tête ──────────────────────────────────────────────── #}
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-ardoise-900">Équipe</h1>
+      <p class="text-sm text-ardoise-500 mt-0.5">{{ total }} membre{{ total|pluralize }} actif{{ total|pluralize }}</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      {# Toggle vue #}
+      <div class="flex items-center rounded-lg border border-ardoise-200 bg-white p-0.5">
+        {# Vue grille #}
+        <button @click="setView('grid')"
+                :class="viewMode === 'grid'
+                  ? 'bg-ardoise-800 text-white shadow-sm'
+                  : 'text-ardoise-400 hover:text-ardoise-700'"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                title="Vue grille">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+          </svg>
+          <span class="hidden sm:inline">Grille</span>
+        </button>
+        {# Vue liste #}
+        <button @click="setView('list')"
+                :class="viewMode === 'list'
+                  ? 'bg-ardoise-800 text-white shadow-sm'
+                  : 'text-ardoise-400 hover:text-ardoise-700'"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                title="Vue liste">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          <span class="hidden sm:inline">Liste</span>
+        </button>
+      </div>
+
+      {% if user.is_manager_or_above %}
+      <a href="{% url 'users:create' %}" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+        </svg>
+        Ajouter un membre
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Pills filtre par rôle ────────────────────────────────── #}
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'users:list' %}"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+              {% if not selected_role %}bg-ardoise-800 text-white border-ardoise-800
+              {% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
+      Tous
+      <span class="px-1.5 py-0.5 rounded-full text-xs
+             {% if not selected_role %}bg-white/20{% else %}bg-ardoise-100{% endif %}">
+        {{ total }}
+      </span>
+    </a>
+    {% for role_val, role_label, role_count in role_stats %}
+    {% if role_count %}
+    <a href="?role={{ role_val }}"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+              {% if selected_role == role_val %}
+                {% if role_val == 'DIRECTEUR' %}bg-ardoise-800 text-white border-ardoise-800
+                {% elif role_val == 'MANAGER' %}bg-bois-500 text-white border-bois-500
+                {% elif role_val == 'ESTIMATEUR' %}bg-blue-500 text-white border-blue-500
+                {% elif role_val == 'COMMERCIAL' %}bg-teal-500 text-white border-teal-500
+                {% elif role_val == 'ATELIER' %}bg-amber-500 text-white border-amber-500
+                {% elif role_val == 'CHAUFFEUR' %}bg-purple-500 text-white border-purple-500
+                {% elif role_val == 'POSEUR' %}bg-foret-500 text-white border-foret-500
+                {% endif %}
+              {% else %}bg-white text-ardoise-600 border-ardoise-200 hover:border-ardoise-400{% endif %}">
+      {{ role_label }}
+      <span class="px-1.5 py-0.5 rounded-full text-xs
+        {% if selected_role == role_val %}bg-white/20
+        {% elif role_val == 'DIRECTEUR' %}bg-ardoise-100 text-ardoise-700
+        {% elif role_val == 'MANAGER' %}bg-bois-100 text-bois-700
+        {% elif role_val == 'ESTIMATEUR' %}bg-blue-100 text-blue-700
+        {% elif role_val == 'COMMERCIAL' %}bg-teal-100 text-teal-700
+        {% elif role_val == 'ATELIER' %}bg-amber-100 text-amber-700
+        {% elif role_val == 'CHAUFFEUR' %}bg-purple-100 text-purple-700
+        {% elif role_val == 'POSEUR' %}bg-foret-100 text-foret-700
+        {% endif %}">{{ role_count }}</span>
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  {# ════════════════════════════════════════════════════════════ #}
+  {# VUE GRILLE                                                  #}
+  {# ════════════════════════════════════════════════════════════ #}
+  <div x-show="viewMode === 'grid'" x-cloak
+       class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    {% for member in users %}
+    <div class="card hover:shadow-card-hover transition-all duration-200 relative p-0 overflow-hidden">
+
+      {# Bandeau couleur rôle en haut #}
+      <div class="h-1
+        {% if member.role == 'DIRECTEUR' %}bg-ardoise-700
+        {% elif member.role == 'MANAGER' %}bg-bois-500
+        {% elif member.role == 'ESTIMATEUR' %}bg-blue-500
+        {% elif member.role == 'COMMERCIAL' %}bg-teal-500
+        {% elif member.role == 'ATELIER' %}bg-amber-500
+        {% elif member.role == 'CHAUFFEUR' %}bg-purple-500
+        {% elif member.role == 'POSEUR' %}bg-foret-500
+        {% endif %}">
+      </div>
+
+      <div class="p-4">
+        {# Avatar + infos #}
+        <div class="flex items-start gap-3">
+          {# Avatar #}
+          {% if member.avatar %}
+          <img src="{{ member.avatar.url }}" alt="{{ member.get_full_name }}"
+               class="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-sm flex-shrink-0">
+          {% else %}
+          <div class="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold
+                      ring-2 ring-white shadow-sm flex-shrink-0
+            {% if member.role == 'DIRECTEUR' %}bg-ardoise-700 text-white
+            {% elif member.role == 'MANAGER' %}bg-bois-500 text-white
+            {% elif member.role == 'ESTIMATEUR' %}bg-blue-500 text-white
+            {% elif member.role == 'COMMERCIAL' %}bg-teal-500 text-white
+            {% elif member.role == 'ATELIER' %}bg-amber-500 text-white
+            {% elif member.role == 'CHAUFFEUR' %}bg-purple-500 text-white
+            {% elif member.role == 'POSEUR' %}bg-foret-500 text-white
+            {% endif %}">
+            {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+          </div>
+          {% endif %}
+
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-ardoise-900 truncate leading-tight">
+              {{ member.get_full_name|default:member.username }}
+            </p>
+            <span class="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full
+              {% if member.role == 'DIRECTEUR' %}bg-ardoise-100 text-ardoise-700
+              {% elif member.role == 'MANAGER' %}bg-bois-100 text-bois-700
+              {% elif member.role == 'ESTIMATEUR' %}bg-blue-100 text-blue-700
+              {% elif member.role == 'COMMERCIAL' %}bg-teal-100 text-teal-700
+              {% elif member.role == 'ATELIER' %}bg-amber-100 text-amber-700
+              {% elif member.role == 'CHAUFFEUR' %}bg-purple-100 text-purple-700
+              {% elif member.role == 'POSEUR' %}bg-foret-100 text-foret-700
+              {% endif %}">
+              {{ member.get_role_display }}
+            </span>
+          </div>
+        </div>
+
+        {# Coordonnées #}
+        <div class="mt-4 space-y-2 text-xs text-ardoise-500 border-t border-ardoise-100 pt-3">
+          {% if member.email %}
+          <div class="flex items-center gap-2 min-w-0">
+            <svg class="w-3.5 h-3.5 flex-shrink-0 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <a href="mailto:{{ member.email }}"
+               class="truncate hover:text-bois-600 transition-colors">{{ member.email }}</a>
+          </div>
+          {% endif %}
+          {% if member.phone %}
+          <div class="flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 flex-shrink-0 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+            <a href="tel:{{ member.phone }}" class="hover:text-bois-600 transition-colors">{{ member.phone }}</a>
+          </div>
+          {% else %}
+          <p class="text-ardoise-300 italic">Aucun téléphone renseigné</p>
+          {% endif %}
+        </div>
+
+        {# Bouton Modifier #}
+        {% if user.is_manager_or_above or user.pk == member.pk %}
+        <div class="mt-3 pt-3 border-t border-ardoise-100">
+          <a href="{% url 'users:update' member.pk %}"
+             class="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-xs font-medium
+                    text-ardoise-500 hover:text-bois-700 hover:bg-bois-50 border border-ardoise-200
+                    hover:border-bois-300 transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+            {% if user.pk == member.pk %}Mon profil{% else %}Modifier{% endif %}
+          </a>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+    {% empty %}
+    <div class="col-span-full py-20 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ardoise-100 mb-4">
+        <svg class="w-8 h-8 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      {% if selected_role %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun membre dans ce rôle</h3>
+      <a href="{% url 'users:list' %}" class="btn-secondary btn-sm mt-2">Voir tous</a>
+      {% else %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun membre dans l'équipe</h3>
+      {% if user.is_manager_or_above %}
+      <a href="{% url 'users:create' %}" class="btn-primary btn-sm mt-2">Ajouter le premier membre</a>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ════════════════════════════════════════════════════════════ #}
+  {# VUE LISTE                                                   #}
+  {# ════════════════════════════════════════════════════════════ #}
+  <div x-show="viewMode === 'list'" x-cloak>
+    {% if users %}
+    <div class="card p-0 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-ardoise-100 bg-ardoise-50">
+            <th class="text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide px-5 py-3">Membre</th>
+            <th class="text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Rôle</th>
+            <th class="text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide px-4 py-3 hidden md:table-cell">E-mail</th>
+            <th class="text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide px-4 py-3 hidden lg:table-cell">Téléphone</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ardoise-50">
+          {% for member in users %}
+          <tr class="hover:bg-ardoise-50/60 transition-colors group">
+
+            {# Membre — avatar + nom #}
+            <td class="px-5 py-3">
+              <div class="flex items-center gap-3">
+                {# Trait couleur rôle #}
+                <div class="w-0.5 h-8 rounded-full flex-shrink-0
+                  {% if member.role == 'DIRECTEUR' %}bg-ardoise-700
+                  {% elif member.role == 'MANAGER' %}bg-bois-500
+                  {% elif member.role == 'ESTIMATEUR' %}bg-blue-500
+                  {% elif member.role == 'COMMERCIAL' %}bg-teal-500
+                  {% elif member.role == 'ATELIER' %}bg-amber-500
+                  {% elif member.role == 'CHAUFFEUR' %}bg-purple-500
+                  {% elif member.role == 'POSEUR' %}bg-foret-500
+                  {% endif %}">
+                </div>
+
+                {# Avatar #}
+                {% if member.avatar %}
+                <img src="{{ member.avatar.url }}" alt="{{ member.get_full_name }}"
+                     class="w-8 h-8 rounded-full object-cover ring-1 ring-ardoise-200 flex-shrink-0">
+                {% else %}
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+                  {% if member.role == 'DIRECTEUR' %}bg-ardoise-700 text-white
+                  {% elif member.role == 'MANAGER' %}bg-bois-500 text-white
+                  {% elif member.role == 'ESTIMATEUR' %}bg-blue-500 text-white
+                  {% elif member.role == 'COMMERCIAL' %}bg-teal-500 text-white
+                  {% elif member.role == 'ATELIER' %}bg-amber-500 text-white
+                  {% elif member.role == 'CHAUFFEUR' %}bg-purple-500 text-white
+                  {% elif member.role == 'POSEUR' %}bg-foret-500 text-white
+                  {% endif %}">
+                  {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+                </div>
+                {% endif %}
+
+                <div class="min-w-0">
+                  <p class="font-semibold text-ardoise-900 truncate leading-tight">
+                    {{ member.get_full_name|default:member.username }}
+                  </p>
+                  {# Rôle visible sur petits écrans uniquement (sinon colonne dédiée) #}
+                  <p class="text-xs text-ardoise-400 sm:hidden">{{ member.get_role_display }}</p>
+                </div>
+              </div>
+            </td>
+
+            {# Rôle #}
+            <td class="px-4 py-3 hidden sm:table-cell">
+              <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full
+                {% if member.role == 'DIRECTEUR' %}bg-ardoise-100 text-ardoise-700
+                {% elif member.role == 'MANAGER' %}bg-bois-100 text-bois-700
+                {% elif member.role == 'ESTIMATEUR' %}bg-blue-100 text-blue-700
+                {% elif member.role == 'COMMERCIAL' %}bg-teal-100 text-teal-700
+                {% elif member.role == 'ATELIER' %}bg-amber-100 text-amber-700
+                {% elif member.role == 'CHAUFFEUR' %}bg-purple-100 text-purple-700
+                {% elif member.role == 'POSEUR' %}bg-foret-100 text-foret-700
+                {% endif %}">
+                {{ member.get_role_display }}
+              </span>
+            </td>
+
+            {# E-mail #}
+            <td class="px-4 py-3 hidden md:table-cell">
+              {% if member.email %}
+              <a href="mailto:{{ member.email }}"
+                 class="text-ardoise-600 hover:text-bois-600 transition-colors truncate max-w-[200px] block">
+                {{ member.email }}
+              </a>
+              {% else %}
+              <span class="text-ardoise-300 text-xs italic">—</span>
+              {% endif %}
+            </td>
+
+            {# Téléphone #}
+            <td class="px-4 py-3 hidden lg:table-cell">
+              {% if member.phone %}
+              <a href="tel:{{ member.phone }}"
+                 class="text-ardoise-600 hover:text-bois-600 transition-colors">
+                {{ member.phone }}
+              </a>
+              {% else %}
+              <span class="text-ardoise-300 text-xs italic">—</span>
+              {% endif %}
+            </td>
+
+            {# Action Modifier #}
+            <td class="px-4 py-3 text-right">
+              {% if user.is_manager_or_above or user.pk == member.pk %}
+              <a href="{% url 'users:update' member.pk %}"
+                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                        text-ardoise-500 hover:text-bois-700 hover:bg-bois-50 border border-transparent
+                        group-hover:border-ardoise-200 hover:border-bois-300 transition-all">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                </svg>
+                {% if user.pk == member.pk %}Mon profil{% else %}Modifier{% endif %}
+              </a>
+              {% endif %}
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card py-20 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ardoise-100 mb-4">
+        <svg class="w-8 h-8 text-ardoise-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      {% if selected_role %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun membre dans ce rôle</h3>
+      <a href="{% url 'users:list' %}" class="btn-secondary btn-sm mt-2">Voir tous</a>
+      {% else %}
+      <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun membre dans l'équipe</h3>
+      {% if user.is_manager_or_above %}
+      <a href="{% url 'users:create' %}" class="btn-primary btn-sm mt-2">Ajouter le premier membre</a>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

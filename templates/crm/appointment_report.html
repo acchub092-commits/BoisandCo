@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Compte rendu — {{ appointment.title }}{% endblock %}
+{% block page_title %}Compte rendu{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:lead_detail' appointment.lead_id %}" class="btn-secondary btn-sm">
+  ← {{ appointment.lead.project_name }}
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5"
+     x-data="{
+       dragover: false,
+       files: [],
+       addFiles(e) {
+         const list = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+         for (const f of list) { this.files.push(f); }
+       },
+       removeFile(i) { this.files.splice(i, 1); }
+     }">
+
+  {# En-tête RDV #}
+  <div class="card p-0 overflow-hidden">
+    <div class="px-6 py-4 border-b border-ardoise-100 bg-blue-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-base font-bold text-ardoise-900">{{ appointment.title }}</p>
+        <p class="text-xs text-ardoise-500">
+          {{ appointment.get_appointment_type_display }} ·
+          {{ appointment.scheduled_at|date:"d/m/Y à H:i" }}
+          {% if appointment.location %} · {{ appointment.location }}{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5">
+      {% csrf_token %}
+
+      {# Compte rendu textuel #}
+      <div>
+        <label class="form-label text-foret-700 font-semibold">
+          Compte rendu
+          {% if appointment.report_written_at %}
+          <span class="text-xs font-normal text-ardoise-400 ml-2">
+            Rédigé le {{ appointment.report_written_at|date:"d/m/Y" }}
+          </span>
+          {% endif %}
+        </label>
+        <textarea name="report" rows="10"
+                  class="w-full form-input resize-none font-mono text-sm leading-relaxed"
+                  placeholder="Résumé du rendez-vous, points abordés, décisions prises, engagements, prochaines étapes…">{{ appointment.report }}</textarea>
+      </div>
+
+      {# Upload pièces jointes #}
+      <div>
+        <label class="form-label">Pièces jointes (photos, plans, documents…)</label>
+
+        {# Zone drop #}
+        <div class="relative border-2 border-dashed rounded-xl p-6 text-center transition-colors"
+             :class="dragover ? 'border-foret-400 bg-foret-50' : 'border-ardoise-200 bg-ardoise-50'"
+             @dragover.prevent="dragover = true"
+             @dragleave.prevent="dragover = false"
+             @drop.prevent="dragover = false; addFiles($event)">
+          <svg class="w-8 h-8 mx-auto text-ardoise-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+          <p class="text-sm text-ardoise-500">Glissez vos fichiers ici ou</p>
+          <label class="mt-2 inline-block cursor-pointer text-foret-600 font-medium text-sm hover:underline">
+            parcourir
+            <input type="file" name="files" multiple class="hidden" @change="addFiles($event)"
+                   accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg">
+          </label>
+          <p class="text-xs text-ardoise-400 mt-1">PDF, DOCX, XLSX, JPG, PNG, DWG — max 20 Mo par fichier</p>
+        </div>
+
+        {# Type de document #}
+        <div class="mt-3">
+          <label class="form-label">Type de document</label>
+          <select name="doc_type" class="form-input w-full">
+            {% for val, label in doc_types %}
+            <option value="{{ val }}" {% if val == 'MEETING_REPORT' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Prévisualisation des fichiers sélectionnés #}
+        <template x-if="files.length > 0">
+          <ul class="mt-3 space-y-1">
+            <template x-for="(f, i) in files" :key="i">
+              <li class="flex items-center gap-3 px-3 py-2 bg-ardoise-50 rounded-lg">
+                <svg class="w-4 h-4 text-ardoise-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                </svg>
+                <span class="text-xs text-ardoise-700 flex-1 truncate" x-text="f.name"></span>
+                <span class="text-xs text-ardoise-400" x-text="(f.size/1024).toFixed(0) + ' Ko'"></span>
+                <button type="button" @click="removeFile(i)"
+                        class="text-ardoise-400 hover:text-red-500 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </li>
+            </template>
+          </ul>
+        </template>
+      </div>
+
+      {# Documents existants #}
+      {% if appointment.documents.exists %}
+      <div>
+        <label class="form-label">Documents déjà joints</label>
+        <div class="space-y-1.5">
+          {% for doc in appointment.documents.all %}
+          <div class="flex items-center gap-3 px-3 py-2 bg-ardoise-50 rounded-lg">
+            <svg class="w-4 h-4 text-ardoise-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ doc.icon }}"/>
+            </svg>
+            <a href="{{ doc.file.url }}" target="_blank"
+               class="text-xs text-foret-600 hover:underline flex-1 truncate">{{ doc.title }}</a>
+            <span class="text-xs text-ardoise-400">{{ doc.get_doc_type_display }}</span>
+            <form method="post" action="{% url 'crm:document_delete' doc.pk %}" class="inline">
+              {% csrf_token %}
+              <button type="submit"
+                      onclick="return confirm('Supprimer ce document ?')"
+                      class="text-ardoise-400 hover:text-red-500 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# Actions #}
+      <div class="flex justify-between items-center pt-2 border-t border-ardoise-100">
+        <a href="{% url 'crm:lead_detail' appointment.lead_id %}" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn-primary">Enregistrer le compte rendu</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

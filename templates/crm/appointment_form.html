@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{% if is_create %}Nouveau RDV{% else %}Modifier le RDV{% endif %}{% endblock %}
+{% block page_title %}Rendez-vous{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:lead_detail' lead.pk %}" class="btn-secondary btn-sm">← {{ lead.project_name }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="card p-0 overflow-hidden"
+       x-data="{
+         aptype: '{{ appointment.appointment_type|default:'DECOUVERTE' }}',
+         status: '{{ appointment.status|default:'PLANIFIE' }}'
+       }">
+
+    {# En-tête #}
+    <div class="px-6 py-4 border-b border-ardoise-100 bg-ardoise-50">
+      <h2 class="text-base font-semibold text-ardoise-900">
+        {% if is_create %}Planifier un rendez-vous{% else %}Modifier le rendez-vous{% endif %}
+      </h2>
+      <p class="text-xs text-ardoise-500 mt-0.5">Opportunité : <span class="font-medium">{{ lead.project_name }}</span> · {{ lead.contact_name }}</p>
+    </div>
+
+    <form method="post" class="p-6 space-y-5">
+      {% csrf_token %}
+
+      {# Type + Statut #}
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Type de RDV <span class="text-red-400">*</span></label>
+          <select name="appointment_type" x-model="aptype" class="form-input w-full">
+            {% for val, label in appointment_types %}
+            <option value="{{ val }}" {% if appointment.appointment_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if not is_create %}
+        <div>
+          <label class="form-label">Statut</label>
+          <select name="status" x-model="status" class="form-input w-full">
+            <option value="PLANIFIE" {% if appointment.status == 'PLANIFIE' %}selected{% endif %}>Planifié</option>
+            <option value="REALISE"  {% if appointment.status == 'REALISE'  %}selected{% endif %}>Réalisé</option>
+            <option value="ANNULE"   {% if appointment.status == 'ANNULE'   %}selected{% endif %}>Annulé</option>
+            <option value="REPORTE"  {% if appointment.status == 'REPORTE'  %}selected{% endif %}>Reporté</option>
+          </select>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Titre #}
+      <div>
+        <label class="form-label">Titre / Objet <span class="text-red-400">*</span></label>
+        <input type="text" name="title"
+               value="{{ appointment.title|default:'' }}"
+               placeholder="Ex : Visite chantier Résidence Atlas — M. Benali"
+               class="form-input w-full" required>
+      </div>
+
+      {# Date + Heure + Durée #}
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-1">
+          <label class="form-label">Date <span class="text-red-400">*</span></label>
+          <input type="date" name="scheduled_date"
+                 value="{{ appointment.scheduled_at|date:'Y-m-d'|default:'' }}"
+                 class="form-input w-full" required>
+        </div>
+        <div>
+          <label class="form-label">Heure</label>
+          <input type="time" name="scheduled_time"
+                 value="{{ appointment.scheduled_at|date:'H:i'|default:'09:00' }}"
+                 class="form-input w-full">
+        </div>
+        <div>
+          <label class="form-label">Durée (min)</label>
+          <input type="number" name="duration_minutes"
+                 value="{{ appointment.duration_minutes|default:60 }}"
+                 min="15" step="15" class="form-input w-full">
+        </div>
+      </div>
+
+      {# Lieu #}
+      <div>
+        <label class="form-label">Lieu</label>
+        <input type="text" name="location"
+               value="{{ appointment.location|default:'' }}"
+               placeholder="Adresse du chantier, bureau, visioconférence…"
+               class="form-input w-full">
+      </div>
+
+      {# Participants #}
+      <div>
+        <label class="form-label">Participants</label>
+        <div class="border border-ardoise-200 rounded-xl divide-y divide-ardoise-100 max-h-48 overflow-y-auto">
+          {% for member in team %}
+          <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-ardoise-50 cursor-pointer">
+            <input type="checkbox" name="attendees" value="{{ member.pk }}"
+                   {% if appointment and member in appointment.attendees.all %}checked{% endif %}
+                   class="rounded text-foret-500">
+            <div class="w-7 h-7 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
+              {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+            </div>
+            <div>
+              <p class="text-sm font-medium text-ardoise-800">{{ member.get_full_name }}</p>
+              <p class="text-xs text-ardoise-400">{{ member.get_role_display }}</p>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Actions #}
+      <div class="flex items-center justify-between pt-2 border-t border-ardoise-100">
+        <a href="{% url 'crm:lead_detail' lead.pk %}" class="btn-secondary">Annuler</a>
+        <div class="flex gap-3">
+          {% if not is_create %}
+          <a href="{% url 'crm:appointment_report' appointment.pk %}"
+             class="btn-secondary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Compte rendu
+          </a>
+          {% endif %}
+          <button type="submit" class="btn-primary">
+            {% if is_create %}Planifier{% else %}Enregistrer{% endif %}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

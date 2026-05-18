@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --------------------------------------------------------
+   Composants Bois&Co — identité logo vert forêt + crème
+   -------------------------------------------------------- */
+@layer components {
+
+  /* Boutons */
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-foret-500 text-white hover:bg-foret-600 focus:ring-foret-400;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-ardoise-700 border border-ardoise-200 hover:bg-ardoise-50 focus:ring-ardoise-300;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  /* Cartes */
+  .card {
+    @apply bg-white rounded-xl shadow-card p-6 border border-ardoise-100/60;
+  }
+  .card-hover {
+    @apply card hover:shadow-card-hover transition-shadow duration-200 cursor-pointer;
+  }
+
+  /* Badges statut projet */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-avant-vente  { @apply badge bg-ardoise-100 text-ardoise-700; }
+  .badge-etude        { @apply badge bg-blue-100 text-blue-700; }
+  .badge-production   { @apply badge bg-amber-100 text-amber-700; }
+  .badge-logistique   { @apply badge bg-purple-100 text-purple-700; }
+  .badge-pose         { @apply badge bg-foret-100 text-foret-700; }
+  .badge-cloture      { @apply badge bg-gray-100 text-gray-600; }
+
+  /* Champs formulaire */
+  .form-label {
+    @apply block text-sm font-medium text-ardoise-700 mb-1;
+  }
+  .form-input {
+    @apply block w-full rounded-lg border-ardoise-200 shadow-sm text-sm
+           focus:ring-foret-500 focus:border-foret-500;
+  }
+  .form-error {
+    @apply text-red-600 text-xs mt-1;
+  }
+
+  /* Navigation sidebar — fond sombre (vert logo) */
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+           transition-colors duration-150;
+    color: rgba(242, 232, 213, 0.65);   /* crème atténué */
+  }
+  .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.09);
+    color: rgba(242, 232, 213, 1);      /* crème plein */
+  }
+  .nav-link-active {
+    background-color: rgba(242, 232, 213, 0.15) !important;
+    color: #f2e8d5 !important;          /* crème logo */
+    font-weight: 600;
+  }
+  .nav-link-active:hover {
+    background-color: rgba(242, 232, 213, 0.2) !important;
+  }
+
+  /* Barre de progression tâche */
+  .progress-bar {
+    @apply h-2 rounded-full bg-ardoise-100 overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full bg-foret-500 transition-all duration-500;
+  }
+}
+
+/* --------------------------------------------------------
+   HTMX — indicateur de chargement global
+   -------------------------------------------------------- */
+#htmx-indicator {
+  display: none;
+}
+.htmx-request #htmx-indicator {
+  display: flex;
+}
+.htmx-request.htmx-indicator {
+  display: flex;
+}

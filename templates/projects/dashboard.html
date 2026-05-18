@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tableau de bord{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+
+{% block topbar_actions %}
+{% if request.user.is_superuser %}
+<a href="{% url 'projects:create' %}" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600 text-white font-semibold text-sm transition-colors">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+  </svg>
+  Nouveau projet
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── KPI Cards ──────────────────────────────────────────── #}
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.total }}</p>
+        <p class="text-xs text-ardoise-400 mt-0.5">Projets total</p>
+      </div>
+    </div>
+
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.actifs }}</p>
+        <p class="text-xs text-ardoise-400 mt-0.5">En cours</p>
+      </div>
+    </div>
+
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.en_production }}</p>
+        <p class="text-xs text-ardoise-400 mt-0.5">En production</p>
+      </div>
+    </div>
+
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-foret-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.en_pose }}</p>
+        <p class="text-xs text-ardoise-400 mt-0.5">En pose</p>
+      </div>
+    </div>
+  </div>
+
+  {# ── Pipeline par statut ────────────────────────────────── #}
+  <div class="card">
+    <h3 class="text-sm font-semibold text-ardoise-700 mb-4 uppercase tracking-wider">Pipeline projets</h3>
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+      {% for item in pipeline %}
+      <a href="{% url 'projects:list' %}?status={{ item.status }}"
+         class="group flex flex-col items-center p-3 rounded-xl border-2 transition-all hover:-translate-y-0.5
+           {% if item.status == 'AVANT_VENTE' %}border-ardoise-200 hover:border-ardoise-400 hover:bg-ardoise-50
+           {% elif item.status == 'ETUDE' %}border-blue-200 hover:border-blue-400 hover:bg-blue-50
+           {% elif item.status == 'PRODUCTION' %}border-amber-200 hover:border-amber-400 hover:bg-amber-50
+           {% elif item.status == 'LOGISTIQUE' %}border-purple-200 hover:border-purple-400 hover:bg-purple-50
+           {% elif item.status == 'POSE' %}border-foret-200 hover:border-foret-400 hover:bg-foret-50
+           {% elif item.status == 'CLOTURE' %}border-ardoise-100 hover:border-ardoise-300 hover:bg-ardoise-50
+           {% endif %}">
+        <span class="text-2xl font-extrabold
+          {% if item.status == 'AVANT_VENTE' %}text-ardoise-700
+          {% elif item.status == 'ETUDE' %}text-blue-600
+          {% elif item.status == 'PRODUCTION' %}text-amber-600
+          {% elif item.status == 'LOGISTIQUE' %}text-purple-600
+          {% elif item.status == 'POSE' %}text-foret-600
+          {% elif item.status == 'CLOTURE' %}text-ardoise-400
+          {% endif %}">{{ item.count }}</span>
+        <span class="text-xs text-ardoise-500 mt-1 text-center leading-tight">{{ item.label }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Projets actifs ─────────────────────────────────────── #}
+  <div class="card p-0 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-ardoise-100">
+      <h3 class="text-sm font-semibold text-ardoise-800">Projets en cours</h3>
+      <a href="{% url 'projects:list' %}" class="text-xs text-foret-600 hover:text-foret-700 font-medium">
+        Voir tout →
+      </a>
+    </div>
+
+    {% if projets_actifs %}
+    <ul class="divide-y divide-ardoise-50">
+      {% for project in projets_actifs %}
+      <li>
+        <a href="{% url 'projects:detail' project.pk %}"
+           class="flex items-center gap-4 px-5 py-3.5 hover:bg-ardoise-50 transition-colors group">
+
+          {# Indicateur statut #}
+          <div class="w-2 h-10 rounded-full flex-shrink-0
+            {% if project.status == 'AVANT_VENTE' %}bg-ardoise-300
+            {% elif project.status == 'ETUDE' %}bg-blue-400
+            {% elif project.status == 'PRODUCTION' %}bg-amber-400
+            {% elif project.status == 'LOGISTIQUE' %}bg-purple-400
+            {% elif project.status == 'POSE' %}bg-foret-400
+            {% endif %}">
+          </div>
+
+          {# Infos #}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-semibold text-ardoise-900 truncate group-hover:text-foret-700 transition-colors">
+                {{ project.name }}
+              </p>
+              {% if project.status == 'AVANT_VENTE' %}<span class="badge-avant-vente hidden sm:inline">{{ project.get_status_display }}</span>
+              {% elif project.status == 'ETUDE' %}<span class="badge-etude hidden sm:inline">{{ project.get_status_display }}</span>
+              {% elif project.status == 'PRODUCTION' %}<span class="badge-production hidden sm:inline">{{ project.get_status_display }}</span>
+              {% elif project.status == 'LOGISTIQUE' %}<span class="badge-logistique hidden sm:inline">{{ project.get_status_display }}</span>
+              {% elif project.status == 'POSE' %}<span class="badge-pose hidden sm:inline">{{ project.get_status_display }}</span>
+              {% endif %}
+            </div>
+            <p class="text-xs text-ardoise-400 mt-0.5">{{ project.client_name }} · {{ project.manager.get_full_name }}</p>
+          </div>
+
+          {# Progression #}
+          <div class="hidden sm:flex items-center gap-3 flex-shrink-0 w-36">
+            <div class="progress-bar flex-1">
+              <div class="progress-fill" style="width: {{ project.progress }}%"></div>
+            </div>
+            <span class="text-xs font-semibold text-ardoise-500 w-8 text-right">{{ project.progress }}%</span>
+          </div>
+
+          <svg class="w-4 h-4 text-ardoise-300 group-hover:text-foret-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="py-16 text-center">
+      <svg class="w-10 h-10 mx-auto text-ardoise-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+      </svg>
+      <p class="text-sm text-ardoise-400 mb-3">Aucun projet en cours</p>
+      {% if request.user.is_superuser %}
+      <a href="{% url 'projects:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600 text-white text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Créer le premier projet
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

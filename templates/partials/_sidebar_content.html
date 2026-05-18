@@ -1,0 +1,207 @@
+{% load static %}
+
+{# Logo + bouton collapse ─────────────────────────────────────── #}
+<div class="flex items-center justify-between px-3 py-4 flex-shrink-0 min-h-[120px]"
+     style="border-bottom: 1px solid rgba(242,232,213,0.12);">
+  <div class="flex items-center overflow-hidden">
+    {# Logo replié : "&" crème dans un cadre crème, fidèle au vrai logo #}
+    <div :class="sidebarOpen ? 'hidden' : 'flex'"
+         class="w-9 h-9 items-center justify-center flex-shrink-0"
+         style="border: 2px solid rgba(242,232,213,0.7); border-radius: 3px;">
+      <span style="color: #f2e8d5; font-family: Georgia, serif; font-weight: 700; font-size: 1.15rem; line-height: 1;">&amp;</span>
+    </div>
+    {# Logo complet — fond vert identique au sidebar, blend parfait #}
+    <img :class="sidebarOpen ? 'block' : 'hidden'"
+         src="{% static 'images/logo-white.jpg' %}" alt="Bois&amp;Co"
+         class="h-28 w-auto max-w-[200px] object-contain">
+  </div>
+  <button @click="sidebarOpen = !sidebarOpen"
+          class="p-1.5 rounded text-creme-200/50 hover:text-creme-200 hover:bg-white/10 transition-colors flex-shrink-0"
+          :title="sidebarOpen ? 'Réduire' : 'Agrandir'">
+    <svg class="w-4 h-4 transition-transform duration-300" :class="sidebarOpen ? '' : 'rotate-180'"
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+    </svg>
+  </button>
+</div>
+
+{# Navigation ─────────────────────────────────────────────────── #}
+<nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+  {% with url_name=request.resolver_match.url_name %}
+
+  {# ── Tableau de bord ── #}
+  <a href="{% url 'projects:dashboard' %}"
+     class="nav-link {% if url_name == 'dashboard' and request.resolver_match.namespace == 'projects' %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Tableau de bord">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Tableau de bord</span>
+  </a>
+
+  {# ── Chiffrage ── #}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.is_superuser %}
+  <a href="{% url 'chiffrage:dashboard' %}"
+     class="nav-link {% if 'chiffrage' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Chiffrage">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Chiffrage</span>
+  </a>
+  {% endif %}
+
+  {# ── Projets ── #}
+  <a href="{% url 'projects:list' %}"
+     class="nav-link {% if 'projets' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Projets">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Projets</span>
+  </a>
+
+  {# ── Gestion de pose ── #}
+  {% if user.is_superuser or user.role == 'POSEUR' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'COMMERCIAL' or user.role == 'ATELIER' or user.role == 'SAV' %}
+  <a href="{% url 'projects:pose_dashboard' %}"
+     class="nav-link {% if 'pose' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Gestion de pose">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Gestion de pose</span>
+  </a>
+  {% endif %}
+
+  {# ── Agenda commercial ── #}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
+  <a href="{% url 'crm:agenda' %}"
+     class="nav-link {% if 'agenda' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Agenda commercial">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Agenda commercial</span>
+  </a>
+  {% endif %}
+
+  {# ── CRM Dashboard ── #}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
+  <a href="{% url 'crm:crm_dashboard' %}"
+     class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Dashboard CRM">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Dashboard CRM</span>
+  </a>
+  {% endif %}
+
+  {# ── Pipeline commercial ── #}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
+  <a href="{% url 'crm:pipeline' %}"
+     class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' not in request.path and 'agenda' not in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Pipeline commercial">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Pipeline</span>
+  </a>
+  {% endif %}
+
+  {# ── Séparateur section outils ── #}
+  <div class="pt-3 pb-1">
+    <div :class="sidebarOpen ? 'px-2' : 'px-1'">
+      <span :class="sidebarOpen ? 'block' : 'hidden'"
+            class="text-[10px] font-semibold uppercase tracking-widest text-creme-200/35">
+        Outils
+      </span>
+      <div :class="sidebarOpen ? 'hidden' : 'block'" class="border-t border-creme-200/10 mx-1"></div>
+    </div>
+  </div>
+
+  {# ── Équipe ── #}
+  {% if user.is_manager_or_above %}
+  <a href="{% url 'users:list' %}"
+     class="nav-link {% if 'users' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Équipe">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Équipe</span>
+  </a>
+  {% endif %}
+
+  {# ── Gabarits ── #}
+  {% if user.is_manager_or_above %}
+  <a href="{% url 'projects:template_list' %}"
+     class="nav-link {% if 'gabarits' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Gabarits">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Gabarits</span>
+  </a>
+  {% endif %}
+
+  {# ── Documents ── #}
+  <a href="{% url 'documents:list' %}"
+     class="nav-link {% if 'documents' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Documents">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Documents</span>
+  </a>
+
+  {# ── Workflows ── #}
+  {% if user.is_manager_or_above %}
+  <a href="{% url 'workflows:template_list' %}"
+     class="nav-link {% if 'workflows' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Workflows">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Workflows</span>
+  </a>
+  {% endif %}
+
+  {% endwith %}
+</nav>
+
+{# Profil ─────────────────────────────────────────────────────── #}
+<div class="p-3 flex-shrink-0" style="border-top: 1px solid rgba(242,232,213,0.12);">
+  <div class="flex items-center gap-2 overflow-hidden"
+       :class="sidebarOpen ? '' : 'justify-center'">
+    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+         style="background-color: rgba(242,232,213,0.15); color: #f2e8d5; border: 1px solid rgba(242,232,213,0.25);">
+      {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+    </div>
+    <div :class="sidebarOpen ? 'block' : 'hidden'" class="flex-1 min-w-0">
+      <p class="text-xs font-semibold truncate" style="color: #f2e8d5;">{{ user.get_full_name|default:user.username }}</p>
+      <p class="text-xs truncate" style="color: rgba(242,232,213,0.5);">{{ user.get_role_display }}</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Planning — {{ project.reference }}{% endblock %}
+{% block page_title %}Planning{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── En-tête ──────────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 text-sm text-ardoise-400 mb-1.5">
+        <a href="{% url 'projects:list' %}" class="hover:text-foret-600 transition-colors">← Projets</a>
+        <span class="text-ardoise-300">/</span>
+        <a href="{% url 'projects:detail' project.pk %}" class="hover:text-foret-600 transition-colors">{{ project.reference }}</a>
+        <span class="text-ardoise-300">/</span>
+        <span class="text-ardoise-600 font-medium">Planning</span>
+      </div>
+      <h1 class="text-xl font-bold text-ardoise-900">{{ project.name }}</h1>
+      <p class="text-sm text-ardoise-500 mt-0.5">Séquençage Bois&Co — 18 étapes · 3 parties</p>
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <a href="{% url 'projects:detail' project.pk %}" class="btn-secondary text-sm">Vue projet</a>
+    </div>
+  </div>
+
+  {# ── Légende ──────────────────────────────────────────────────── #}
+  <div class="flex flex-wrap gap-3 text-xs">
+    <div class="flex items-center gap-1.5">
+      <span class="w-4 h-4 rounded bg-foret-500 inline-block"></span>
+      <span class="text-ardoise-600">A — Pipeline commercial</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-4 h-4 rounded bg-blue-500 inline-block"></span>
+      <span class="text-ardoise-600">B — Gestion de projet</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-4 h-4 rounded bg-amber-500 inline-block"></span>
+      <span class="text-ardoise-600">C — Facturation & SAV</span>
+    </div>
+    <div class="flex items-center gap-1.5 ml-4">
+      <span class="w-4 h-4 rounded bg-foret-500 inline-block"></span><span class="text-ardoise-600">Terminé</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-4 h-4 rounded bg-white border-2 border-foret-500 inline-block"></span><span class="text-ardoise-600">En cours</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-4 h-4 rounded bg-ardoise-200 inline-block"></span><span class="text-ardoise-600">À faire</span>
+    </div>
+  </div>
+
+  {# ── Tableau Gantt ────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl shadow-card overflow-hidden">
+
+    {# En-tête : titre + colonnes 01-18 #}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-xs border-collapse">
+        <thead>
+          <tr class="bg-ardoise-800 text-white">
+            <th class="w-8 px-2 py-3 text-center font-semibold border-r border-ardoise-700">N</th>
+            <th class="min-w-[180px] px-3 py-3 text-left font-semibold border-r border-ardoise-700">Étape</th>
+            <th class="min-w-[120px] px-3 py-3 text-left font-semibold border-r border-ardoise-700">Responsable</th>
+            {% for i in step_range %}
+            <th class="w-10 px-0 py-3 text-center font-semibold border-r border-ardoise-700 last:border-r-0">
+              {{ i|stringformat:"02d" }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody x-data="{open: null}">
+
+          {% for partie_code, partie_data in parties.items %}
+
+          {# ── Séparateur de partie ── #}
+          <tr class="{% if partie_code == 'A' %}bg-foret-700{% elif partie_code == 'B' %}bg-blue-700{% else %}bg-amber-600{% endif %}">
+            <td colspan="21" class="px-3 py-1.5 text-white font-bold text-xs tracking-wide">
+              {{ partie_code }} — {{ partie_data.label }}
+            </td>
+          </tr>
+
+          {% for phase in partie_data.phases %}
+          {% with is_done=phase.is_completed is_active=phase.is_active %}
+
+          {# ── Ligne étape ── #}
+          <tr class="border-b border-ardoise-100 hover:bg-ardoise-50/60 cursor-pointer transition-colors"
+              @click="open = (open === {{ phase.pk }}) ? null : {{ phase.pk }}">
+
+            {# Numéro + badge partie #}
+            <td class="px-1 py-3 text-center border-r border-ardoise-100 align-middle">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded font-bold text-white text-xs
+                {% if partie_code == 'A' %}bg-foret-500
+                {% elif partie_code == 'B' %}bg-blue-500
+                {% else %}bg-amber-500{% endif %}">
+                {{ phase.order|stringformat:"02d" }}
+              </span>
+            </td>
+
+            {# Nom étape #}
+            <td class="px-3 py-3 border-r border-ardoise-100 align-middle">
+              <div class="flex items-center gap-2">
+                {% if is_done %}
+                <svg class="w-3.5 h-3.5 text-foret-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+                {% elif is_active %}
+                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
+                {% else %}
+                <span class="w-2 h-2 rounded-full bg-ardoise-300 flex-shrink-0"></span>
+                {% endif %}
+                <span class="font-medium {% if is_done %}text-ardoise-400 line-through{% elif is_active %}text-ardoise-900{% else %}text-ardoise-600{% endif %}">
+                  {{ phase.name }}
+                </span>
+              </div>
+              {% if phase.planned_start and phase.planned_end %}
+              <p class="text-ardoise-400 mt-0.5 ml-5">{{ phase.planned_start|date:"d/m" }} → {{ phase.planned_end|date:"d/m/Y" }}</p>
+              {% endif %}
+            </td>
+
+            {# Responsable #}
+            <td class="px-3 py-3 border-r border-ardoise-100 text-ardoise-500 align-middle">
+              {{ phase.owner_label }}
+            </td>
+
+            {# Colonnes Gantt 01-18 #}
+            {% for i in step_range %}
+            <td class="w-10 py-3 text-center border-r border-ardoise-100 last:border-r-0 align-middle">
+              {% if i == phase.order %}
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded mx-auto
+                {% if is_done %}
+                  {% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %}
+                {% elif is_active %}
+                  bg-white border-2 {% if partie_code == 'A' %}border-foret-500{% elif partie_code == 'B' %}border-blue-500{% else %}border-amber-500{% endif %}
+                {% else %}
+                  bg-ardoise-200
+                {% endif %}">
+                {% if is_done %}
+                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+                {% elif is_active %}
+                <span class="w-2 h-2 rounded-full {% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %} animate-pulse"></span>
+                {% else %}
+                <span class="w-2 h-2 rounded-full bg-ardoise-400"></span>
+                {% endif %}
+              </span>
+              {% endif %}
+            </td>
+            {% endfor %}
+
+          </tr>
+
+          {# ── Panneau édition inline (Alpine) ── #}
+          <tr x-show="open === {{ phase.pk }}" x-transition style="display:none"
+              class="bg-ardoise-50 border-b border-ardoise-200">
+            <td colspan="21" class="px-5 py-4">
+              <form method="post" action="{% url 'projects:gantt_phase_update' project.pk phase.pk %}"
+                    class="flex flex-wrap items-end gap-4">
+                {% csrf_token %}
+                <div>
+                  <label class="form-label">Début prévu</label>
+                  <input type="date" name="planned_start"
+                         value="{% if phase.planned_start %}{{ phase.planned_start|date:'Y-m-d' }}{% endif %}"
+                         class="form-input w-40">
+                </div>
+                <div>
+                  <label class="form-label">Fin prévue</label>
+                  <input type="date" name="planned_end"
+                         value="{% if phase.planned_end %}{{ phase.planned_end|date:'Y-m-d' }}{% endif %}"
+                         class="form-input w-40">
+                </div>
+                <div class="flex items-end gap-4">
+                  <label class="flex items-center gap-2 text-sm text-ardoise-600 cursor-pointer pb-0.5">
+                    <input type="checkbox" name="is_completed" value="1"
+                           {% if phase.is_completed %}checked{% endif %}
+                           class="w-4 h-4 rounded accent-foret-500">
+                    Terminée
+                  </label>
+                  <label class="flex items-center gap-2 text-sm text-ardoise-600 cursor-pointer pb-0.5">
+                    <input type="checkbox" name="is_active" value="1"
+                           {% if phase.is_active %}checked{% endif %}
+                           class="w-4 h-4 rounded accent-blue-500">
+                    En cours
+                  </label>
+                </div>
+                <button type="submit" class="btn-primary btn-sm">Enregistrer</button>
+                <button type="button" @click="open = null" class="btn-secondary btn-sm">Annuler</button>
+              </form>
+            </td>
+          </tr>
+
+          {% endwith %}
+          {% endfor %}
+          {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Résumé avancement ────────────────────────────────────────── #}
+  <div class="grid grid-cols-3 gap-4">
+    {% for partie_code, partie_data in parties.items %}
+    {% with total=partie_data.phases|length %}
+    <div class="card py-4 px-5">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-3 h-3 rounded-full {% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %}"></span>
+        <span class="text-xs font-semibold text-ardoise-600 uppercase tracking-wide">Partie {{ partie_code }}</span>
+      </div>
+      <p class="text-sm font-medium text-ardoise-700 mb-2">{{ partie_data.label }}</p>
+      <div class="flex items-center gap-2">
+        {% with done_count=0 %}
+        {% for ph in partie_data.phases %}{% if ph.is_completed %}{% with done_count=done_count|add:1 %}{% endwith %}{% endif %}{% endfor %}
+        {% endwith %}
+        <span class="text-xl font-bold text-ardoise-900">
+          {{ partie_data.phases|length }}
+        </span>
+        <span class="text-sm text-ardoise-400">étape{{ partie_data.phases|length|pluralize }}</span>
+      </div>
+      {# Barre de progression par parties #}
+      <div class="mt-2 h-1.5 rounded-full bg-ardoise-100 overflow-hidden">
+        <div class="h-full rounded-full transition-all
+          {% if partie_code == 'A' %}bg-foret-500{% elif partie_code == 'B' %}bg-blue-500{% else %}bg-amber-500{% endif %}"
+             style="width: {% if partie_data.phases %}{% widthratio partie_data.phases|length 7 100 %}%{% else %}0%{% endif %}">
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows de validation{% endblock %}
+{% block page_title %}Workflows de validation{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'workflows:template_create' %}" class="btn-primary btn-sm">+ Nouveau workflow</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  {% if not templates %}
+  <div class="card text-center py-12">
+    <svg class="w-10 h-10 mx-auto text-ardoise-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-ardoise-500 text-sm">Aucun workflow défini.</p>
+    <a href="{% url 'workflows:template_create' %}" class="btn-primary btn-sm mt-4 inline-block">
+      Créer le premier workflow
+    </a>
+  </div>
+  {% else %}
+
+  <div class="grid gap-4">
+    {% for wf in templates %}
+    <div class="card">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-semibold text-ardoise-800">{{ wf.name }}</h3>
+            {% if not wf.is_active %}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-500">Inactif</span>
+            {% endif %}
+          </div>
+          {% if wf.description %}
+          <p class="text-sm text-ardoise-500 mb-3">{{ wf.description }}</p>
+          {% endif %}
+
+          {# Steps list #}
+          {% if wf.steps.all %}
+          <div class="flex flex-wrap gap-2 mt-2">
+            {% for step in wf.steps.all %}
+            <div class="flex items-center gap-1.5 text-xs bg-ardoise-50 border border-ardoise-200 rounded-lg px-2.5 py-1">
+              <span class="w-5 h-5 rounded-full bg-foret-500 text-white flex items-center justify-center font-bold text-xs">
+                {{ forloop.counter }}
+              </span>
+              <span class="font-medium text-ardoise-700">{{ step.name }}</span>
+              <span class="text-ardoise-400">
+                {% if step.approval_mode == 'ALL' %}(tous){% else %}(1 suffît){% endif %}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-ardoise-400 italic">Aucune étape définie.</p>
+          {% endif %}
+
+          {# Usage stats #}
+          <div class="flex gap-4 mt-3 text-xs text-ardoise-400">
+            <span>{{ wf.steps_count }} étape{{ wf.steps_count|pluralize }}</span>
+            <span>{{ wf.phase_count }} phase{{ wf.phase_count|pluralize }} configurée{{ wf.phase_count|pluralize }}</span>
+            <span>{{ wf.task_count }} tâche{{ wf.task_count|pluralize }} configurée{{ wf.task_count|pluralize }}</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2 flex-shrink-0">
+          <a href="{% url 'workflows:template_edit' wf.pk %}" class="btn-secondary btn-sm">Modifier</a>
+          <form method="post" action="{% url 'workflows:template_delete' wf.pk %}"
+                onsubmit="return confirm('Supprimer ce workflow ?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-sm text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors">
+              Supprimer
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

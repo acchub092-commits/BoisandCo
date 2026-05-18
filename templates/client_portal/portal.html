@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Suivi de votre chantier{% endblock %}
+
+{% block auth_content %}
+<div class="w-full max-w-2xl mx-auto">
+
+  {# Header #}
+  <div class="text-center mb-8">
+    <div class="inline-flex items-center justify-center w-12 h-12 bg-bois-500 rounded-xl mb-3">
+      <span class="text-white font-bold text-xl">B</span>
+    </div>
+    <h1 class="text-xl font-semibold text-ardoise-900">Bois&amp;Co — Suivi chantier</h1>
+  </div>
+
+  {% if project %}
+  <div class="card mb-4">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-ardoise-800">{{ project.name }}</h2>
+        <p class="text-sm text-ardoise-500">{{ project.client_name }}</p>
+      </div>
+      <span class="badge-{{ project.status|lower }}">{{ project.get_status_display }}</span>
+    </div>
+
+    {# Avancement global #}
+    <div class="mb-4">
+      <div class="flex justify-between text-sm mb-1">
+        <span class="text-ardoise-600 font-medium">Avancement global</span>
+        <span class="text-ardoise-800 font-semibold">{{ project.progress }}%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ project.progress }}%"></div>
+      </div>
+    </div>
+  </div>
+
+  {# Phases #}
+  <div class="space-y-3">
+    {% for phase in project.phases.all %}
+    <div class="card">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-medium text-ardoise-800">{{ phase.name }}</h3>
+        <span class="text-sm text-ardoise-500">{{ phase.progress }}%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill bg-foret-500" style="width: {{ phase.progress }}%"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="card text-center py-10">
+    <p class="text-ardoise-500">Lien invalide ou expiré. Contactez Bois&amp;Co.</p>
+  </div>
+  {% endif %}
+
+  <p class="text-center text-xs text-ardoise-400 mt-8">
+    Bois&amp;Co © {% now "Y" %} — Accès réservé au client
+  </p>
+</div>
+{% endblock %}

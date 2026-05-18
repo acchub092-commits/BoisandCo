@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{% if template %}Modifier {{ template.name }}{% else %}Nouveau workflow{% endif %}{% endblock %}
+{% block page_title %}{% if template %}Modifier le workflow{% else %}Nouveau workflow{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'workflows:template_list' %}" class="btn-secondary btn-sm">← Workflows</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto"
+     x-data="{
+       steps: {{ steps_json }},
+       addStep() {
+         this.steps.push({ name: '', description: '', order: this.steps.length, mode: 'ANY' });
+       },
+       removeStep(i) {
+         this.steps.splice(i, 1);
+         this.steps.forEach((s, idx) => s.order = idx);
+       }
+     }">
+  <form method="post">
+    {% csrf_token %}
+    <div class="space-y-5">
+
+      {# ── Informations générales ─────────────────────────────── #}
+      <div class="card space-y-4">
+        <h2 class="text-base font-semibold text-ardoise-800">Informations générales</h2>
+        <div>
+          <label class="form-label">Nom du workflow <span class="text-red-500">*</span></label>
+          <input type="text" name="name" value="{{ template.name|default:'' }}"
+                 class="form-input" required placeholder="ex: Validation standard 3 niveaux">
+        </div>
+        <div>
+          <label class="form-label">Description</label>
+          <textarea name="description" rows="2" class="form-input resize-none"
+                    placeholder="Décrivez l'objectif de ce workflow">{{ template.description|default:'' }}</textarea>
+        </div>
+      </div>
+
+      {# ── Étapes ─────────────────────────────────────────────── #}
+      <div class="card space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-ardoise-800">Étapes de validation</h2>
+          <button type="button" @click="addStep()"
+                  class="btn-secondary btn-sm">+ Ajouter une étape</button>
+        </div>
+
+        <div class="space-y-3" x-show="steps.length === 0">
+          <p class="text-sm text-ardoise-400 italic text-center py-4">
+            Aucune étape — cliquez sur « Ajouter une étape » pour commencer.
+          </p>
+        </div>
+
+        <template x-for="(step, i) in steps" :key="i">
+          <div class="border border-ardoise-200 rounded-xl p-4 space-y-3 bg-ardoise-50">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold"
+                      x-text="i + 1"></span>
+                <span class="text-sm font-medium text-ardoise-600">Étape</span>
+              </div>
+              <button type="button" @click="removeStep(i)"
+                      class="text-red-400 hover:text-red-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {# Hidden order field #}
+            <input type="hidden" :name="'steps_' + i + '_order'" :value="step.order">
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="col-span-2">
+                <label class="form-label">Nom de l'étape <span class="text-red-500">*</span></label>
+                <input type="text" :name="'steps_' + i + '_name'" x-model="step.name"
+                       class="form-input" required placeholder="ex: Validation technique">
+              </div>
+              <div>
+                <label class="form-label">Mode d'approbation</label>
+                <select :name="'steps_' + i + '_mode'" x-model="step.mode" class="form-input">
+                  <option value="ANY">Un validateur suffit</option>
+                  <option value="ALL">Tous doivent valider</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Description (optionnel)</label>
+                <input type="text" :name="'steps_' + i + '_description'" x-model="step.description"
+                       class="form-input" placeholder="Précisions…">
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      {# ── Actions ─────────────────────────────────────────────── #}
+      <div class="flex items-center justify-between">
+        <a href="{% url 'workflows:template_list' %}" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn-primary">
+          {% if template %}Enregistrer les modifications{% else %}Créer le workflow{% endif %}
+        </button>
+      </div>
+
+    </div>
+  </form>
+</div>
+{% endblock %}

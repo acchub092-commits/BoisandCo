@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows — {{ project.reference }}{% endblock %}
+{% block page_title %}Workflows — {{ project.reference }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:detail' project.pk %}" class="btn-secondary btn-sm">← Projet</a>
+<a href="{% url 'workflows:project_approvals' project.pk %}" class="btn-secondary btn-sm">Historique validations</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── En-tête projet ─────────────────────────────────────────── #}
+  <div class="card flex items-center gap-3">
+    <div class="w-10 h-10 rounded-full bg-foret-100 flex items-center justify-center flex-shrink-0">
+      <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="text-base font-semibold text-ardoise-800">{{ project.name }}</h2>
+      <p class="text-sm text-ardoise-500">{{ project.reference }} · {{ project.client_name }}</p>
+    </div>
+    {% if not templates %}
+    <div class="ml-auto">
+      <a href="{% url 'workflows:template_create' %}" class="btn-secondary btn-sm">
+        Créer un workflow d'abord
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if templates %}
+
+  {# ── Phases ─────────────────────────────────────────────────── #}
+  <div>
+    <h3 class="text-sm font-semibold text-ardoise-600 uppercase tracking-wide mb-3">Phases</h3>
+    <div class="space-y-3">
+      {% for phase in phases %}
+      <div class="card" x-data="{ open: false }">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+                         {% if phase.is_completed %}bg-foret-100 text-foret-600
+                         {% elif phase.is_active %}bg-blue-100 text-blue-600
+                         {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+              {{ forloop.counter }}
+            </span>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-ardoise-800 truncate">{{ phase.name }}</p>
+              {% if phase.workflow_config %}
+              <p class="text-xs text-ardoise-400">
+                Workflow : <span class="text-foret-600 font-medium">{{ phase.workflow_config.template.name }}</span>
+                · {{ phase.workflow_config.template.steps.count }} étape{{ phase.workflow_config.template.steps.count|pluralize }}
+              </p>
+              {% else %}
+              <p class="text-xs text-ardoise-400 italic">Aucun workflow configuré</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            {# Bouton lancer validation si workflow configuré #}
+            {% if phase.workflow_config %}
+            {% with pending=phase.approval_requests.all %}
+            {% if pending and pending.0.status == 'IN_PROGRESS' %}
+            <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">
+              Validation en cours
+            </span>
+            {% else %}
+            <form method="post" action="{% url 'workflows:approval_create_phase' project.pk phase.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-sm bg-foret-500 text-white hover:bg-foret-600 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors">
+                Lancer la validation
+              </button>
+            </form>
+            {% endif %}
+            {% endwith %}
+            {% endif %}
+            <button @click="open = !open"
+                    class="btn-secondary btn-sm" x-text="open ? 'Fermer' : 'Configurer'"></button>
+          </div>
+        </div>
+
+        {# Panel de configuration #}
+        <div x-show="open" x-cloak class="mt-4 border-t border-ardoise-100 pt-4">
+          <form method="post" action="{% url 'workflows:phase_workflow_config' project.pk phase.pk %}"
+                x-data="{ selectedTemplate: '{{ phase.workflow_config.template_id|default:'' }}', steps: [] }"
+                @change.window="null">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="form-label">Workflow à appliquer</label>
+                <select name="template_id" x-model="selectedTemplate" class="form-input">
+                  <option value="">— Sélectionner —</option>
+                  {% for wf in templates %}
+                  <option value="{{ wf.pk }}"
+                    {% if phase.workflow_config.template_id == wf.pk %}selected{% endif %}>
+                    {{ wf.name }} ({{ wf.steps.count }} étape{{ wf.steps.count|pluralize }})
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="flex items-end">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" name="require_validation"
+                         {% if not phase.workflow_config or phase.workflow_config.require_validation %}checked{% endif %}
+                         class="w-4 h-4 rounded border-ardoise-300 text-foret-500">
+                  <span class="text-sm text-ardoise-700">Bloquer sans validation complète</span>
+                </label>
+              </div>
+            </div>
+
+            {# Assignation des validateurs par étape #}
+            {% for wf in templates %}
+            <div x-show="selectedTemplate == '{{ wf.pk }}'" class="space-y-3 mb-4">
+              <p class="text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Validateurs par étape</p>
+              {% for step in wf.steps.all %}
+              <div class="bg-ardoise-50 rounded-lg p-3">
+                <p class="text-sm font-medium text-ardoise-700 mb-2">
+                  Étape {{ forloop.counter }} : {{ step.name }}
+                  <span class="text-xs text-ardoise-400 ml-1">
+                    ({% if step.approval_mode == 'ALL' %}tous requis{% else %}1 suffit{% endif %})
+                  </span>
+                </p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {% for user in all_users %}
+                  <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox"
+                           name="step_{{ step.pk }}_validators"
+                           value="{{ user.pk }}"
+                           class="w-4 h-4 rounded border-ardoise-300 text-foret-500"
+                           {% if phase.workflow_config and phase.workflow_config.template_id == wf.pk %}
+                             {% for v in phase.workflow_config.validators.all %}
+                               {% if v.step_id == step.pk and v.user_id == user.pk %}checked{% endif %}
+                             {% endfor %}
+                           {% endif %}>
+                    <span class="text-ardoise-700">{{ user.get_full_name|default:user.username }}</span>
+                    <span class="text-xs text-ardoise-400">({{ user.get_role_display }})</span>
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="flex justify-end">
+              <button type="submit" class="btn-primary btn-sm">Enregistrer la configuration</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-sm text-ardoise-400 italic text-center py-6">Ce projet n'a pas encore de phases.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Tâches ─────────────────────────────────────────────────── #}
+  <div>
+    <h3 class="text-sm font-semibold text-ardoise-600 uppercase tracking-wide mb-3">Tâches</h3>
+    <div class="space-y-2">
+      {% for task in tasks %}
+      <div class="card py-3" x-data="{ open: false }">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <span class="text-xs font-medium text-ardoise-400 flex-shrink-0">
+              {{ task.phase.name }}
+            </span>
+            <span class="text-ardoise-300">›</span>
+            <p class="text-sm font-medium text-ardoise-800 truncate">{{ task.name }}</p>
+            {% if task.workflow_config %}
+            <span class="text-xs text-foret-600 bg-foret-50 px-2 py-0.5 rounded-full flex-shrink-0">
+              {{ task.workflow_config.template.name }}
+            </span>
+            {% endif %}
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            {% if task.workflow_config %}
+            {% with pending=task.approval_requests.all %}
+            {% if pending and pending.0.status == 'IN_PROGRESS' %}
+            <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">En cours</span>
+            {% else %}
+            <form method="post" action="{% url 'workflows:approval_create_task' project.pk task.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-sm bg-foret-500 text-white hover:bg-foret-600 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors">
+                Lancer
+              </button>
+            </form>
+            {% endif %}
+            {% endwith %}
+            {% endif %}
+            <button @click="open = !open"
+                    class="btn-secondary btn-sm text-xs"
+                    x-text="open ? 'Fermer' : 'Configurer'"></button>
+          </div>
+        </div>
+
+        {# Panel configuration tâche #}
+        <div x-show="open" x-cloak class="mt-3 border-t border-ardoise-100 pt-3">
+          <form method="post" action="{% url 'workflows:task_workflow_config' project.pk task.pk %}"
+                x-data="{ selectedTemplate: '{{ task.workflow_config.template_id|default:'' }}' }">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <label class="form-label">Workflow</label>
+                <select name="template_id" x-model="selectedTemplate" class="form-input">
+                  <option value="">— Sélectionner —</option>
+                  {% for wf in templates %}
+                  <option value="{{ wf.pk }}"
+                    {% if task.workflow_config.template_id == wf.pk %}selected{% endif %}>
+                    {{ wf.name }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="flex items-end">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" name="require_validation"
+                         {% if not task.workflow_config or task.workflow_config.require_validation %}checked{% endif %}
+                         class="w-4 h-4 rounded">
+                  <span class="text-sm text-ardoise-700">Bloquer sans validation</span>
+                </label>
+              </div>
+            </div>
+
+            {% for wf in templates %}
+            <div x-show="selectedTemplate == '{{ wf.pk }}'" class="space-y-2 mb-3">
+              {% for step in wf.steps.all %}
+              <div class="bg-ardoise-50 rounded-lg p-3">
+                <p class="text-sm font-medium text-ardoise-700 mb-2">
+                  Étape {{ forloop.counter }} : {{ step.name }}
+                </p>
+                <div class="flex flex-wrap gap-3">
+                  {% for user in all_users %}
+                  <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                    <input type="checkbox"
+                           name="step_{{ step.pk }}_validators"
+                           value="{{ user.pk }}"
+                           class="w-4 h-4 rounded border-ardoise-300 text-foret-500"
+                           {% if task.workflow_config and task.workflow_config.template_id == wf.pk %}
+                             {% for v in task.workflow_config.validators.all %}
+                               {% if v.step_id == step.pk and v.user_id == user.pk %}checked{% endif %}
+                             {% endfor %}
+                           {% endif %}>
+                    <span>{{ user.get_full_name|default:user.username }}</span>
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="flex justify-end">
+              <button type="submit" class="btn-primary btn-sm">Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-sm text-ardoise-400 italic text-center py-4">Aucune tâche dans ce projet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% else %}
+  {# No workflow templates exist yet #}
+  <div class="card text-center py-10">
+    <p class="text-ardoise-500 mb-3">Vous devez d'abord créer des gabarits de workflow.</p>
+    <a href="{% url 'workflows:template_create' %}" class="btn-primary btn-sm">
+      Créer un workflow
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

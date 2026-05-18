@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: boisandco_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-boisandco}
+      POSTGRES_USER:     ${DB_USER:-boisandco_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-boisandco_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-boisandco_user} -d ${DB_NAME:-boisandco}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── pgAdmin (interface web PostgreSQL) ─────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: boisandco_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@boisandco.fr
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    name: boisandco_postgres_data
+  pgadmin_data:
+    name: boisandco_pgadmin_data
