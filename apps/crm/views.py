@@ -35,17 +35,22 @@ class PipelineView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        leads = Lead.objects.select_related('assigned_to').filter(
-            status__in=Lead.PIPELINE_STAGES
-        )
+        user = self.request.user
+
+        # Filtrage RBAC : commerciaux ne voient que leurs leads
+        base_qs = Lead.objects.select_related('assigned_to')
+        if not is_director(user) and not user.is_superuser:
+            base_qs = base_qs.filter(
+                Q(assigned_to=user) | Q(created_by=user)
+            )
+
+        leads = base_qs.filter(status__in=Lead.PIPELINE_STAGES)
 
         columns = []
         for status in Lead.PIPELINE_STAGES:
             meta  = COLUMN_META[status]
             items = [l for l in leads if l.status == status]
-            total_budget = sum(
-                l.budget_mad for l in items if l.budget_mad
-            )
+            total_budget = sum(l.budget_mad for l in items if l.budget_mad)
             columns.append({
                 'status':       status,
                 'label':        meta['label'],
@@ -56,15 +61,17 @@ class PipelineView(LoginRequiredMixin, TemplateView):
                 'total_budget': total_budget,
             })
 
+        won_qs  = base_qs.filter(status=Lead.Status.GAGNEE)
+        lost_qs = base_qs.filter(status=Lead.Status.PERDUE)
+
         ctx['columns']        = columns
         ctx['statuses']       = Lead.Status.choices
-        ctx['won_leads']      = Lead.objects.filter(status=Lead.Status.GAGNEE).select_related('assigned_to')[:10]
-        ctx['lost_leads']     = Lead.objects.filter(status=Lead.Status.PERDUE).select_related('assigned_to')[:10]
-        ctx['won_count']      = Lead.objects.filter(status=Lead.Status.GAGNEE).count()
-        ctx['lost_count']     = Lead.objects.filter(status=Lead.Status.PERDUE).count()
-        ctx['total_pipeline'] = sum(
-            l.budget_mad for l in leads if l.budget_mad
-        )
+        ctx['won_leads']      = won_qs.order_by('-updated_at')[:10]
+        ctx['lost_leads']     = lost_qs.order_by('-updated_at')[:10]
+        ctx['won_count']      = won_qs.count()
+        ctx['lost_count']     = lost_qs.count()
+        ctx['total_pipeline'] = sum(l.budget_mad for l in leads if l.budget_mad)
+        ctx['is_director']    = is_director(user) or user.is_superuser
         ctx['kpis'] = {
             'visite':  leads.filter(status=Lead.Status.VISITE).count(),
             'offre':   leads.filter(status=Lead.Status.OFFRE).count(),
@@ -486,23 +493,60 @@ class CRMDashboardView(LoginRequiredMixin, TemplateView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
+        from django.db.models import Count as DCount
         ctx   = super().get_context_data(**kwargs)
         user  = self.request.user
         today = date.today()
 
-        # Queryset de base selon le rôle
-        qs_base = Lead.objects.all() if is_director(user) else Lead.objects.filter(assigned_to=user)
+        # ── Queryset de base (RBAC) ──────────────────────────────────────────
+        qs_base = Lead.objects.all() if is_director(user) else Lead.objects.filter(
+            Q(assigned_to=user) | Q(created_by=user)
+        )
 
-        # KPIs pipeline
-        actifs   = qs_base.filter(status__in=Lead.PIPELINE_STAGES)
-        pipeline_value = actifs.aggregate(total=Sum('budget_mad'))['total'] or 0
+        # ── Helpers mois ─────────────────────────────────────────────────────
+        def _month_start(months_back):
+            m, y = today.month - months_back, today.year
+            while m <= 0:
+                m += 12; y -= 1
+            return date(y, m, 1)
 
-        # Opportunités à valider (visibles seulement par directeur)
+        def _next_month(d):
+            return date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
+
+        this_month  = _month_start(0)
+        last_month  = _month_start(1)
+        next_month  = _next_month(this_month)
+
+        # ── KPIs pipeline ────────────────────────────────────────────────────
+        actifs         = qs_base.filter(status__in=Lead.PIPELINE_STAGES)
+        actifs_n       = actifs.count()
+        pipeline_value = float(actifs.aggregate(t=Sum('budget_mad'))['t'] or 0)
+
+        actifs_last    = qs_base.filter(
+            status__in=Lead.PIPELINE_STAGES,
+            created_at__lt=this_month,
+        ).count()
+
+        # Win rate
+        closed     = qs_base.filter(status__in=[Lead.Status.GAGNEE, Lead.Status.PERDUE]).count()
+        won_total  = qs_base.filter(status=Lead.Status.GAGNEE).count()
+        win_rate   = round(won_total / closed * 100) if closed else 0
+
+        gagnes_mois = qs_base.filter(
+            status=Lead.Status.GAGNEE,
+            updated_at__gte=this_month, updated_at__lt=next_month,
+        ).count()
+        gagnes_last = qs_base.filter(
+            status=Lead.Status.GAGNEE,
+            updated_at__gte=last_month, updated_at__lt=this_month,
+        ).count()
+
+        # ── Leads à valider (directeur) ──────────────────────────────────────
         pending = Lead.objects.filter(
             workflow_status=Lead.WorkflowStatus.PENDING_VALIDATION
         ) if is_director(user) else Lead.objects.none()
 
-        # Prochains RDV (7 jours)
+        # ── Prochains RDV (7 jours) ──────────────────────────────────────────
         rdv_qs = Appointment.objects.select_related('lead', 'created_by').filter(
             scheduled_at__gte=timezone.now(),
             scheduled_at__date__lte=today + timedelta(days=7),
@@ -511,36 +555,118 @@ class CRMDashboardView(LoginRequiredMixin, TemplateView):
         if not is_director(user):
             rdv_qs = rdv_qs.filter(Q(lead__assigned_to=user) | Q(attendees=user)).distinct()
 
-        # Journal récent
+        # ── Journal récent ───────────────────────────────────────────────────
         logs_qs = LeadActivityLog.objects.select_related('lead', 'performed_by')
         if not is_director(user):
             logs_qs = logs_qs.filter(lead__assigned_to=user)
-        recent_logs = logs_qs.order_by('-created_at')[:15]
+        recent_logs = logs_qs.order_by('-created_at')[:12]
 
-        # Répartition par statut
-        status_counts = {
-            s: qs_base.filter(status=s).count()
-            for s in [Lead.Status.VISITE, Lead.Status.OPPORTUNITE,
-                      Lead.Status.QUALIFICATION, Lead.Status.CHIFFRAGE,
-                      Lead.Status.OFFRE, Lead.Status.GAGNEE, Lead.Status.PERDUE]
+        # ── Répartition par statut ───────────────────────────────────────────
+        STAGES_ORDER = [
+            Lead.Status.VISITE, Lead.Status.OPPORTUNITE, Lead.Status.QUALIFICATION,
+            Lead.Status.CHIFFRAGE, Lead.Status.OFFRE, Lead.Status.GAGNEE, Lead.Status.PERDUE,
+        ]
+        STAGE_LABELS = {
+            'VISITE': 'Visites', 'OPPORTUNITE': 'Opportunités', 'QUALIFICATION': 'Qualification',
+            'CHIFFRAGE': 'Chiffrage', 'OFFRE': 'Offre envoyée', 'GAGNEE': 'Gagnés', 'PERDUE': 'Perdus',
         }
+        STAGE_COLORS = {
+            'VISITE': '#64748b', 'OPPORTUNITE': '#2563eb', 'QUALIFICATION': '#d97706',
+            'CHIFFRAGE': '#7c3aed', 'OFFRE': '#0891b2', 'GAGNEE': '#22804c', 'PERDUE': '#ef4444',
+        }
+        status_counts = {s: qs_base.filter(status=s).count() for s in STAGES_ORDER}
+
+        # ── Données Chart.js ─────────────────────────────────────────────────
+        # 1. Funnel (entonnoir) — stages actifs uniquement
+        funnel_labels  = [STAGE_LABELS[s] for s in Lead.PIPELINE_STAGES]
+        funnel_counts  = [status_counts[s] for s in Lead.PIPELINE_STAGES]
+        funnel_budgets = [
+            float(qs_base.filter(status=s).aggregate(t=Sum('budget_mad'))['t'] or 0)
+            for s in Lead.PIPELINE_STAGES
+        ]
+        funnel_colors  = [STAGE_COLORS[s] for s in Lead.PIPELINE_STAGES]
+
+        # 2. Tendance mensuelle (6 derniers mois)
+        trend_labels, trend_created, trend_won = [], [], []
+        MONTHS_FR = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+        for i in range(5, -1, -1):
+            ms = _month_start(i)
+            me = _next_month(ms)
+            trend_labels.append(MONTHS_FR[ms.month - 1])
+            trend_created.append(qs_base.filter(created_at__gte=ms, created_at__lt=me).count())
+            trend_won.append(qs_base.filter(
+                status=Lead.Status.GAGNEE, updated_at__gte=ms, updated_at__lt=me
+            ).count())
+
+        # 3. Win/Loss donut
+        won_n  = status_counts[Lead.Status.GAGNEE]
+        lost_n = status_counts[Lead.Status.PERDUE]
+
+        # 4. Budget par stage (barres)
+        budget_labels = [STAGE_LABELS[s] for s in Lead.PIPELINE_STAGES]
+        budget_values = funnel_budgets
+
+        # ── Performance par commercial (directeurs) ──────────────────────────
+        perf_commerciaux = []
+        if is_director(user):
+            from apps.users.models import User as AppUser
+            perf_commerciaux = list(
+                AppUser.objects.filter(role='COMMERCIAL', is_active_employee=True).annotate(
+                    n_actifs=DCount('assigned_leads', filter=Q(assigned_leads__status__in=Lead.PIPELINE_STAGES)),
+                    n_gagnes=DCount('assigned_leads', filter=Q(assigned_leads__status=Lead.Status.GAGNEE)),
+                    pipeline=Sum('assigned_leads__budget_mad', filter=Q(assigned_leads__status__in=Lead.PIPELINE_STAGES)),
+                ).order_by('-n_actifs')
+            )
+
+        # ── Top leads par budget ─────────────────────────────────────────────
+        top_leads = list(
+            actifs.filter(budget_mad__isnull=False).select_related('assigned_to')
+            .order_by('-budget_mad')[:6]
+        )
+
+        # ── Format montant ───────────────────────────────────────────────────
+        def _fmt(v):
+            v = float(v or 0)
+            if v >= 1_000_000: return f'{v/1_000_000:.1f} M'
+            if v >= 1_000:     return f'{v/1_000:.0f} K'
+            return f'{v:.0f}'
 
         ctx.update({
             'kpis': {
-                'actifs':         actifs.count(),
-                'pipeline_value': pipeline_value,
-                'rdv_semaine':    rdv_qs.count(),
-                'a_valider':      pending.count(),
-                'gagnes_mois':    qs_base.filter(
-                    status=Lead.Status.GAGNEE,
-                    updated_at__month=today.month, updated_at__year=today.year,
-                ).count(),
+                'actifs':          actifs_n,
+                'actifs_trend':    actifs_n - actifs_last,
+                'pipeline_value':  pipeline_value,
+                'pipeline_fmt':    _fmt(pipeline_value),
+                'win_rate':        win_rate,
+                'rdv_semaine':     rdv_qs.count(),
+                'a_valider':       pending.count(),
+                'gagnes_mois':     gagnes_mois,
+                'gagnes_trend':    gagnes_mois - gagnes_last,
             },
-            'pending_leads':  pending.select_related('assigned_to', 'created_by').order_by('-updated_at')[:10],
-            'prochains_rdv':  rdv_qs.order_by('scheduled_at')[:8],
-            'recent_logs':    recent_logs,
-            'status_counts':  status_counts,
-            'is_director':    is_director(user),
+            'pending_leads':     pending.select_related('assigned_to', 'created_by').order_by('-updated_at')[:8],
+            'prochains_rdv':     rdv_qs.order_by('scheduled_at')[:6],
+            'recent_logs':       recent_logs,
+            'status_counts':     status_counts,
+            'is_director':       is_director(user) or user.is_superuser,
+            'perf_commerciaux':  perf_commerciaux,
+            'top_leads':         top_leads,
+            # Charts JSON
+            'chart_funnel': json.dumps({
+                'labels': funnel_labels, 'counts': funnel_counts,
+                'budgets': funnel_budgets, 'colors': funnel_colors,
+            }),
+            'chart_trend': json.dumps({
+                'labels': trend_labels, 'created': trend_created, 'won': trend_won,
+            }),
+            'chart_winloss': json.dumps({
+                'won': won_n, 'lost': lost_n,
+                'total': won_n + lost_n,
+                'win_rate': win_rate,
+            }),
+            'chart_budget': json.dumps({
+                'labels': budget_labels, 'values': budget_values, 'colors': funnel_colors,
+            }),
+            'fmt': _fmt,
         })
         return ctx
 

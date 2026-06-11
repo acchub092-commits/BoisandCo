@@ -173,6 +173,7 @@ class DemandeCreateView(ChiffrageRequiredMixin, View):
         quantites     = request.POST.get('quantites_estimees', '').strip()
         contraintes   = request.POST.get('contraintes_techniques', '').strip()
         commentaires  = request.POST.get('commentaires', '').strip()
+        lien_telechargement = request.POST.get('lien_telechargement', '').strip()
         fichiers      = request.FILES.getlist('fichiers')
 
         errors = {}
@@ -199,6 +200,7 @@ class DemandeCreateView(ChiffrageRequiredMixin, View):
             quantites_estimees=quantites,
             contraintes_techniques=contraintes,
             commentaires=commentaires,
+            lien_telechargement=lien_telechargement,
             statut=DemandeChiffrage.Statut.EN_ATTENTE,
             lead_id=lead_id,
         )
@@ -444,8 +446,15 @@ class SoumettreDevisView(ChiffrageRequiredMixin, View):
         )
         fichier_detail = request.FILES.get('fichier_detail')
         fichier_public = request.FILES.get('fichier_public')
+        MAX_SIZE = 50 * 1024 * 1024  # 50 Mo
         if not fichier_detail or not fichier_public:
             django_messages.error(request, 'Les deux fichiers (chiffrage détaillé et devis sans détail) sont obligatoires.')
+            return redirect('chiffrage:detail', pk=pk)
+        if fichier_detail.size > MAX_SIZE:
+            django_messages.error(request, f'Le chiffrage détaillé dépasse la limite de 50 Mo ({fichier_detail.size // 1048576} Mo).')
+            return redirect('chiffrage:detail', pk=pk)
+        if fichier_public.size > MAX_SIZE:
+            django_messages.error(request, f'Le devis sans détail dépasse la limite de 50 Mo ({fichier_public.size // 1048576} Mo).')
             return redirect('chiffrage:detail', pk=pk)
         FichierChiffrage.objects.create(
             demande=demande, fichier=fichier_detail, nom=fichier_detail.name,

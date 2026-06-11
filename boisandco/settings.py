@@ -165,6 +165,10 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Limite upload fichiers — 200 Mo
+DATA_UPLOAD_MAX_MEMORY_SIZE = 209_715_200   # 200 Mo
+FILE_UPLOAD_MAX_MEMORY_SIZE = 209_715_200   # 200 Mo
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 

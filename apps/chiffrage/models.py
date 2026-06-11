@@ -59,6 +59,7 @@ class DemandeChiffrage(models.Model):
     quantites_estimees   = models.TextField(blank=True, verbose_name='Quantités estimées')
     contraintes_techniques = models.TextField(blank=True, verbose_name='Contraintes techniques')
     commentaires         = models.TextField(blank=True, verbose_name='Commentaires libres')
+    lien_telechargement  = models.URLField(max_length=500, blank=True, verbose_name='Lien de téléchargement')
 
     # Workflow
     statut = models.CharField(max_length=20, choices=Statut.choices,

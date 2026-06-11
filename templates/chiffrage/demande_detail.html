@@ -224,6 +224,21 @@
           {% if demande.commentaires %}
           <div class="sm:col-span-2"><dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Commentaires</dt><dd class="text-sm text-ardoise-700 whitespace-pre-wrap">{{ demande.commentaires }}</dd></div>
           {% endif %}
+          {% if demande.lien_telechargement %}
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide mb-1">Lien de téléchargement</dt>
+            <dd>
+              <a href="{{ demande.lien_telechargement }}" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1.5 text-sm text-foret-600 hover:text-foret-800 font-medium break-all">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                </svg>
+                {{ demande.lien_telechargement|truncatechars:60 }}
+              </a>
+            </dd>
+          </div>
+          {% endif %}
         </dl>
       </div>
       {% endif %}
@@ -726,28 +741,91 @@
       </div>
 
       {# Soumettre au Responsable Méthodes #}
-      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4" style="border-color:#8b5cf6;" x-data="{open: false}">
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4" style="border-color:#8b5cf6;"
+           x-data="{
+             open: false,
+             detail: null, public_: null,
+             errDetail: '', errPublic: '',
+             MAX: 50 * 1024 * 1024,
+             humanSize(b) {
+               if (!b) return '';
+               if (b >= 1048576) return (b/1048576).toFixed(1) + ' Mo';
+               return (b/1024).toFixed(0) + ' Ko';
+             },
+             checkDetail(e) {
+               const f = e.target.files[0];
+               if (!f) { this.detail = null; this.errDetail = ''; return; }
+               if (f.size > this.MAX) {
+                 this.errDetail = 'Fichier trop volumineux — max 50 Mo (actuel : ' + this.humanSize(f.size) + ')';
+                 this.detail = null; e.target.value = '';
+               } else { this.detail = f; this.errDetail = ''; }
+             },
+             checkPublic(e) {
+               const f = e.target.files[0];
+               if (!f) { this.public_ = null; this.errPublic = ''; return; }
+               if (f.size > this.MAX) {
+                 this.errPublic = 'Fichier trop volumineux — max 50 Mo (actuel : ' + this.humanSize(f.size) + ')';
+                 this.public_ = null; e.target.value = '';
+               } else { this.public_ = f; this.errPublic = ''; }
+             },
+             get canSubmit() { return this.detail && this.public_ && !this.errDetail && !this.errPublic; }
+           }">
         <button @click="open = !open" class="w-full flex items-center justify-between px-5 py-4 text-left">
           <span class="text-sm font-semibold text-ardoise-700">Soumettre le devis au Resp. Méthodes</span>
           <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div x-show="open" x-transition style="display:none" class="px-5 pb-5 border-t border-ardoise-100">
-          <p class="text-xs text-ardoise-500 mt-3 mb-3">Les deux fichiers sont obligatoires. Le chiffrage détaillé reste confidentiel ; seul le devis sans détail sera partagé avec le DC et le commercial après validation DG.</p>
-          <form method="post" action="{% url 'chiffrage:soumettre_dg' demande.pk %}" enctype="multipart/form-data" class="space-y-3">
+          <p class="text-xs text-ardoise-500 mt-3 mb-3">Les deux fichiers sont obligatoires — <strong>max 50 Mo chacun</strong>. Le chiffrage détaillé reste confidentiel ; seul le devis sans détail sera partagé avec le DC et le commercial après validation DG.</p>
+          <form method="post" action="{% url 'chiffrage:soumettre_dg' demande.pk %}" enctype="multipart/form-data" class="space-y-4">
             {% csrf_token %}
+
+            {# Fichier 1 — Chiffrage détaillé #}
             <div>
               <label class="form-label">Chiffrage détaillé (interne) <span class="text-red-500">*</span></label>
-              <input type="file" name="fichier_detail" required
-                     class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
-              <p class="text-xs text-ardoise-400 mt-1">Visible uniquement par les Méthodes et la DG</p>
+              <div class="relative">
+                <input type="file" name="fichier_detail" required
+                       @change="checkDetail($event)"
+                       class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer"
+                       :class="errDetail ? 'border border-red-300 rounded-lg bg-red-50' : ''">
+              </div>
+              <div x-show="errDetail" class="flex items-center gap-1.5 mt-1.5">
+                <svg class="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                <p class="text-xs text-red-600 font-medium" x-text="errDetail"></p>
+              </div>
+              <div x-show="detail && !errDetail" class="flex items-center gap-1.5 mt-1.5">
+                <svg class="w-3.5 h-3.5 text-foret-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <p class="text-xs text-foret-600" x-text="detail ? detail.name + ' — ' + humanSize(detail.size) : ''"></p>
+              </div>
+              <p class="text-xs text-ardoise-400 mt-1">PDF, Excel, Word — max 50 Mo · Visible uniquement par les Méthodes et la DG</p>
             </div>
+
+            {# Fichier 2 — Devis sans détail #}
             <div>
               <label class="form-label">Devis sans détail (version client) <span class="text-red-500">*</span></label>
-              <input type="file" name="fichier_public" required
-                     class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
-              <p class="text-xs text-ardoise-400 mt-1">Partagé avec le DC et le commercial après validation DG</p>
+              <div class="relative">
+                <input type="file" name="fichier_public" required
+                       @change="checkPublic($event)"
+                       class="block w-full text-sm text-ardoise-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-ardoise-300 file:text-xs file:font-medium file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer"
+                       :class="errPublic ? 'border border-red-300 rounded-lg bg-red-50' : ''">
+              </div>
+              <div x-show="errPublic" class="flex items-center gap-1.5 mt-1.5">
+                <svg class="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                <p class="text-xs text-red-600 font-medium" x-text="errPublic"></p>
+              </div>
+              <div x-show="public_ && !errPublic" class="flex items-center gap-1.5 mt-1.5">
+                <svg class="w-3.5 h-3.5 text-foret-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <p class="text-xs text-foret-600" x-text="public_ ? public_.name + ' — ' + humanSize(public_.size) : ''"></p>
+              </div>
+              <p class="text-xs text-ardoise-400 mt-1">PDF, Excel, Word — max 50 Mo · Partagé avec le DC et le commercial après validation DG</p>
             </div>
-            <button type="submit" class="w-full py-2.5 rounded-lg text-white text-sm font-semibold transition-colors" style="background-color:#8b5cf6;" onmouseover="this.style.backgroundColor='#7c3aed'" onmouseout="this.style.backgroundColor='#8b5cf6'">
+
+            <button type="submit"
+                    :disabled="!canSubmit"
+                    class="w-full py-2.5 rounded-lg text-white text-sm font-semibold transition-all"
+                    :class="canSubmit ? 'opacity-100 cursor-pointer' : 'opacity-40 cursor-not-allowed'"
+                    style="background-color:#8b5cf6;"
+                    @mouseover="if(canSubmit) $el.style.backgroundColor='#7c3aed'"
+                    @mouseout="$el.style.backgroundColor='#8b5cf6'">
               Soumettre au Responsable Méthodes
             </button>
           </form>

@@ -18,166 +18,667 @@
 {% block content %}
 <div class="space-y-6">
 
-  {# ── KPI Cards ──────────────────────────────────────────── #}
-  <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+  {% if kpi_chiffrage %}
+  {% comment %}── Section 1 : Chiffrage ──{% endcomment %}
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#22804c,#1a6840);">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <span class="text-xs font-bold text-ardoise-500 uppercase tracking-widest">Chiffrage</span>
+    </div>
+    <div class="flex-1 h-px bg-ardoise-200"></div>
+  </div>
+  <div class="card p-0 overflow-hidden" x-data="chiffrageWidget('{{ kpi_chiffrage.chart_donut|escapejs }}', '{{ kpi_chiffrage.chart_methodes|default:''|escapejs }}')">
 
-    <div class="card flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
-        <svg class="w-6 h-6 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    {# En-tête + toggle #}
+    <div class="px-5 py-4 border-b border-ardoise-100 flex items-center justify-between bg-gradient-to-r from-ardoise-50 to-white">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background-color:#f0f7f2;">
+          <svg class="w-4 h-4 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-ardoise-800">Chiffrage — Vue d'ensemble</h3>
+          <p class="text-xs text-ardoise-400">Demandes de devis &amp; performance méthodistes</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center bg-ardoise-100 rounded-lg p-0.5 gap-0.5">
+          <button type="button" @click="view = 'kpis'"
+                  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
+                  :class="view === 'kpis' ? 'bg-white text-ardoise-800 shadow-sm' : 'text-ardoise-500 hover:text-ardoise-700'">KPIs</button>
+          <button type="button" @click="view = 'charts'; initCharts()"
+                  class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1"
+                  :class="view === 'charts' ? 'bg-white text-ardoise-800 shadow-sm' : 'text-ardoise-500 hover:text-ardoise-700'">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            Graphiques
+          </button>
+        </div>
+        <a href="{% url 'chiffrage:dashboard' %}" class="text-xs font-medium text-foret-600 hover:text-foret-700 flex items-center gap-1">
+          Voir tout
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    {# ── Vue KPIs ── #}
+    <div x-show="view === 'kpis'">
+
+      {# 4 métriques principales #}
+      <div class="grid grid-cols-2 xl:grid-cols-4 divide-y xl:divide-y-0 xl:divide-x divide-ardoise-100">
+
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpi_chiffrage.en_attente }}</p>
+            <p class="text-xs text-ardoise-400 mt-0.5">En attente</p>
+          </div>
+        </div>
+
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpi_chiffrage.en_cours }}</p>
+            <p class="text-xs text-ardoise-400 mt-0.5">En cours de chiffrage</p>
+          </div>
+        </div>
+
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpi_chiffrage.valides }}</p>
+            <p class="text-xs text-ardoise-400 mt-0.5">
+              Devis validés
+              {% if kpi_chiffrage.taux %}<span class="text-foret-600 font-semibold">· {{ kpi_chiffrage.taux }}% acceptés</span>{% endif %}
+            </p>
+          </div>
+        </div>
+
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background-color:#fdf8f0;">
+            <svg class="w-5 h-5" style="color:#c9821f;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            {% if kpi_chiffrage.montant_fmt %}
+            <p class="text-xl font-extrabold leading-none" style="color:#c9821f;">{{ kpi_chiffrage.montant_fmt }}</p>
+            {% else %}
+            <p class="text-xl font-extrabold text-ardoise-300 leading-none">—</p>
+            {% endif %}
+            <p class="text-xs text-ardoise-400 mt-0.5">Montant validé HT</p>
+          </div>
+        </div>
+
+      </div>
+
+      {# Bandeau retards — visible uniquement si retards > 0 #}
+      {% if kpi_chiffrage.retards %}
+      <div class="flex items-center gap-3 px-5 py-3 bg-red-50 border-t border-red-100">
+        <div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-red-700">
+            {{ kpi_chiffrage.retards }} demande{{ kpi_chiffrage.retards|pluralize }} en retard
+          </p>
+          <p class="text-xs text-red-500">Date souhaitée client dépassée — chiffrage toujours ouvert</p>
+        </div>
+        <a href="{% url 'chiffrage:dashboard' %}?retard=1"
+           class="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors">
+          Voir les retards
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+      {% endif %}
+
+      {# Table performance méthodistes #}
+      {% if methodes_perf %}
+      <div class="border-t border-ardoise-100">
+        <div class="px-5 py-3 bg-ardoise-50 border-b border-ardoise-100">
+          <h4 class="text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Performance par méthodiste</h4>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-ardoise-100">
+                <th class="text-left px-5 py-2.5 text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Méthodiste</th>
+                <th class="text-center px-4 py-2.5 text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Total</th>
+                <th class="text-center px-4 py-2.5 text-xs font-semibold text-ardoise-400 uppercase tracking-wide">En cours</th>
+                <th class="text-center px-4 py-2.5 text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Soumis / Validés</th>
+                <th class="text-right px-5 py-2.5 text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Montant HT</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-ardoise-50">
+              {% for m in methodes_perf %}
+              <tr class="hover:bg-ardoise-50 transition-colors">
+                <td class="px-5 py-3">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700 flex-shrink-0">
+                      {{ m.assigned_to__first_name|first|upper }}{{ m.assigned_to__last_name|first|upper }}
+                    </div>
+                    <span class="font-medium text-ardoise-800">{{ m.assigned_to__first_name }} {{ m.assigned_to__last_name }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-center"><span class="text-sm font-semibold text-ardoise-700">{{ m.total }}</span></td>
+                <td class="px-4 py-3 text-center">
+                  {% if m.en_cours %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">{{ m.en_cours }}</span>
+                  {% else %}<span class="text-ardoise-300">—</span>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-center">
+                  {% if m.valides %}<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-foret-100 text-foret-700 text-xs font-bold">{{ m.valides }}</span>
+                  {% else %}<span class="text-ardoise-300">—</span>{% endif %}
+                </td>
+                <td class="px-5 py-3 text-right">
+                  {% if m.montant %}
+                  <span class="font-semibold text-ardoise-800">{{ m.montant|floatformat:0 }}</span>
+                  <span class="text-xs text-ardoise-400 ml-1">MAD</span>
+                  {% else %}<span class="text-ardoise-300 text-xs">—</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>{# /vue KPIs #}
+
+    {# ── Vue Graphiques ── #}
+    <div x-show="view === 'charts'" x-cloak class="p-5">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-ardoise-50 rounded-xl p-4">
+          <h4 class="text-xs font-semibold text-ardoise-600 uppercase tracking-wider mb-4">Répartition des demandes</h4>
+          <div class="flex items-center gap-6">
+            <div class="relative flex-shrink-0" style="width:160px;height:160px;">
+              <canvas id="donutChiffrage"></canvas>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-2xl font-extrabold text-ardoise-900" x-text="donutTotal"></span>
+                <span class="text-xs text-ardoise-400">demandes</span>
+              </div>
+            </div>
+            <div class="flex-1 space-y-2" id="donutLegend"></div>
+          </div>
+        </div>
+        <div class="bg-ardoise-50 rounded-xl p-4">
+          <h4 class="text-xs font-semibold text-ardoise-600 uppercase tracking-wider mb-4">Performance méthodistes</h4>
+          <template x-if="hasMethodes">
+            <div style="position:relative;height:160px;"><canvas id="barMethodes"></canvas></div>
+          </template>
+          <template x-if="!hasMethodes">
+            <div class="flex items-center justify-center h-36 text-ardoise-300 text-sm">Aucune donnée méthodiste</div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+  {% comment %}── Section 2 : Projets ──{% endcomment %}
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
         </svg>
       </div>
-      <div>
-        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.total }}</p>
-        <p class="text-xs text-ardoise-400 mt-0.5">Projets total</p>
+      <span class="text-xs font-bold text-ardoise-500 uppercase tracking-widest">Projets</span>
+    </div>
+    <div class="flex-1 h-px bg-ardoise-200"></div>
+  </div>
+  <div class="card p-0 overflow-hidden" x-data="projetsWidget('{{ chart_projets|escapejs }}')">
+
+    {# En-tête #}
+    <div class="px-5 py-4 border-b border-ardoise-100 flex items-center justify-between bg-gradient-to-r from-ardoise-50 to-white">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-ardoise-800">Projets — Vue d'ensemble</h3>
+          <p class="text-xs text-ardoise-400">Pipeline &amp; avancement</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center bg-ardoise-100 rounded-lg p-0.5 gap-0.5">
+          <button @click="view='kpis'" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
+                  :class="view==='kpis' ? 'bg-white text-ardoise-800 shadow-sm' : 'text-ardoise-500 hover:text-ardoise-700'">KPIs</button>
+          <button @click="view='charts'; initChart()" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1"
+                  :class="view==='charts' ? 'bg-white text-ardoise-800 shadow-sm' : 'text-ardoise-500 hover:text-ardoise-700'">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            Graphiques
+          </button>
+        </div>
+        <a href="{% url 'projects:list' %}" class="text-xs font-medium text-foret-600 hover:text-foret-700 flex items-center gap-1">
+          Voir tout <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </a>
       </div>
     </div>
 
-    <div class="card flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
+    {# KPI view #}
+    <div x-show="view==='kpis'">
+      {# 4 métriques #}
+      <div class="grid grid-cols-2 xl:grid-cols-4 divide-y xl:divide-y-0 xl:divide-x divide-ardoise-100">
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          </div>
+          <div><p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpis.total }}</p><p class="text-xs text-ardoise-400 mt-0.5">Projets total</p></div>
+        </div>
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div><p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpis.actifs }}</p><p class="text-xs text-ardoise-400 mt-0.5">En cours</p></div>
+        </div>
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div><p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpis.en_production }}</p><p class="text-xs text-ardoise-400 mt-0.5">En production</p></div>
+        </div>
+        <div class="px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-foret-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div><p class="text-2xl font-extrabold text-ardoise-900 leading-none">{{ kpis.en_pose }}</p><p class="text-xs text-ardoise-400 mt-0.5">En pose</p></div>
+        </div>
       </div>
-      <div>
-        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.actifs }}</p>
-        <p class="text-xs text-ardoise-400 mt-0.5">En cours</p>
+
+      {# Pipeline #}
+      <div class="border-t border-ardoise-100 px-5 py-4">
+        <p class="text-xs font-semibold text-ardoise-500 uppercase tracking-wider mb-3">Pipeline par statut</p>
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+          {% for item in pipeline %}
+          <a href="{% url 'projects:list' %}?status={{ item.status }}"
+             class="group flex flex-col items-center p-3 rounded-xl border-2 transition-all hover:-translate-y-0.5
+               {% if item.status == 'AVANT_VENTE' %}border-ardoise-200 hover:border-ardoise-400 hover:bg-ardoise-50
+               {% elif item.status == 'ETUDE' %}border-blue-200 hover:border-blue-400 hover:bg-blue-50
+               {% elif item.status == 'PRODUCTION' %}border-amber-200 hover:border-amber-400 hover:bg-amber-50
+               {% elif item.status == 'LOGISTIQUE' %}border-purple-200 hover:border-purple-400 hover:bg-purple-50
+               {% elif item.status == 'POSE' %}border-foret-200 hover:border-foret-400 hover:bg-foret-50
+               {% elif item.status == 'CLOTURE' %}border-ardoise-100 hover:border-ardoise-300 hover:bg-ardoise-50
+               {% endif %}">
+            <span class="text-xl font-extrabold
+              {% if item.status == 'AVANT_VENTE' %}text-ardoise-700
+              {% elif item.status == 'ETUDE' %}text-blue-600
+              {% elif item.status == 'PRODUCTION' %}text-amber-600
+              {% elif item.status == 'LOGISTIQUE' %}text-purple-600
+              {% elif item.status == 'POSE' %}text-foret-600
+              {% elif item.status == 'CLOTURE' %}text-ardoise-400
+              {% endif %}">{{ item.count }}</span>
+            <span class="text-xs text-ardoise-500 mt-0.5 text-center leading-tight">{{ item.label }}</span>
+          </a>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
-    <div class="card flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-        <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      </div>
-      <div>
-        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.en_production }}</p>
-        <p class="text-xs text-ardoise-400 mt-0.5">En production</p>
+    {# Graphiques view #}
+    <div x-show="view==='charts'" x-cloak class="p-5">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-ardoise-50 rounded-xl p-4">
+          <h4 class="text-xs font-semibold text-ardoise-600 uppercase tracking-wider mb-4">Répartition par statut</h4>
+          <div class="flex items-center gap-6">
+            <div class="relative flex-shrink-0" style="width:160px;height:160px;">
+              <canvas id="donutProjets"></canvas>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-2xl font-extrabold text-ardoise-900">{{ kpis.total }}</span>
+                <span class="text-xs text-ardoise-400">projets</span>
+              </div>
+            </div>
+            <div class="flex-1 space-y-2" id="donutProjetsLegend"></div>
+          </div>
+        </div>
+        <div class="bg-ardoise-50 rounded-xl p-4">
+          <h4 class="text-xs font-semibold text-ardoise-600 uppercase tracking-wider mb-4">Projets en cours par phase</h4>
+          <div style="position:relative;height:160px;"><canvas id="barProjets"></canvas></div>
+        </div>
       </div>
     </div>
 
-    <div class="card flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-foret-50 flex items-center justify-center flex-shrink-0">
-        <svg class="w-6 h-6 text-foret-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      </div>
-      <div>
-        <p class="text-2xl font-extrabold text-ardoise-900">{{ kpis.en_pose }}</p>
-        <p class="text-xs text-ardoise-400 mt-0.5">En pose</p>
-      </div>
-    </div>
   </div>
 
-  {# ── Pipeline par statut ────────────────────────────────── #}
-  <div class="card">
-    <h3 class="text-sm font-semibold text-ardoise-700 mb-4 uppercase tracking-wider">Pipeline projets</h3>
-    <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
-      {% for item in pipeline %}
-      <a href="{% url 'projects:list' %}?status={{ item.status }}"
-         class="group flex flex-col items-center p-3 rounded-xl border-2 transition-all hover:-translate-y-0.5
-           {% if item.status == 'AVANT_VENTE' %}border-ardoise-200 hover:border-ardoise-400 hover:bg-ardoise-50
-           {% elif item.status == 'ETUDE' %}border-blue-200 hover:border-blue-400 hover:bg-blue-50
-           {% elif item.status == 'PRODUCTION' %}border-amber-200 hover:border-amber-400 hover:bg-amber-50
-           {% elif item.status == 'LOGISTIQUE' %}border-purple-200 hover:border-purple-400 hover:bg-purple-50
-           {% elif item.status == 'POSE' %}border-foret-200 hover:border-foret-400 hover:bg-foret-50
-           {% elif item.status == 'CLOTURE' %}border-ardoise-100 hover:border-ardoise-300 hover:bg-ardoise-50
-           {% endif %}">
-        <span class="text-2xl font-extrabold
-          {% if item.status == 'AVANT_VENTE' %}text-ardoise-700
-          {% elif item.status == 'ETUDE' %}text-blue-600
-          {% elif item.status == 'PRODUCTION' %}text-amber-600
-          {% elif item.status == 'LOGISTIQUE' %}text-purple-600
-          {% elif item.status == 'POSE' %}text-foret-600
-          {% elif item.status == 'CLOTURE' %}text-ardoise-400
-          {% endif %}">{{ item.count }}</span>
-        <span class="text-xs text-ardoise-500 mt-1 text-center leading-tight">{{ item.label }}</span>
-      </a>
-      {% endfor %}
+  {% comment %}── Section 3 : Projets en cours ──{% endcomment %}
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        </svg>
+      </div>
+      <span class="text-xs font-bold text-ardoise-500 uppercase tracking-widest">Projets en cours</span>
     </div>
+    <div class="flex-1 h-px bg-ardoise-200"></div>
   </div>
+  <div class="card p-0 overflow-hidden" x-data="{view:'kpis'}">
 
-  {# ── Projets actifs ─────────────────────────────────────── #}
-  <div class="card p-0 overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-ardoise-100">
-      <h3 class="text-sm font-semibold text-ardoise-800">Projets en cours</h3>
-      <a href="{% url 'projects:list' %}" class="text-xs text-foret-600 hover:text-foret-700 font-medium">
-        Voir tout →
-      </a>
+    {# En-tête #}
+    <div class="px-5 py-4 border-b border-ardoise-100 flex items-center justify-between bg-gradient-to-r from-ardoise-50 to-white">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-foret-50 flex items-center justify-center">
+          <svg class="w-4 h-4 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-ardoise-800">Projets en cours</h3>
+          <p class="text-xs text-ardoise-400">Liste &amp; avancement</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center bg-ardoise-100 rounded-lg p-0.5 gap-0.5">
+          <button @click="view='kpis'" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
+                  :class="view==='kpis' ? 'bg-white text-ardoise-800 shadow-sm' : 'text-ardoise-500 hover:text-ardoise-700'">Liste</button>
+          <button @click="view='charts'" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1"
+                  :class="view==='charts' ? 'bg-white text-ardoise-800 shadow-sm' : 'text-ardoise-500 hover:text-ardoise-700'">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            Progression
+          </button>
+        </div>
+        <a href="{% url 'projects:list' %}" class="text-xs font-medium text-foret-600 hover:text-foret-700 flex items-center gap-1">
+          Voir tout <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
     </div>
 
     {% if projets_actifs %}
-    <ul class="divide-y divide-ardoise-50">
-      {% for project in projets_actifs %}
-      <li>
-        <a href="{% url 'projects:detail' project.pk %}"
-           class="flex items-center gap-4 px-5 py-3.5 hover:bg-ardoise-50 transition-colors group">
 
-          {# Indicateur statut #}
-          <div class="w-2 h-10 rounded-full flex-shrink-0
-            {% if project.status == 'AVANT_VENTE' %}bg-ardoise-300
+    {# Vue liste #}
+    <div x-show="view==='kpis'">
+      <ul class="divide-y divide-ardoise-50">
+        {% for project in projets_actifs %}
+        <li>
+          <a href="{% url 'projects:detail' project.pk %}"
+             class="flex items-center gap-4 px-5 py-3.5 hover:bg-ardoise-50 transition-colors group">
+            <div class="w-2 h-10 rounded-full flex-shrink-0
+              {% if project.status == 'AVANT_VENTE' %}bg-ardoise-300
+              {% elif project.status == 'ETUDE' %}bg-blue-400
+              {% elif project.status == 'PRODUCTION' %}bg-amber-400
+              {% elif project.status == 'LOGISTIQUE' %}bg-purple-400
+              {% elif project.status == 'POSE' %}bg-foret-400{% endif %}"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-ardoise-900 truncate group-hover:text-foret-700 transition-colors">{{ project.name }}</p>
+                {% if project.status == 'AVANT_VENTE' %}<span class="badge-avant-vente hidden sm:inline">{{ project.get_status_display }}</span>
+                {% elif project.status == 'ETUDE' %}<span class="badge-etude hidden sm:inline">{{ project.get_status_display }}</span>
+                {% elif project.status == 'PRODUCTION' %}<span class="badge-production hidden sm:inline">{{ project.get_status_display }}</span>
+                {% elif project.status == 'LOGISTIQUE' %}<span class="badge-logistique hidden sm:inline">{{ project.get_status_display }}</span>
+                {% elif project.status == 'POSE' %}<span class="badge-pose hidden sm:inline">{{ project.get_status_display }}</span>{% endif %}
+              </div>
+              <p class="text-xs text-ardoise-400 mt-0.5">{{ project.client_name }} · {{ project.manager.get_full_name }}</p>
+            </div>
+            <div class="hidden sm:flex items-center gap-3 flex-shrink-0 w-36">
+              <div class="progress-bar flex-1"><div class="progress-fill" style="width: {{ project.progress }}%"></div></div>
+              <span class="text-xs font-semibold text-ardoise-500 w-8 text-right">{{ project.progress }}%</span>
+            </div>
+            <svg class="w-4 h-4 text-ardoise-300 group-hover:text-foret-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    {# Vue progression #}
+    <div x-show="view==='charts'" x-cloak class="px-5 py-4 space-y-3">
+      {% for project in projets_actifs %}
+      <a href="{% url 'projects:detail' project.pk %}" class="block group">
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2 h-2 rounded-full flex-shrink-0
+              {% if project.status == 'AVANT_VENTE' %}bg-ardoise-400
+              {% elif project.status == 'ETUDE' %}bg-blue-400
+              {% elif project.status == 'PRODUCTION' %}bg-amber-400
+              {% elif project.status == 'LOGISTIQUE' %}bg-purple-400
+              {% elif project.status == 'POSE' %}bg-foret-500{% endif %}"></span>
+            <span class="text-sm font-medium text-ardoise-800 truncate group-hover:text-foret-700 transition-colors">{{ project.name }}</span>
+            <span class="text-xs text-ardoise-400 hidden sm:inline flex-shrink-0">· {{ project.client_name }}</span>
+          </div>
+          <span class="text-xs font-bold text-ardoise-600 flex-shrink-0 ml-3">{{ project.progress }}%</span>
+        </div>
+        <div class="w-full bg-ardoise-100 rounded-full h-2 overflow-hidden">
+          <div class="h-2 rounded-full transition-all duration-500
+            {% if project.status == 'AVANT_VENTE' %}bg-ardoise-400
             {% elif project.status == 'ETUDE' %}bg-blue-400
             {% elif project.status == 'PRODUCTION' %}bg-amber-400
             {% elif project.status == 'LOGISTIQUE' %}bg-purple-400
-            {% elif project.status == 'POSE' %}bg-foret-400
-            {% endif %}">
-          </div>
-
-          {# Infos #}
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <p class="text-sm font-semibold text-ardoise-900 truncate group-hover:text-foret-700 transition-colors">
-                {{ project.name }}
-              </p>
-              {% if project.status == 'AVANT_VENTE' %}<span class="badge-avant-vente hidden sm:inline">{{ project.get_status_display }}</span>
-              {% elif project.status == 'ETUDE' %}<span class="badge-etude hidden sm:inline">{{ project.get_status_display }}</span>
-              {% elif project.status == 'PRODUCTION' %}<span class="badge-production hidden sm:inline">{{ project.get_status_display }}</span>
-              {% elif project.status == 'LOGISTIQUE' %}<span class="badge-logistique hidden sm:inline">{{ project.get_status_display }}</span>
-              {% elif project.status == 'POSE' %}<span class="badge-pose hidden sm:inline">{{ project.get_status_display }}</span>
-              {% endif %}
-            </div>
-            <p class="text-xs text-ardoise-400 mt-0.5">{{ project.client_name }} · {{ project.manager.get_full_name }}</p>
-          </div>
-
-          {# Progression #}
-          <div class="hidden sm:flex items-center gap-3 flex-shrink-0 w-36">
-            <div class="progress-bar flex-1">
-              <div class="progress-fill" style="width: {{ project.progress }}%"></div>
-            </div>
-            <span class="text-xs font-semibold text-ardoise-500 w-8 text-right">{{ project.progress }}%</span>
-          </div>
-
-          <svg class="w-4 h-4 text-ardoise-300 group-hover:text-foret-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-        </a>
-      </li>
+            {% elif project.status == 'POSE' %}bg-foret-500{% endif %}"
+               style="width:{{ project.progress }}%"></div>
+        </div>
+      </a>
       {% endfor %}
-    </ul>
+    </div>
+
     {% else %}
     <div class="py-16 text-center">
       <svg class="w-10 h-10 mx-auto text-ardoise-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
       </svg>
       <p class="text-sm text-ardoise-400 mb-3">Aucun projet en cours</p>
       {% if request.user.is_superuser %}
       <a href="{% url 'projects:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foret-500 hover:bg-foret-600 text-white text-sm font-medium transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         Créer le premier projet
       </a>
       {% endif %}
     </div>
     {% endif %}
+
   </div>
 
 </div>
 {% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+// ── Widget Projets ──────────────────────────────────────────
+function projetsWidget(chartJson) {
+  return {
+    view: 'kpis',
+    _inited: false,
+    _data: null,
+    init() { try { this._data = JSON.parse(chartJson); } catch(e) {} },
+    initChart() {
+      if (this._inited) return;
+      this._inited = true;
+      this.$nextTick(() => {
+        const d = this._data;
+        if (!d) return;
+
+        // Donut
+        const dCtx = document.getElementById('donutProjets');
+        if (dCtx) {
+          const legend = document.getElementById('donutProjetsLegend');
+          const total = d.data.reduce((a, b) => a + b, 0);
+          if (legend) {
+            legend.innerHTML = d.labels.map((lbl, i) => {
+              if (!d.data[i]) return '';
+              const pct = total ? Math.round(d.data[i] / total * 100) : 0;
+              return `<div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${d.colors[i]};"></span>
+                <span class="text-xs text-ardoise-600 flex-1 leading-tight">${lbl}</span>
+                <span class="text-xs font-bold text-ardoise-800 ml-auto">${d.data[i]}</span>
+                <span class="text-xs text-ardoise-400 w-7 text-right">${pct}%</span>
+              </div>`;
+            }).join('');
+          }
+          new Chart(dCtx, {
+            type: 'doughnut',
+            data: { labels: d.labels, datasets: [{ data: d.data, backgroundColor: d.colors, borderWidth: 2, borderColor: '#f6f7f8', hoverOffset: 4 }] },
+            options: { cutout: '72%', plugins: { legend: { display: false } }, animation: { duration: 600 } }
+          });
+        }
+
+        // Barres (hors clôture)
+        const bCtx = document.getElementById('barProjets');
+        if (bCtx) {
+          const idx = d.labels.map((l, i) => i).filter(i => d.labels[i] !== 'Clôturé');
+          new Chart(bCtx, {
+            type: 'bar',
+            data: {
+              labels: idx.map(i => d.labels[i]),
+              datasets: [{ data: idx.map(i => d.data[i]), backgroundColor: idx.map(i => d.colors[i] + 'cc'), borderRadius: 5, borderSkipped: false }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+                y: { ticks: { font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } }
+              },
+              animation: { duration: 500 }
+            }
+          });
+        }
+      });
+    }
+  };
+}
+
+// ── Widget Chiffrage ────────────────────────────────────────
+function chiffrageWidget(donutJson, methodesJson) {
+  return {
+    view: 'kpis',
+    donutTotal: 0,
+    hasMethodes: false,
+    _chartsInited: false,
+    _donutData: null,
+    _methodesData: null,
+
+    init() {
+      try { this._donutData    = JSON.parse(donutJson);    } catch(e) {}
+      try { this._methodesData = JSON.parse(methodesJson); } catch(e) {}
+      if (this._donutData) {
+        this.donutTotal = this._donutData.data.reduce((a, b) => a + b, 0);
+      }
+      this.hasMethodes = !!(this._methodesData && this._methodesData.labels && this._methodesData.labels.length > 0);
+    },
+
+    initCharts() {
+      if (this._chartsInited) return;
+      this._chartsInited = true;
+      this.$nextTick(() => {
+        this._buildDonut();
+        if (this.hasMethodes) this._buildBars();
+      });
+    },
+
+    _buildDonut() {
+      const d = this._donutData;
+      if (!d) return;
+      const ctx = document.getElementById('donutChiffrage');
+      if (!ctx) return;
+
+      const legend = document.getElementById('donutLegend');
+      if (legend) {
+        legend.innerHTML = d.labels.map((lbl, i) => {
+          if (d.data[i] === 0) return '';
+          const pct = this.donutTotal ? Math.round(d.data[i] / this.donutTotal * 100) : 0;
+          return `<div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${d.colors[i]};"></span>
+            <span class="text-xs text-ardoise-600 flex-1 leading-tight">${lbl}</span>
+            <span class="text-xs font-bold text-ardoise-800 ml-auto">${d.data[i]}</span>
+            <span class="text-xs text-ardoise-400 w-7 text-right">${pct}%</span>
+          </div>`;
+        }).join('');
+      }
+
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: d.labels,
+          datasets: [{ data: d.data, backgroundColor: d.colors, borderWidth: 2, borderColor: '#f6f7f8', hoverOffset: 4 }]
+        },
+        options: {
+          cutout: '72%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (c) => ` ${c.label} : ${c.raw}` } }
+          },
+          animation: { animateRotate: true, duration: 600 },
+        }
+      });
+    },
+
+    _buildBars() {
+      const d = this._methodesData;
+      if (!d) return;
+      const ctx = document.getElementById('barMethodes');
+      if (!ctx) return;
+      const hasMontant = d.montant && d.montant.some(v => v > 0);
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: d.labels,
+          datasets: [
+            { label: 'En cours',          data: d.en_cours, backgroundColor: 'rgba(99,102,241,0.80)', borderRadius: 4, borderSkipped: false },
+            { label: 'Soumis / Validés',  data: d.valides,  backgroundColor: 'rgba(34,128,76,0.80)',  borderRadius: 4, borderSkipped: false },
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 10 } },
+            tooltip: {
+              callbacks: {
+                afterBody: hasMontant ? (items) => {
+                  const i = items[0].dataIndex;
+                  const m = d.montant[i];
+                  return m ? `Montant HT : ${m.toLocaleString('fr-FR')} MAD` : '';
+                } : undefined
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+            y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+          },
+          animation: { duration: 500 },
+        }
+      });
+    }
+  };
+}
+</script>
+{% endblock extra_scripts %}

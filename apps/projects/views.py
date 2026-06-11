@@ -106,8 +106,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'projects/dashboard.html'
 
     def get_context_data(self, **kwargs):
+        from django.db.models import Sum, Count, Q
+        from apps.chiffrage.models import DemandeChiffrage
+
         ctx = super().get_context_data(**kwargs)
-        all_projects = _visible_projects(self.request.user).select_related('manager')
+        user = self.request.user
+        all_projects = _visible_projects(user).select_related('manager')
         active = all_projects.exclude(status=Project.Status.CLOTURE)
 
         ctx['kpis'] = {
@@ -117,10 +121,99 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             'en_pose': all_projects.filter(status=Project.Status.POSE).count(),
         }
         ctx['projets_actifs'] = active.order_by('-created_at')[:8]
-        ctx['pipeline'] = [
+
+        pipeline = [
             {'status': s, 'label': l, 'count': all_projects.filter(status=s).count()}
             for s, l in Project.Status.choices
         ]
+        ctx['pipeline'] = pipeline
+
+        ctx['chart_projets'] = json.dumps({
+            'labels': [p['label'] for p in pipeline],
+            'data':   [p['count'] for p in pipeline],
+            'colors': ['#adb5bf', '#3b82f6', '#f59e0b', '#a855f7', '#22804c', '#d1d5db'],
+        })
+
+        # ── KPI Chiffrage ────────────────────────────────────────────
+        ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES')
+        if user.is_superuser or user.role in ROLES_CHIFFRAGE:
+            all_chiffrage = DemandeChiffrage.objects.all()
+
+            if user.role == 'COMMERCIAL' and not user.is_superuser:
+                chiffrage_qs = all_chiffrage.filter(commercial=user)
+            elif user.role == 'ESTIMATEUR' and not user.is_superuser:
+                chiffrage_qs = all_chiffrage.filter(assigned_to=user)
+            else:
+                chiffrage_qs = all_chiffrage
+
+            POST_DG = ['DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE']
+            montant_total = chiffrage_qs.filter(statut__in=POST_DG).aggregate(
+                t=Sum('montant_ht')
+            )['t'] or 0
+
+            closes  = chiffrage_qs.filter(statut__in=['ACCEPTE', 'REFUSE_CLI']).count()
+            acceptes = chiffrage_qs.filter(statut='ACCEPTE').count()
+
+            from django.utils import timezone as tz
+            today      = tz.now().date()
+            CLOSED_ST  = ['DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE']
+
+            n_attente  = chiffrage_qs.filter(statut__in=['EN_ATTENTE', 'RETOURNEE', 'REJETEE']).count()
+            n_cours    = chiffrage_qs.filter(statut__in=['VALIDEE_DC', 'EN_CHIFFRAGE', 'SOUMIS_RM', 'SOUMIS_DG', 'REVISION_DG']).count()
+            n_valides  = chiffrage_qs.filter(statut__in=POST_DG).count()
+            n_refuses  = chiffrage_qs.filter(statut__in=['REFUSE_CLI', 'ARCHIVE']).count()
+            n_retards  = chiffrage_qs.filter(
+                delai_souhaite__isnull=False,
+                delai_souhaite__lt=today,
+            ).exclude(statut__in=CLOSED_ST).count()
+
+            m = float(montant_total)
+            if m >= 1_000_000:
+                montant_fmt = f"{m / 1_000_000:.2f} M MAD"
+            elif m >= 1_000:
+                montant_fmt = f"{m / 1_000:.0f} K MAD"
+            elif m > 0:
+                montant_fmt = f"{m:,.0f} MAD"
+            else:
+                montant_fmt = None
+
+            ctx['kpi_chiffrage'] = {
+                'en_attente':  n_attente,
+                'en_cours':    n_cours,
+                'valides':     n_valides,
+                'montant_fmt': montant_fmt,
+                'retards':     n_retards,
+                'taux':        round(acceptes / closes * 100) if closes else None,
+                'acceptes':    acceptes,
+                # Données graphiques
+                'chart_donut': json.dumps({
+                    'labels': ['En attente', 'En cours', 'Devis validés', 'Refusés / Archivés'],
+                    'data':   [n_attente, n_cours, n_valides, n_refuses],
+                    'colors': ['#f59e0b', '#6366f1', '#22804c', '#adb5bf'],
+                }),
+            }
+
+            # Performance par méthodiste (managers, RM, DG, admin)
+            if user.is_superuser or user.role in ('DIRECTEUR', 'MANAGER', 'RESP_METHODES'):
+                methodes_perf = list(
+                    all_chiffrage.filter(assigned_to__isnull=False)
+                    .values('assigned_to__pk', 'assigned_to__first_name', 'assigned_to__last_name')
+                    .annotate(
+                        total=Count('pk'),
+                        en_cours=Count('pk', filter=Q(statut__in=['EN_CHIFFRAGE', 'SOUMIS_RM', 'REVISION_DG'])),
+                        valides=Count('pk', filter=Q(statut__in=['SOUMIS_DG', 'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE'])),
+                        montant=Sum('montant_ht', filter=Q(montant_ht__isnull=False)),
+                    )
+                    .order_by('-valides', '-total')
+                )
+                ctx['methodes_perf'] = methodes_perf
+                ctx['kpi_chiffrage']['chart_methodes'] = json.dumps({
+                    'labels':  [f"{m['assigned_to__first_name']} {m['assigned_to__last_name']}" for m in methodes_perf],
+                    'en_cours': [m['en_cours'] for m in methodes_perf],
+                    'valides':  [m['valides'] for m in methodes_perf],
+                    'montant':  [float(m['montant'] or 0) for m in methodes_perf],
+                })
+
         return ctx
 
 

@@ -209,7 +209,7 @@
               <p class="text-sm font-medium text-ardoise-600">
                 <span class="text-bois-600">Cliquez</span> ou glissez vos fichiers ici
               </p>
-              <p class="text-xs text-ardoise-400 mt-1">DWG, PDF, Images, Word, Excel — max 50 Mo</p>
+              <p class="text-xs text-ardoise-400 mt-1">DWG, PDF, Images, Word, Excel — max 200 Mo</p>
             </div>
 
             {# Liste des fichiers sélectionnés #}
@@ -241,6 +241,34 @@
             <input x-ref="fileInput" type="file" name="fichiers" multiple class="hidden"
                    accept=".pdf,.dwg,.dxf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
                    @change="onFileInput($event)">
+          </div>
+
+          {# Séparateur OU #}
+          <div class="flex items-center gap-3 my-4">
+            <div class="flex-1 h-px bg-ardoise-200"></div>
+            <span class="text-xs text-ardoise-400 font-medium px-1">ou</span>
+            <div class="flex-1 h-px bg-ardoise-200"></div>
+          </div>
+
+          {# Lien de téléchargement externe #}
+          <div>
+            <label class="form-label">
+              Lien de téléchargement
+              <span class="text-ardoise-400 font-normal">(WeTransfer, Google Drive, Dropbox…)</span>
+            </label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <svg class="w-4 h-4 text-ardoise-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                </svg>
+              </div>
+              <input type="url" name="lien_telechargement"
+                     value="{{ post.lien_telechargement|default:'' }}"
+                     placeholder="https://wetransfer.com/downloads/…"
+                     class="form-input pl-9">
+            </div>
+            <p class="text-xs text-ardoise-400 mt-1">Collez un lien si vos fichiers sont hébergés en ligne.</p>
           </div>
 
         </div>
@@ -341,6 +369,12 @@ function chiffrageCreate() {
       this._addFiles(Array.from(e.target.files));
     },
     _addFiles(newFiles) {
+      const MAX = 200 * 1024 * 1024; // 200 Mo
+      const oversized = newFiles.filter(f => f.size > MAX);
+      if (oversized.length) {
+        alert('Fichier(s) trop volumineux (max 200 Mo) :\n' + oversized.map(f => `• ${f.name} (${this.humanSize(f.size)})`).join('\n'));
+        newFiles = newFiles.filter(f => f.size <= MAX);
+      }
       this.files = [...this.files, ...newFiles];
       // Sync avec l'input réel
       const dt = new DataTransfer();
