@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bois&Co — Notes de version v1.0.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: #f4f6f4;
+    color: #1a2e1a;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 800px;
+    margin: 30px auto;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a3a1a 0%, #2d5a2d 60%, #3a6b2e 100%);
+    padding: 40px 48px 32px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 60px;
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: #8fcf7a; }
+  .version-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .header-meta {
+    display: flex;
+    gap: 20px;
+    margin-top: 12px;
+    opacity: 0.75;
+    font-size: 12px;
+  }
+  .header-meta span::before { margin-right: 5px; }
+
+  /* ── Body ── */
+  .body { padding: 36px 48px 48px; }
+
+  /* ── Intro ── */
+  .intro {
+    background: #f0f7ee;
+    border-left: 4px solid #2d5a2d;
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 32px;
+    font-size: 12.5px;
+    color: #2d5a2d;
+  }
+
+  /* ── Section ── */
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e8efe8;
+  }
+  .section-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a3a1a;
+  }
+  .section-num {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6b9a6b;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 12px;
+  }
+  th {
+    background: #f0f7ee;
+    color: #2d5a2d;
+    font-weight: 600;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #2c3e2c;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafff9; }
+  .step-num {
+    width: 28px; height: 28px;
+    background: #2d5a2d;
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #e8f4e8;
+    color: #2d5a2d;
+  }
+
+  /* ── Feature list ── */
+  .feature-list { list-style: none; margin: 10px 0; }
+  .feature-list li {
+    padding: 6px 0 6px 22px;
+    position: relative;
+    font-size: 12.5px;
+    color: #2c3e2c;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #2d5a2d;
+    font-weight: 700;
+    font-size: 11px;
+    top: 7px;
+  }
+  .feature-list li strong { color: #1a3a1a; }
+
+  /* ── Sub-section ── */
+  .subsection {
+    background: #fafff9;
+    border: 1px solid #e0ede0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 10px 0;
+  }
+  .subsection-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2d5a2d;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── KPI grid ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 10px 0;
+  }
+  .kpi-card {
+    background: #f0f7ee;
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .kpi-card .kpi-icon { font-size: 18px; margin-bottom: 4px; }
+  .kpi-card .kpi-label { font-size: 10px; color: #5a7a5a; font-weight: 500; }
+
+  /* ── Role badge ── */
+  .role-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .role-green { background: #e8f4e8; color: #1a5c1a; }
+  .role-blue { background: #e8f0ff; color: #1a3a8f; }
+  .role-orange { background: #fff3e0; color: #8f4e00; }
+  .role-purple { background: #f3e8ff; color: #5b21b6; }
+
+  /* ── Tag ── */
+  .tag {
+    display: inline-block;
+    background: #e8f4e8;
+    color: #2d5a2d;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 10.5px;
+    font-weight: 500;
+    margin: 1px 2px;
+  }
+  .tag-orange { background: #fff3e0; color: #8f4e00; }
+  .tag-blue { background: #e8f0ff; color: #1a3a8f; }
+  .tag-purple { background: #f3e8ff; color: #5b21b6; }
+
+  /* ── Footer ── */
+  .footer {
+    background: #f0f7ee;
+    border-top: 1px solid #e0ede0;
+    padding: 18px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #5a7a5a;
+  }
+  .footer strong { color: #2d5a2d; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; font-size: 11px; }
+    .page { margin: 0; border-radius: 0; box-shadow: none; max-width: 100%; }
+    .section { page-break-inside: avoid; }
+    @page { margin: 15mm 12mm; size: A4; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">Bois<span>&</span>Co</div>
+      <div class="version-badge">v1.0.0</div>
+    </div>
+    <h1>Notes de version</h1>
+    <p style="opacity:0.8; font-size:13px; margin-top:6px;">Évolutions & nouvelles fonctionnalités de la plateforme</p>
+    <div class="header-meta">
+      <span>📅 12 juin 2026</span>
+      <span>⚡ 7 évolutions majeures</span>
+      <span>🏷️ Version 1.0.0</span>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- Intro -->
+    <div class="intro">
+      Cette mise à jour apporte une refonte complète du workflow chiffrage, un nouveau rôle utilisateur, des tableaux de bord enrichis avec graphiques, et une gestion des accès par rôle sur le pipeline commercial.
+    </div>
+
+    <!-- ── 1. Workflow Chiffrage ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#e8f4e8;">📋</div>
+        <div>
+          <div class="section-num">Évolution 01</div>
+          <div class="section-title">Workflow Chiffrage — Processus en 6 étapes</div>
+        </div>
+      </div>
+
+      <p style="font-size:12.5px; color:#3a4a3a; margin-bottom:12px;">
+        Le circuit de chiffrage est désormais entièrement structuré avec des rôles et statuts définis à chaque étape.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:50px;">Étape</th>
+            <th>Statut</th>
+            <th>Responsable</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="step-num">1</span></td>
+            <td><span class="status-badge">En attente</span></td>
+            <td><span class="role-blue role-badge">Commercial</span></td>
+            <td>Création de la demande</td>
+          </tr>
+          <tr>
+            <td><span class="step-num">2</span></td>
+            <td><span class="status-badge">Validée DC</span></td>
+            <td><span class="role-orange role-badge">Dir. Commercial</span></td>
+            <td>Validation ou refus de la demande</td>
+          </tr>
+          <tr>
+            <td><span class="step-num">3</span></td>
+            <td><span class="status-badge">En chiffrage</span></td>
+            <td><span class="role-green role-badge">Estimateur</span></td>
+            <td>Dépôt du chiffrage détaillé + devis client</td>
+          </tr>
+          <tr>
+            <td><span class="step-num">4</span></td>
+            <td><span class="status-badge">Soumis Resp. Méth.</span></td>
+            <td><span class="role-purple role-badge">Resp. Méthodes</span></td>
+            <td>Approbation technique avant DG</td>
+          </tr>
+          <tr>
+            <td><span class="step-num">5</span></td>
+            <td><span class="status-badge">Soumis DG</span></td>
+            <td><span class="role-orange role-badge">Directeur Général</span></td>
+            <td>Validation finale du devis</td>
+          </tr>
+          <tr>
+            <td><span class="step-num">6</span></td>
+            <td><span class="status-badge" style="background:#d1fae5;color:#065f46;">Devis validé</span></td>
+            <td><span class="role-blue role-badge">Commercial</span></td>
+            <td>Accès au devis client — transmission au client</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ul class="feature-list" style="margin-top:12px;">
+        <li>L'estimateur doit joindre <strong>deux fichiers obligatoires</strong> : chiffrage détaillé (usage interne) et devis client (partageable après validation DG)</li>
+        <li>Le devis client n'est accessible au commercial qu'<strong>après validation par le DG</strong></li>
+        <li>Limite de taille des fichiers devis : <strong>50 Mo</strong> (contrôle côté serveur et client)</li>
+        <li>Un Responsable Méthodes peut <strong>approuver ou rejeter</strong> le chiffrage avant envoi au DG</li>
+      </ul>
+    </div>
+
+    <!-- ── 2. Nouveau rôle ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#f3e8ff;">👤</div>
+        <div>
+          <div class="section-num">Évolution 02</div>
+          <div class="section-title">Nouveau rôle — Responsable Méthodes</div>
+        </div>
+      </div>
+      <ul class="feature-list">
+        <li>Le rôle <strong>Responsable Méthodes</strong> est disponible à la création et modification d'un utilisateur</li>
+        <li>Il s'intercale dans le workflow chiffrage entre l'<strong>Estimateur</strong> et le <strong>Directeur Général</strong></li>
+        <li>Accès complet au chiffrage détaillé pour analyse technique avant validation DG</li>
+      </ul>
+    </div>
+
+    <!-- ── 3. Formulaire chiffrage ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#fff3e0;">📎</div>
+        <div>
+          <div class="section-num">Évolution 03</div>
+          <div class="section-title">Demande de chiffrage — Améliorations formulaire</div>
+        </div>
+      </div>
+      <ul class="feature-list">
+        <li>Taille maximale des fichiers joints portée à <strong>200 Mo</strong> (contre 10 Mo auparavant)</li>
+        <li>Nouveau champ <strong>lien de téléchargement</strong> (URL) : utile pour WeTransfer, SharePoint, OneDrive, etc.</li>
+        <li>L'URL et les fichiers peuvent être utilisés ensemble ou séparément</li>
+      </ul>
+    </div>
+
+    <!-- ── 4. Dashboard principal ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#e8f4e8;">📊</div>
+        <div>
+          <div class="section-num">Évolution 04</div>
+          <div class="section-title">Tableau de bord principal — Refonte complète</div>
+        </div>
+      </div>
+
+      <p style="font-size:12.5px; color:#3a4a3a; margin-bottom:12px;">
+        Le tableau de bord est restructuré en <strong>3 sections uniformes</strong>, chacune avec bascule KPI / Graphiques.
+      </p>
+
+      <div class="subsection">
+        <div class="subsection-title">📋 Section Chiffrage</div>
+        <ul class="feature-list">
+          <li>Demandes en attente, en cours, validées, montant total engagé</li>
+          <li><strong>Indicateur de retards</strong> : demandes dont la date souhaitée est dépassée</li>
+          <li>Performance par méthodiste (chiffrages traités, montant)</li>
+          <li>Graphiques : répartition par statut (donut) + évolution mensuelle (barres)</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">🏗️ Section Projets</div>
+        <ul class="feature-list">
+          <li>Projets actifs, en cours, terminés, CA total</li>
+          <li>Graphiques : répartition par statut (donut) + évolution mensuelle (barres)</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">⚡ Section Projets actifs</div>
+        <ul class="feature-list">
+          <li>Liste des projets en cours avec barres de progression visuelles</li>
+          <li>Bascule entre vue liste et vue progression</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ── 5. Dashboard CRM ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#e8f0ff;">📈</div>
+        <div>
+          <div class="section-num">Évolution 05</div>
+          <div class="section-title">Tableau de bord CRM — Niveau ERP</div>
+        </div>
+      </div>
+
+      <p style="font-size:12.5px; color:#3a4a3a; margin-bottom:12px;">
+        Le tableau de bord CRM a été entièrement repensé avec des graphiques interactifs et des indicateurs avancés.
+      </p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">🎯</div>
+          <div class="kpi-label">Opportunités actives + tendance</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-label">Valeur pipeline MAD</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-label">Win rate %</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📅</div>
+          <div class="kpi-label">RDV de la semaine</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">🏆</div>
+          <div class="kpi-label">Leads gagnés ce mois</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📉</div>
+          <div class="kpi-label">Tendance 6 mois</div>
+        </div>
+      </div>
+
+      <ul class="feature-list" style="margin-top:10px;">
+        <li><strong>Entonnoir pipeline</strong> : visualisation du nombre de leads et budget par stade commercial</li>
+        <li><strong>Donut Win/Loss</strong> : taux de conversion visuel</li>
+        <li><strong>Budget par stade</strong> : répartition financière du pipeline en barres</li>
+        <li><strong>Top 6 opportunités</strong> : classement par budget estimé (médailles or/argent/bronze)</li>
+        <li><strong>Table de performance</strong> : activité détaillée de chaque commercial (directeurs uniquement)</li>
+        <li><strong>Prochains RDV</strong> de la semaine et leads à valider</li>
+        <li><strong>Journal d'activité</strong> : historique des dernières interactions</li>
+      </ul>
+    </div>
+
+    <!-- ── 6. RBAC Pipeline CRM ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#fff3e0;">🔐</div>
+        <div>
+          <div class="section-num">Évolution 06</div>
+          <div class="section-title">Pipeline CRM — Visibilité par rôle</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Rôle</th>
+            <th>Visibilité dans le pipeline</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="role-blue role-badge">Commercial</span></td>
+            <td>Ses propres leads uniquement (créés ou assignés)</td>
+          </tr>
+          <tr>
+            <td><span class="role-orange role-badge">Directeur Commercial</span></td>
+            <td>Tous les leads de tous les commerciaux</td>
+          </tr>
+          <tr>
+            <td><span class="role-orange role-badge">Directeur Général</span></td>
+            <td>Tous les leads de tous les commerciaux</td>
+          </tr>
+          <tr>
+            <td><span class="role-green role-badge">Administrateur</span></td>
+            <td>Accès complet sans restriction</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ul class="feature-list" style="margin-top:10px;">
+        <li>Un bandeau d'information rappelle au commercial que sa vue est personnelle</li>
+        <li>Le tableau de bord CRM applique les mêmes règles de visibilité</li>
+      </ul>
+    </div>
+
+    <!-- ── 7. Versionning ── -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#f0f7ee;">🏷️</div>
+        <div>
+          <div class="section-num">Évolution 07</div>
+          <div class="section-title">Versionning — Suivi de version</div>
+        </div>
+      </div>
+      <ul class="feature-list">
+        <li>La version de l'application est affichée en <strong>bas du menu latéral</strong> : <span class="tag">© Bois&amp;Co · v1.0.0</span></li>
+        <li>Permet de confirmer rapidement la version déployée sur chaque environnement</li>
+      </ul>
+    </div>
+
+  </div><!-- /body -->
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div>
+      <strong>Bois&amp;Co Platform</strong> · v1.0.0 · 12 juin 2026
+    </div>
+    <div>
+      Pour toute question : <strong>contact@africorp.ma</strong>
+    </div>
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>
