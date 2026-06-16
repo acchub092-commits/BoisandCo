@@ -89,10 +89,12 @@ class DashboardView(ChiffrageRequiredMixin, View):
         qs = _qs_for_user(request.user)
 
         # Filtres
-        statut    = request.GET.get('statut', '')
-        urgence   = request.GET.get('urgence', '')
-        search    = request.GET.get('q', '').strip()
-        retard    = request.GET.get('retard', '')
+        statut        = request.GET.get('statut', '')
+        urgence       = request.GET.get('urgence', '')
+        search        = request.GET.get('q', '').strip()
+        retard        = request.GET.get('retard', '')
+        commercial_id = request.GET.get('commercial', '')
+        methodiste_id = request.GET.get('methodiste', '')
 
         if statut:
             qs = qs.filter(statut=statut)
@@ -104,6 +106,10 @@ class DashboardView(ChiffrageRequiredMixin, View):
                 | Q(client_nom__icontains=search)
                 | Q(client_ref_affaire__icontains=search)
             )
+        if commercial_id:
+            qs = qs.filter(commercial_id=commercial_id)
+        if methodiste_id:
+            qs = qs.filter(assigned_to_id=methodiste_id)
 
         all_qs = _qs_for_user(request.user)
         today = timezone.now().date()
@@ -126,15 +132,38 @@ class DashboardView(ChiffrageRequiredMixin, View):
         if retard:
             demandes = [d for d in demandes if d.is_retard]
 
+        # Listes pour les selects — uniquement pour les rôles qui ont accès global
+        from apps.users.models import User as AppUser
+        can_filter_people = (
+            request.user.is_superuser
+            or getattr(request.user, 'role', None) in {
+                User.Role.ADMIN, User.Role.DIRECTEUR, User.Role.MANAGER,
+                User.Role.RESP_METHODES, User.Role.ESTIMATEUR,
+            }
+        )
+        commerciaux = (
+            AppUser.objects.filter(role=User.Role.COMMERCIAL)
+            .order_by('first_name') if can_filter_people else AppUser.objects.none()
+        )
+        methodistes = (
+            AppUser.objects.filter(role__in=[User.Role.RESP_METHODES, User.Role.ESTIMATEUR])
+            .order_by('first_name') if can_filter_people else AppUser.objects.none()
+        )
+
         return render(request, self.template_name, {
-            'demandes':      demandes,
-            'stats':         stats,
-            'statuts':       DemandeChiffrage.Statut.choices,
-            'urgences':      DemandeChiffrage.Urgence.choices,
-            'sel_statut':    statut,
-            'sel_urgence':   urgence,
-            'search':        search,
-            'sel_retard':    retard,
+            'demandes':        demandes,
+            'stats':           stats,
+            'statuts':         DemandeChiffrage.Statut.choices,
+            'urgences':        DemandeChiffrage.Urgence.choices,
+            'sel_statut':      statut,
+            'sel_urgence':     urgence,
+            'search':          search,
+            'sel_retard':      retard,
+            'commerciaux':     commerciaux,
+            'methodistes':     methodistes,
+            'sel_commercial':  commercial_id,
+            'sel_methodiste':  methodiste_id,
+            'can_filter_people': can_filter_people,
         })
 
 
@@ -829,3 +858,27 @@ class DevisPreviewView(ChiffrageRequiredMixin, View):
         # Autoriser l'iframe same-origin (override du middleware XFrameOptions)
         response['X-Frame-Options'] = 'SAMEORIGIN'
         return response
+
+
+# ---------------------------------------------------------------------------
+# Suppression fichier — réservé aux administrateurs
+# ---------------------------------------------------------------------------
+
+class FichierDeleteView(ChiffrageRequiredMixin, View):
+    """Supprime un FichierChiffrage du disque et de la base — admin/superuser uniquement."""
+
+    def post(self, request, pk, fichier_pk):
+        if not (request.user.is_superuser or
+                getattr(request.user, 'role', None) == User.Role.ADMIN):
+            raise PermissionDenied
+
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        fichier = get_object_or_404(FichierChiffrage, pk=fichier_pk, demande=demande)
+
+        nom = fichier.nom
+        fichier.fichier.delete(save=False)  # supprime le fichier physique
+        fichier.delete()
+
+        _log(demande, request.user, f'Fichier supprimé : {nom}')
+        django_messages.success(request, f'Fichier « {nom} » supprimé.')
+        return redirect('chiffrage:detail', pk=pk)

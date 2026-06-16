@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}Dashboard CRM{% endblock %}
 {% block page_title %}Dashboard Commercial{% endblock %}
 
@@ -187,7 +188,7 @@
             <p class="text-[10px] text-ardoise-400 truncate">{{ lead.contact_name }}{% if lead.company %} · {{ lead.company }}{% endif %}</p>
           </div>
           <div class="flex-shrink-0 text-right">
-            <p class="text-xs font-bold" style="color:#c9821f;">{{ lead.budget_mad|floatformat:0 }}</p>
+            <p class="text-xs font-bold" style="color:#c9821f;">{{ lead.budget_mad|sep_milliers }}</p>
             <p class="text-[10px] text-ardoise-400">MAD</p>
           </div>
         </a>
@@ -244,7 +245,7 @@
               {% else %}<span class="text-ardoise-300 text-xs">—</span>{% endif %}
             </td>
             <td class="px-5 py-3 text-right">
-              {% if c.pipeline %}<span class="font-semibold text-ardoise-800">{{ c.pipeline|floatformat:0 }}</span><span class="text-xs text-ardoise-400 ml-0.5">MAD</span>
+              {% if c.pipeline %}<span class="font-semibold text-ardoise-800">{{ c.pipeline|sep_milliers }}</span><span class="text-xs text-ardoise-400 ml-0.5">MAD</span>
               {% else %}<span class="text-ardoise-300 text-xs">—</span>{% endif %}
             </td>
           </tr>

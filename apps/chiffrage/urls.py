@@ -35,4 +35,7 @@ urlpatterns = [
 
     # Visionneuse sécurisée — devis final
     path('<int:pk>/devis/<int:fichier_pk>/apercu/', views.DevisPreviewView.as_view(), name='devis_preview'),
+
+    # Suppression fichier (admin uniquement)
+    path('<int:pk>/fichier/<int:fichier_pk>/supprimer/', views.FichierDeleteView.as_view(), name='fichier_delete'),
 ]

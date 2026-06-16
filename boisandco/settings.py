@@ -94,6 +94,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'boisandco.context_processors.app_version',
             ],
+            'libraries': {
+                'crm_filters': 'apps.crm.templatetags.crm_filters',
+            },
         },
     },
 ]

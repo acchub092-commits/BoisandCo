@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Import en masse — Pipeline CRM{% endblock %}
+{% block page_title %}Import en masse — Pipeline CRM{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:pipeline' %}" class="btn-secondary btn-sm">← Retour pipeline</a>
+<a href="{% url 'crm:import_leads' %}?action=template"
+   class="btn-primary btn-sm flex items-center gap-1.5">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+  </svg>
+  Télécharger le canevas
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+  {# ── Messages ── #}
+  {% for msg in messages %}
+  <div class="flex items-start gap-3 px-4 py-3 rounded-xl border
+    {% if msg.tags == 'success' %}bg-foret-50 border-foret-200 text-foret-800
+    {% elif msg.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+    {% else %}bg-red-50 border-red-200 text-red-700{% endif %}">
+    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {% if msg.tags == 'success' %}
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      {% else %}
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      {% endif %}
+    </svg>
+    <p class="text-sm font-medium">{{ msg }}</p>
+  </div>
+  {% endfor %}
+
+  {# ── Erreurs détaillées ── #}
+  {% if request.session.import_errors %}
+  <div class="card">
+    <h3 class="text-sm font-semibold text-red-600 mb-3">Détail des lignes ignorées</h3>
+    <ul class="space-y-1">
+      {% for err in request.session.import_errors %}
+      <li class="text-xs text-ardoise-600 flex items-start gap-2">
+        <span class="text-red-400 flex-shrink-0">—</span>{{ err }}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {# ── Zone d'upload ── #}
+  <div class="card"
+       x-data="{
+         dragging: false,
+         file: null,
+         fileName: '',
+         fileSize: '',
+         handleFile(f) {
+           if (!f) return;
+           if (!f.name.endsWith('.csv')) {
+             alert('Fichier CSV requis (.csv)');
+             return;
+           }
+           this.file = f;
+           this.fileName = f.name;
+           this.fileSize = (f.size / 1024).toFixed(0) + ' Ko';
+           this.$refs.input.files = this.createFileList(f);
+         },
+         createFileList(f) {
+           const dt = new DataTransfer();
+           dt.items.add(f);
+           return dt.files;
+         }
+       }"
+       @dragover.prevent="dragging=true"
+       @dragleave="dragging=false"
+       @drop.prevent="dragging=false; handleFile($event.dataTransfer.files[0])">
+
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#e8f4e8;">
+        <svg class="w-5 h-5" style="color:#2d5a2d;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-ardoise-800">Import CSV du pipeline commercial</h2>
+        <p class="text-xs text-ardoise-500">Formats acceptés : canevas DC ou export direct de votre fichier Excel</p>
+      </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" action="{% url 'crm:import_leads' %}">
+      {% csrf_token %}
+
+      {# Zone drag & drop #}
+      <label
+        :class="dragging ? 'border-foret-400 bg-foret-50' : file ? 'border-foret-300 bg-foret-50' : 'border-ardoise-200 bg-ardoise-50 hover:border-foret-300 hover:bg-foret-50'"
+        class="flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all">
+        <input type="file" name="csv_file" accept=".csv" class="hidden" x-ref="input"
+               @change="handleFile($event.target.files[0])">
+
+        <template x-if="!file">
+          <div class="text-center">
+            <svg class="w-10 h-10 mx-auto text-ardoise-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p class="text-sm font-medium text-ardoise-600">Glisser-déposer votre fichier CSV ici</p>
+            <p class="text-xs text-ardoise-400 mt-1">ou cliquer pour parcourir</p>
+          </div>
+        </template>
+
+        <template x-if="file">
+          <div class="text-center">
+            <svg class="w-10 h-10 mx-auto mb-2" style="color:#2d5a2d;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <p class="text-sm font-semibold text-foret-700" x-text="fileName"></p>
+            <p class="text-xs text-ardoise-400 mt-1" x-text="fileSize"></p>
+          </div>
+        </template>
+      </label>
+
+      <div class="flex justify-end mt-4">
+        <button type="submit" :disabled="!file"
+                :class="file ? 'btn-primary' : 'opacity-40 cursor-not-allowed btn-primary'"
+                class="btn-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Importer les leads
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Commerciaux disponibles ── #}
+  <div class="card">
+    <h3 class="text-sm font-semibold text-ardoise-700 mb-3 flex items-center gap-2">
+      <svg class="w-4 h-4 text-foret-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      Prénoms reconnus dans le CSV (colonne "Commercial")
+    </h3>
+    <div class="flex flex-wrap gap-2">
+      {% for u in user_list %}
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-foret-100 text-foret-700">
+        <span class="w-5 h-5 rounded-full bg-foret-500 text-white text-xs flex items-center justify-center font-bold">
+          {{ u.first_name|first|upper }}
+        </span>
+        {{ u.first_name }}
+      </span>
+      {% endfor %}
+    </div>
+    <p class="text-xs text-ardoise-400 mt-3">
+      Le prénom dans la colonne "Commercial" doit correspondre exactement à l'un de ces prénoms (sensible à la casse du premier caractère).
+    </p>
+  </div>
+
+  {# ── Guide des valeurs ── #}
+  <div class="card">
+    <h3 class="text-sm font-semibold text-ardoise-700 mb-4 flex items-center gap-2">
+      <svg class="w-4 h-4 text-bois-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      Guide des valeurs acceptées
+    </h3>
+
+    <div class="grid md:grid-cols-2 gap-4 text-xs">
+      <div class="bg-ardoise-50 rounded-lg p-3">
+        <p class="font-semibold text-ardoise-700 mb-2">Colonne Statut</p>
+        <div class="space-y-1 text-ardoise-600">
+          <div class="flex gap-2"><span class="font-mono bg-white px-1.5 py-0.5 rounded border border-ardoise-200 text-xs">Prospection</span><span>→ Visite</span></div>
+          <div class="flex gap-2"><span class="font-mono bg-white px-1.5 py-0.5 rounded border border-ardoise-200 text-xs">En cours</span><span>→ Chiffrage</span></div>
+          <div class="flex gap-2"><span class="font-mono bg-white px-1.5 py-0.5 rounded border border-ardoise-200 text-xs">Négociation</span><span>→ Offre envoyée</span></div>
+          <div class="flex gap-2"><span class="font-mono bg-white px-1.5 py-0.5 rounded border border-ardoise-200 text-xs">Gagné</span><span>→ Gagnée</span></div>
+          <div class="flex gap-2"><span class="font-mono bg-white px-1.5 py-0.5 rounded border border-ardoise-200 text-xs">Perdu</span><span>→ Perdue</span></div>
+        </div>
+      </div>
+
+      <div class="bg-ardoise-50 rounded-lg p-3">
+        <p class="font-semibold text-ardoise-700 mb-2">Colonne Segment</p>
+        <div class="space-y-1 text-ardoise-600">
+          <div><span class="font-mono">Residential</span></div>
+          <div><span class="font-mono">Commercial</span></div>
+          <div><span class="font-mono">Hospitality</span></div>
+          <div><span class="font-mono">Institutional</span></div>
+          <div><span class="font-mono">Industrial & Logistics</span></div>
+        </div>
+      </div>
+
+      <div class="bg-ardoise-50 rounded-lg p-3">
+        <p class="font-semibold text-ardoise-700 mb-2">Colonne Probabilité</p>
+        <div class="space-y-1 text-ardoise-600">
+          <div><span class="font-mono">0%</span> ou <span class="font-mono">10%</span> → Faible</div>
+          <div><span class="font-mono">50%</span> → Moyen</div>
+          <div><span class="font-mono">80%</span> ou <span class="font-mono">100%</span> → Important</div>
+        </div>
+      </div>
+
+      <div class="bg-ardoise-50 rounded-lg p-3">
+        <p class="font-semibold text-ardoise-700 mb-2">Colonne Date</p>
+        <div class="space-y-1 text-ardoise-600">
+          <div>Format : <span class="font-mono">JJ/MM/AAAA</span></div>
+          <div>Exemple : <span class="font-mono">30/09/2026</span></div>
+          <div class="mt-2 text-ardoise-400">Colonne Potentiel (MAD) :</div>
+          <div>Nombres sans espaces ni symboles</div>
+          <div>Exemple : <span class="font-mono">5000000</span> ou <span class="font-mono">5 000 000</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

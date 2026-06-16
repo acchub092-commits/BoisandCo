@@ -123,6 +123,36 @@
         </select>
       </div>
 
+      {# Commercial #}
+      {% if can_filter_people and commerciaux %}
+      <div class="min-w-40">
+        <label class="form-label">Commercial</label>
+        <select name="commercial" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous</option>
+          {% for u in commerciaux %}
+          <option value="{{ u.pk }}" {% if sel_commercial == u.pk|stringformat:"s" %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {# Méthodiste #}
+      {% if can_filter_people and methodistes %}
+      <div class="min-w-40">
+        <label class="form-label">Méthodiste</label>
+        <select name="methodiste" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous</option>
+          {% for u in methodistes %}
+          <option value="{{ u.pk }}" {% if sel_methodiste == u.pk|stringformat:"s" %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
       {# Retard #}
       <div class="flex items-end gap-2 pb-0.5">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -135,7 +165,7 @@
       {# Boutons #}
       <div class="flex gap-2 pb-0.5">
         <button type="submit" class="btn-primary btn-sm">Filtrer</button>
-        {% if sel_statut or sel_urgence or search or sel_retard %}
+        {% if sel_statut or sel_urgence or search or sel_retard or sel_commercial or sel_methodiste %}
         <a href="{% url 'chiffrage:dashboard' %}" class="btn-secondary btn-sm">Réinitialiser</a>
         {% endif %}
       </div>
@@ -263,7 +293,7 @@
                 d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
         </svg>
       </div>
-      {% if sel_statut or sel_urgence or search or sel_retard %}
+      {% if sel_statut or sel_urgence or search or sel_retard or sel_commercial or sel_methodiste %}
       <h3 class="text-base font-semibold text-ardoise-700 mb-1">Aucun résultat</h3>
       <a href="{% url 'chiffrage:dashboard' %}" class="btn-secondary btn-sm mt-2">Effacer les filtres</a>
       {% else %}

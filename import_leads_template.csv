@@ -1,0 +1,3 @@
+commercial;contact;entreprise;nom_projet;localisation;ville;region;pays;email;telephone;type_client;type_projet;produits;statut;potentiel;canal_origine;flux_type;budget_mad;probabilite;commentaire;date_closing_est;prochaine_relance
+Bruno;Nom Contact;TGCC;NOM PROJET;Casablanca;Casablanca;Casablanca-Settat;Maroc;;;Promoteur;Residential;Portes Placards;VISITE;MOYEN;VISITE_TERRAIN;COMMANDE;5000000;MED;Commentaire terrain;30/09/2026;15/07/2026
+Amine;Nom Contact;CLIENT XYZ;PROJET ABC;Marrakech;Marrakech;Marrakech-Safi;Maroc;;;Promoteur;Hospitality;Cuisines Portes;CHIFFRAGE;IMPORTANT;APPEL_OFFRE;MARCHE;12000000;HIGH;Devis remis au client;30/06/2026;20/06/2026

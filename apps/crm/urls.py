@@ -46,4 +46,10 @@ urlpatterns = [
     # ── Documents ────────────────────────────────────────────────────────────
     path('<int:lead_pk>/documents/ajouter/', views.LeadDocumentUploadView.as_view(), name='document_upload'),
     path('documents/<int:pk>/supprimer/',    views.LeadDocumentDeleteView.as_view(), name='document_delete'),
+
+    # ── Import en masse (admin) ───────────────────────────────────────────────
+    path('import/',                          views.ImportLeadsView.as_view(),         name='import_leads'),
+
+    # ── COMEX Dashboard ───────────────────────────────────────────────────────
+    path('comex/',                           views.COMEXDashboardView.as_view(),      name='comex'),
 ]

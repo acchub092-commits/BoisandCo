@@ -18,6 +18,9 @@
   {# Actions droite #}
   <div class="flex items-center gap-2">
 
+    {# Breadcrumb / actions contextuelles #}
+    {% block topbar_actions %}{% endblock %}
+
     {# Cloche notifications — HTMX polling #}
     <div class="relative"
          hx-get="{% url 'notifications:list' %}?partial=badge"
@@ -124,8 +127,6 @@
       </div>
     </div>
 
-    {# Breadcrumb / actions contextuelles #}
-    {% block topbar_actions %}{% endblock %}
 
   </div>
 </header>

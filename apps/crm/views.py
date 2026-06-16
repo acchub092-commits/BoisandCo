@@ -1,11 +1,15 @@
+import csv
+import io
 import json
 import os
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Sum, Q
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views.generic import TemplateView, DetailView, View, ListView
@@ -1073,3 +1077,444 @@ def _notify_directors(request, title, message):
             )
     except Exception:
         pass  # Ne jamais bloquer l'action métier pour une notif
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Import en masse — Administrateur uniquement
+# ─────────────────────────────────────────────────────────────────────────────
+
+_STATUT_MAP = {
+    'prospection': Lead.Status.VISITE,
+    'visite':      Lead.Status.VISITE,
+    'opportunite': Lead.Status.OPPORTUNITE,
+    'qualification': Lead.Status.QUALIFICATION,
+    'en cours':    Lead.Status.CHIFFRAGE,
+    'chiffrage':   Lead.Status.CHIFFRAGE,
+    'negociation': Lead.Status.OFFRE,
+    'négociation': Lead.Status.OFFRE,
+    'offre':       Lead.Status.OFFRE,
+    'gagné':       Lead.Status.GAGNEE,
+    'gagne':       Lead.Status.GAGNEE,
+    'perdu':       Lead.Status.PERDUE,
+    'perdue':      Lead.Status.PERDUE,
+}
+_POTENTIEL_MAP = {
+    'faible': Lead.Potential.FAIBLE, 'low':    Lead.Potential.FAIBLE,
+    'moyen':  Lead.Potential.MOYEN,  'medium': Lead.Potential.MOYEN,
+    'important': Lead.Potential.IMPORTANT, 'high': Lead.Potential.IMPORTANT,
+}
+_PROBA_MAP = {
+    'low': Lead.Probability.LOW, 'med': Lead.Probability.MED, 'high': Lead.Probability.HIGH,
+}
+
+
+def _parse_date_import(val):
+    if not val:
+        return None
+    from datetime import datetime
+    for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(val.strip(), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_budget(val):
+    if not val:
+        return None
+    cleaned = val.replace(' ', '').replace('\xa0', '').replace(',', '.').replace('%', '')
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return None
+
+
+def _map_proba_pct(pct_str):
+    try:
+        val = int(pct_str.replace('%', '').strip())
+    except Exception:
+        return Lead.Probability.LOW
+    if val <= 10:
+        return Lead.Probability.LOW
+    elif val <= 60:
+        return Lead.Probability.MED
+    return Lead.Probability.HIGH
+
+
+class ImportLeadsView(LoginRequiredMixin, View):
+    """Import en masse de leads depuis un CSV — réservé aux administrateurs."""
+    template_name = 'crm/import_leads.html'
+
+    def _check_admin(self, request):
+        allowed = {User.Role.ADMIN, User.Role.DIRECTEUR, User.Role.MANAGER}
+        if not (request.user.is_superuser or getattr(request.user, 'role', None) in allowed):
+            raise PermissionDenied
+
+    def get(self, request):
+        self._check_admin(request)
+
+        # Téléchargement du canevas vierge
+        if request.GET.get('action') == 'template':
+            return self._download_template()
+
+        return render(request, self.template_name, {
+            'user_list': User.objects.filter(role=User.Role.COMMERCIAL).order_by('first_name'),
+        })
+
+    def post(self, request):
+        self._check_admin(request)
+
+        csv_file = request.FILES.get('csv_file')
+        if not csv_file:
+            messages.error(request, 'Veuillez sélectionner un fichier CSV.')
+            return redirect('crm:import_leads')
+
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'Le fichier doit être au format .csv')
+            return redirect('crm:import_leads')
+
+        # Détecter l'encodage
+        raw = csv_file.read()
+        for enc in ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252'):
+            try:
+                content = raw.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+
+        # Construire le cache utilisateurs (prénom → user)
+        user_cache = {u.first_name.strip().lower(): u for u in User.objects.all() if u.first_name.strip()}
+
+        reader = csv.DictReader(io.StringIO(content), delimiter=';')
+        headers = [h.strip().lower() for h in (reader.fieldnames or [])]
+
+        # Détecter le format : DC (français) ou import interne
+        is_dc_format = 'commercial' in headers and 'potentiel (mad)' in headers
+
+        created = skipped = errors = unknown = 0
+        error_details = []
+
+        for i, row in enumerate(reader, start=2):
+            row = {k.strip().lower(): (v or '').strip() for k, v in row.items() if k}
+
+            if is_dc_format:
+                commercial_name = row.get('commercial', '')
+                nom_projet      = row.get('projet', '') or row.get('nom_projet', '')
+                entreprise      = row.get('client', '') or row.get('entreprise', '')
+                segment         = row.get('segment', '') or row.get('type_projet', '')
+                ville           = row.get('ville', '').replace('#valeur!', '').strip()
+                region          = row.get('région', '') or row.get('region', '')
+                pays            = row.get('pays', '')
+                budget_raw      = row.get('potentiel (mad)', '') or row.get('budget_mad', '')
+                proba_raw       = row.get('probabilité', '') or row.get('probabilite', '')
+                commentaire     = row.get('commentaire terrain', '') or row.get('commentaire', '')
+                statut_raw      = row.get('statut', '')
+                closing_raw     = row.get('date closing est.', '') or row.get('date_closing_est', '')
+                priority_raw    = row.get('priorité (auto)', '') or row.get('potentiel', '')
+                potentiel_val   = _POTENTIEL_MAP.get(priority_raw.lower(), Lead.Potential.MOYEN)
+                proba_val       = _map_proba_pct(proba_raw)
+            else:
+                commercial_name = row.get('commercial', '')
+                nom_projet      = row.get('nom_projet', '')
+                entreprise      = row.get('entreprise', '')
+                segment         = row.get('type_projet', '')
+                ville           = row.get('ville', '')
+                region          = row.get('region', '')
+                pays            = row.get('pays', '')
+                budget_raw      = row.get('budget_mad', '')
+                proba_raw       = row.get('probabilite', '')
+                commentaire     = row.get('commentaire', '')
+                statut_raw      = row.get('statut', '')
+                closing_raw     = row.get('date_closing_est', '')
+                potentiel_val   = _POTENTIEL_MAP.get(row.get('potentiel', '').lower(), Lead.Potential.MOYEN)
+                proba_val       = _PROBA_MAP.get(proba_raw.lower(), Lead.Probability.LOW)
+
+            if not commercial_name or not nom_projet:
+                continue
+
+            user = user_cache.get(commercial_name.lower())
+            if not user:
+                unknown += 1
+                error_details.append(f'Ligne {i} — Commercial inconnu : "{commercial_name}" ({nom_projet})')
+                continue
+
+            loc = ville or region
+            status = _STATUT_MAP.get(statut_raw.lower(), Lead.Status.VISITE)
+
+            try:
+                Lead.objects.create(
+                    project_name      = nom_projet,
+                    company           = entreprise,
+                    contact_name      = entreprise or nom_projet,
+                    location          = loc,
+                    project_type      = segment,
+                    budget_mad        = _parse_budget(budget_raw),
+                    probability       = proba_val,
+                    potential         = potentiel_val,
+                    status            = status,
+                    strategic_comment = commentaire,
+                    end_date_est      = _parse_date_import(closing_raw),
+                    assigned_to       = user,
+                    created_by        = user,
+                    workflow_status   = Lead.WorkflowStatus.VALIDATED,
+                    source            = Lead.Source.DIRECTOR_ASSIGNED,
+                )
+                created += 1
+            except Exception as e:
+                errors += 1
+                error_details.append(f'Ligne {i} — Erreur : {nom_projet} ({e})')
+
+        # Rapport
+        if created:
+            messages.success(request, f'{created} lead(s) importé(s) avec succès.')
+        if unknown:
+            messages.warning(request, f'{unknown} ligne(s) ignorée(s) : commercial introuvable dans le système.')
+        if errors:
+            messages.error(request, f'{errors} erreur(s) lors de l\'import.')
+
+        request.session['import_errors'] = error_details[:50]
+        return redirect('crm:import_leads')
+
+    def _download_template(self):
+        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = 'attachment; filename="canevas_import_leads.csv"'
+        writer = csv.writer(response, delimiter=';')
+
+        # En-tête avec exemples de valeurs
+        writer.writerow([
+            'Commercial', 'Client', 'Projet', 'Segment',
+            'Ville', 'Région', 'Pays',
+            'Potentiel (MAD)', 'Probabilité',
+            'Commentaire terrain', 'Statut',
+            'Date Closing Est.',
+        ])
+        # Ligne d'aide
+        writer.writerow([
+            'Prénom exact du commercial', 'Nom de la société', 'Nom du projet',
+            'Residential / Commercial / Hospitality / Institutional / Industrial & Logistics',
+            'Casablanca', 'Casablanca-Settat', 'Maroc',
+            '5000000', '50%',
+            'Commentaire libre', 'Prospection / En cours / Négociation / Gagné / Perdu',
+            'JJ/MM/AAAA',
+        ])
+        # Exemple concret
+        writer.writerow([
+            'Bruno', 'CGI', 'RESIDENCE LES ORANGERS', 'Residential',
+            'Casablanca', 'Casablanca-Settat', 'Maroc',
+            '12000000', '50%',
+            'Devis remis au client, RDV prévu fin juin', 'En cours',
+            '30/09/2026',
+        ])
+        writer.writerow([
+            'Amine', 'ADDOHA', 'TOUR PRESTIGE', 'Hospitality',
+            'Marrakech', 'Marrakech-Safi', 'Maroc',
+            '8500000', '80%',
+            'Appel d\'offre lancé, consultation en cours', 'Négociation',
+            '15/08/2026',
+        ])
+        return response
+
+
+# ── COMEX Dashboard ──────────────────────────────────────────────────────────
+
+class COMEXDashboardView(LoginRequiredMixin, TemplateView):
+    """Tableau de bord COMEX — synthèse pipeline commercial pour la Direction."""
+    template_name = 'crm/comex.html'
+
+    _PROBA_PCT = {'LOW': 10, 'MED': 50, 'HIGH': 80, '': 10}
+    MONTHLY_TARGET = 20_000_000  # MAD — objectif mensuel de référence
+
+    def dispatch(self, request, *args, **kwargs):
+        allowed = {User.Role.ADMIN, User.Role.DIRECTEUR, User.Role.MANAGER}
+        if not (request.user.is_superuser or getattr(request.user, 'role', None) in allowed):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def _w(self, lead):
+        """Montant pondéré d'un lead selon sa probabilité et son statut."""
+        if lead.status == Lead.Status.GAGNEE:
+            return float(lead.budget_mad or 0)
+        if lead.status == Lead.Status.PERDUE:
+            return 0.0
+        return float(lead.budget_mad or 0) * self._PROBA_PCT.get(lead.probability, 10) / 100
+
+    def get_context_data(self, **kwargs):
+        from collections import defaultdict
+        ctx = super().get_context_data(**kwargs)
+        today = date.today()
+
+        # Fetch unique — tout calcul se fait en Python sur cette liste
+        all_leads = list(Lead.objects.select_related('assigned_to').all())
+        active   = [l for l in all_leads if l.status != Lead.Status.PERDUE]
+        pipeline = [l for l in active   if l.status != Lead.Status.GAGNEE]
+
+        # ── KPIs ─────────────────────────────────────────────────────────
+        total_pot  = sum(float(l.budget_mad or 0) for l in pipeline)
+        total_pond = sum(self._w(l) for l in active)
+        nb_actifs  = len(active)
+        nb_high    = sum(1 for l in active if l.potential == Lead.Potential.IMPORTANT)
+
+        # ── Alertes brutes ────────────────────────────────────────────────
+        alerts_raw = []
+        for l in active:
+            if not l.budget_mad:
+                alerts_raw.append({'lead': l, 'type': 'MONTANT VIDE'})
+            if l.probability == 'HIGH' and l.status in (Lead.Status.VISITE, Lead.Status.OPPORTUNITE):
+                alerts_raw.append({'lead': l, 'type': 'STATUT/PROB INCOHÉRENT'})
+            if not l.next_followup_date:
+                alerts_raw.append({'lead': l, 'type': 'SANS ACTION PLANIFIÉE'})
+                if l.probability == 'HIGH':
+                    alerts_raw.append({'lead': l, 'type': '80%+ SANS ACTION'})
+
+        # ── Par commercial ────────────────────────────────────────────────
+        com = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'pond': 0.0, 'high': 0, 'user': None})
+        for l in active:
+            k = l.assigned_to.get_full_name() if l.assigned_to else 'Non assigné'
+            com[k]['count'] += 1
+            com[k]['pot']   += float(l.budget_mad or 0)
+            com[k]['pond']  += self._w(l)
+            if l.potential == Lead.Potential.IMPORTANT:
+                com[k]['high'] += 1
+            if l.assigned_to:
+                com[k]['user'] = l.assigned_to
+        tot_com = sum(d['pot'] for d in com.values()) or 1
+        commerciaux = sorted([
+            {'name': k, 'user': d['user'], 'count': d['count'],
+             'pot': d['pot'], 'pct': round(d['pot'] / tot_com * 100, 1),
+             'pond': d['pond'], 'high': d['high']}
+            for k, d in com.items()
+        ], key=lambda x: -x['pot'])
+
+        # ── Par statut (groupes PDF) ──────────────────────────────────────
+        stat_groups = [
+            ('Prospection', [Lead.Status.VISITE, Lead.Status.OPPORTUNITE, Lead.Status.QUALIFICATION]),
+            ('En cours',    [Lead.Status.CHIFFRAGE]),
+            ('Négociation', [Lead.Status.OFFRE]),
+            ('Gagné',       [Lead.Status.GAGNEE]),
+            ('Perdu',       [Lead.Status.PERDUE]),
+        ]
+        tot_all = sum(float(l.budget_mad or 0) for l in all_leads) or 1
+        statuts = []
+        for label, statuses in stat_groups:
+            grp  = [l for l in all_leads if l.status in statuses]
+            pot  = sum(float(l.budget_mad or 0) for l in grp)
+            pond = sum(self._w(l) for l in grp)
+            statuts.append({'label': label, 'count': len(grp),
+                            'pot': pot, 'pct': round(pot / tot_all * 100, 1), 'pond': pond})
+
+        # ── Par segment ───────────────────────────────────────────────────
+        seg = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'pond': 0.0, 'high': 0})
+        for l in pipeline:
+            k = l.project_type or 'Non défini'
+            seg[k]['count'] += 1
+            seg[k]['pot']   += float(l.budget_mad or 0)
+            seg[k]['pond']  += self._w(l)
+            if l.potential == Lead.Potential.IMPORTANT:
+                seg[k]['high'] += 1
+        tot_seg = sum(d['pot'] for d in seg.values()) or 1
+        segments = sorted([
+            {'label': k, 'count': d['count'], 'pot': d['pot'],
+             'pct': round(d['pot'] / tot_seg * 100, 1), 'pond': d['pond'], 'high': d['high']}
+            for k, d in seg.items()
+        ], key=lambda x: -x['pot'])
+
+        # ── Top villes ────────────────────────────────────────────────────
+        geo = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'pond': 0.0})
+        for l in pipeline:
+            city = (l.location or '').split(',')[0].strip().title() or 'Non renseigné'
+            geo[city]['count'] += 1
+            geo[city]['pot']   += float(l.budget_mad or 0)
+            geo[city]['pond']  += self._w(l)
+        tot_geo = sum(d['pot'] for d in geo.values()) or 1
+        top_villes = sorted(
+            [{'ville': k, 'count': d['count'], 'pot': d['pot'],
+              'pct': round(d['pot'] / tot_geo * 100, 1), 'pond': d['pond']}
+             for k, d in geo.items() if k != 'Non Renseigné' and d['pot'] > 0],
+            key=lambda x: -x['pot']
+        )[:12]
+
+        # ── Top 10 projets prioritaires ───────────────────────────────────
+        top_raw = sorted([l for l in pipeline if l.budget_mad], key=lambda l: -self._w(l))[:10]
+        top_projets = []
+        for l in top_raw:
+            al = []
+            if l.probability == 'HIGH' and l.status in (Lead.Status.VISITE, Lead.Status.OPPORTUNITE):
+                al.append('INCOHÉRENT')
+            if not l.next_followup_date:
+                al.append('SANS ACTION')
+            top_projets.append({'lead': l, 'pond': self._w(l), 'alerts': al})
+
+        # ── Dépendance commerciale ────────────────────────────────────────
+        dependance = sorted([
+            {'name': c['name'], 'user': c['user'], 'pct': c['pct'], 'pot': c['pot'],
+             'signal': 'danger' if c['pct'] > 50 else ('warning' if c['pct'] > 30 else 'ok')}
+            for c in commerciaux
+        ], key=lambda x: -x['pct'])
+
+        # ── Pilotage temporel ─────────────────────────────────────────────
+        j30 = today + timedelta(days=30)
+        j90 = today + timedelta(days=90)
+        bmap = {'0-30 j': [], '30-90 j': [], '+90 j': [], 'Dépassé': [], 'Non renseigné': []}
+        for l in pipeline:
+            if not l.end_date_est:
+                bmap['Non renseigné'].append(l)
+            elif l.end_date_est < today:
+                bmap['Dépassé'].append(l)
+            elif l.end_date_est <= j30:
+                bmap['0-30 j'].append(l)
+            elif l.end_date_est <= j90:
+                bmap['30-90 j'].append(l)
+            else:
+                bmap['+90 j'].append(l)
+        tot_tp = sum(float(l.budget_mad or 0) for l in pipeline) or 1
+        tot_tpond = sum(self._w(l) for l in pipeline) or 1
+        temporal = []
+        for label in ['0-30 j', '30-90 j', '+90 j', 'Dépassé', 'Non renseigné']:
+            ls   = bmap[label]
+            pot  = sum(float(l.budget_mad or 0) for l in ls)
+            pond = sum(self._w(l) for l in ls)
+            temporal.append({
+                'label': label, 'count': len(ls), 'pot': pot,
+                'pct_pot': round(pot / tot_tp * 100, 1),
+                'pond': pond,
+                'pct_pond': round(pond / tot_tpond * 100, 1),
+            })
+
+        # ── Synthèse alertes ──────────────────────────────────────────────
+        sans_action      = sum(1 for l in active if not l.next_followup_date)
+        high_sans_action = sum(1 for l in active if l.probability == 'HIGH' and not l.next_followup_date)
+        incoherent       = sum(1 for l in active if l.probability == 'HIGH'
+                               and l.status in (Lead.Status.VISITE, Lead.Status.OPPORTUNITE))
+        montant_vide     = sum(1 for l in active if not l.budget_mad)
+        prob_manquante   = sum(1 for l in active if not l.probability)
+
+        synthese = [
+            {'type': 'SANS ACTION PLANIFIÉE',    'count': sans_action,      'niveau': 'Immédiat'},
+            {'type': '80%+ SANS ACTION',          'count': high_sans_action, 'niveau': 'Critique'},
+            {'type': 'STATUT/PROB INCOHÉRENT',    'count': incoherent,       'niveau': 'Haute'},
+            {'type': 'MONTANT VIDE',              'count': montant_vide,     'niveau': 'Immédiat'},
+            {'type': 'PROB MANQUANTE',            'count': prob_manquante,   'niveau': 'Haute'},
+        ]
+
+        ctx.update({
+            'today': today,
+            'total_pot': total_pot,
+            'total_pond': total_pond,
+            'nb_actifs': nb_actifs,
+            'nb_alertes': len(alerts_raw),
+            'nb_high': nb_high,
+            'commerciaux': commerciaux,
+            'statuts': statuts,
+            'segments': segments,
+            'top_villes': top_villes,
+            'top_projets': top_projets,
+            'dependance': dependance,
+            'alerts_list': alerts_raw[:50],
+            'temporal': temporal,
+            'couverture_mois': round(total_pond / self.MONTHLY_TARGET, 1) if self.MONTHLY_TARGET else 0,
+            'pipeline_30j': sum(self._w(l) for l in bmap['0-30 j']),
+            'monthly_target': self.MONTHLY_TARGET,
+            'synthese': synthese,
+        })
+        return ctx

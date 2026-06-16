@@ -494,12 +494,30 @@
                 {% if f.is_devis %}<span class="px-1.5 py-0.5 bg-foret-100 text-foret-700 rounded text-xs font-medium">Devis final</span>{% endif %}
               </div>
             </div>
-            {# Bouton télécharger — toujours visible #}
-            <a href="{{ f.fichier.url }}" download="{{ f.nom }}"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foret-50 text-foret-700 border border-foret-200 text-xs font-medium hover:bg-foret-100 transition-colors flex-shrink-0">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              Télécharger
-            </a>
+            {# Boutons fichier #}
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <a href="{{ f.fichier.url }}" download="{{ f.nom }}"
+                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foret-50 text-foret-700 border border-foret-200 text-xs font-medium hover:bg-foret-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Télécharger
+              </a>
+              {% if request.user.is_superuser or request.user.role == 'ADMIN' %}
+              <form method="post"
+                    action="{% url 'chiffrage:fichier_delete' pk=demande.pk fichier_pk=f.pk %}"
+                    onsubmit="return confirm('Supprimer « {{ f.nom }} » définitivement ?')">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-medium hover:bg-red-100 transition-colors"
+                        title="Supprimer ce fichier">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                  Supprimer
+                </button>
+              </form>
+              {% endif %}
+            </div>
           </div>
           {% endfor %}
         </div>
