@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes de version — Bois&Co v1.1.0</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #2c3e50;
+    background: #f5f7fa;
+    line-height: 1.6;
+  }
+
+  /* ── Page (print) ── */
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    padding: 0;
+  }
+
+  /* ── Entête ── */
+  .header {
+    background: linear-gradient(135deg, #163228 0%, #1e4535 60%, #2d7a4f 100%);
+    color: white;
+    padding: 36px 48px 28px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .header-left .company {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(242,232,213,0.65);
+    margin-bottom: 6px;
+  }
+  .header-left h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #f2e8d5;
+    line-height: 1.15;
+  }
+  .header-left .subtitle {
+    font-size: 13px;
+    color: rgba(242,232,213,0.75);
+    margin-top: 6px;
+  }
+  .header-right {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .version-badge {
+    display: inline-block;
+    background: rgba(242,232,213,0.18);
+    border: 1.5px solid rgba(242,232,213,0.4);
+    color: #f2e8d5;
+    font-size: 22px;
+    font-weight: 800;
+    padding: 8px 20px;
+    border-radius: 8px;
+    letter-spacing: 0.03em;
+  }
+  .header-right .date {
+    font-size: 11px;
+    color: rgba(242,232,213,0.55);
+    margin-top: 8px;
+  }
+
+  /* ── Corps ── */
+  .body {
+    padding: 32px 48px 48px;
+  }
+
+  /* ── Résumé exécutif ── */
+  .exec-summary {
+    background: #f0f7f2;
+    border-left: 4px solid #163228;
+    border-radius: 0 6px 6px 0;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    color: #1e3a2e;
+    line-height: 1.65;
+  }
+  .exec-summary strong {
+    color: #163228;
+  }
+
+  /* ── Compteur modules ── */
+  .counters {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .counter-card {
+    border: 1px solid #e2e8e4;
+    border-radius: 8px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .counter-card .num {
+    font-size: 28px;
+    font-weight: 800;
+    color: #163228;
+    line-height: 1;
+  }
+  .counter-card .lbl {
+    font-size: 10px;
+    color: #7a8a82;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 4px;
+  }
+
+  /* ── Section évolution ── */
+  .section {
+    margin-bottom: 26px;
+    border: 1px solid #e5eae7;
+    border-radius: 8px;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #e5eae7;
+  }
+  .section-header.green  { background: #163228; }
+  .section-header.teal   { background: #0f4c5c; }
+  .section-header.blue   { background: #1e3a5f; }
+  .section-header.purple { background: #3d1f6e; }
+  .section-header.amber  { background: #7c4a00; }
+  .section-header.red    { background: #7f1d1d; }
+  .section-header.slate  { background: #334155; }
+
+  .section-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    flex: 1;
+  }
+  .section-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.9);
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+  .section-body {
+    padding: 16px 18px;
+    background: white;
+  }
+  .section-desc {
+    font-size: 12.5px;
+    color: #3d4857;
+    margin-bottom: 12px;
+    line-height: 1.65;
+  }
+
+  /* ── Fonctionnalité item ── */
+  .feat-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .feat-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 12px;
+    color: #444;
+    line-height: 1.5;
+  }
+  .feat-item::before {
+    content: "▸";
+    color: #2d7a4f;
+    font-size: 10px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .feat-item strong {
+    color: #163228;
+    font-weight: 600;
+  }
+
+  /* ── Sous-bloc technique ── */
+  .tech-block {
+    margin-top: 12px;
+    background: #f8faf9;
+    border: 1px solid #e2e8e4;
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+  .tech-block .tech-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #7a8a82;
+    margin-bottom: 6px;
+  }
+  .tech-block ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .tech-block li {
+    font-size: 11px;
+    color: #556;
+    padding-left: 10px;
+    position: relative;
+  }
+  .tech-block li::before {
+    content: "·";
+    position: absolute;
+    left: 0;
+    color: #aab;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    background: #eef1f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #163228;
+    border: 1px solid #d5ddd8;
+  }
+
+  /* ── Tag accès ── */
+  .access-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid;
+  }
+  .tag-green  { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+  .tag-blue   { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+  .tag-amber  { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+  .tag-red    { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+  .tag-slate  { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+
+  /* ── URL path ── */
+  .url-path {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    background: #163228;
+    color: #f2e8d5;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  /* ── Table récapitulatif ── */
+  .recap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    margin-top: 28px;
+  }
+  .recap-table th {
+    background: #163228;
+    color: #f2e8d5;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .recap-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #edf0ee;
+    color: #3d4857;
+    vertical-align: top;
+  }
+  .recap-table tr:nth-child(even) td { background: #f8faf9; }
+  .recap-table tr:last-child td { border-bottom: none; }
+
+  /* ── Pied de page ── */
+  .footer {
+    background: #f0f7f2;
+    border-top: 1px solid #d5e4d8;
+    padding: 14px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: #7a8a82;
+  }
+  .footer strong { color: #163228; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; font-size: 11px; }
+    .page { max-width: 100%; }
+    .section { page-break-inside: avoid; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .recap-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .counter-card, .tech-block, .exec-summary, .tag { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .url-path { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══ ENTÊTE ═══ -->
+  <div class="header">
+    <div class="header-left">
+      <div class="company">Bois&amp;Co — Système d'information interne</div>
+      <h1>Notes de version<br>Nouvelles fonctionnalités</h1>
+      <div class="subtitle">Module CRM &amp; Module Chiffrage — Sprint Juin 2026</div>
+    </div>
+    <div class="header-right">
+      <div class="version-badge">v1.1.0</div>
+      <div class="date">Publié le 16/06/2026</div>
+    </div>
+  </div>
+
+  <!-- ═══ CORPS ═══ -->
+  <div class="body">
+
+    <!-- Résumé exécutif -->
+    <div class="exec-summary">
+      Cette version <strong>v1.1.0</strong> apporte <strong>7 évolutions majeures</strong> centrées sur deux axes :
+      le renforcement de l'outil de pilotage commercial (tableau COMEX, import en masse, formatage des chiffres)
+      et l'amélioration de l'ergonomie du module Chiffrage (filtres avancés, gestion documentaire).
+      Aucune migration de base de données n'est requise pour les fonctionnalités de présentation.
+    </div>
+
+    <!-- Compteurs -->
+    <div class="counters">
+      <div class="counter-card">
+        <div class="num">7</div>
+        <div class="lbl">Évolutions</div>
+      </div>
+      <div class="counter-card">
+        <div class="num">2</div>
+        <div class="lbl">Modules impactés</div>
+      </div>
+      <div class="counter-card">
+        <div class="num">4</div>
+        <div class="lbl">Nouvelles vues</div>
+      </div>
+      <div class="counter-card">
+        <div class="num">1</div>
+        <div class="lbl">Filtre custom</div>
+      </div>
+    </div>
+
+    <!-- ══ 1. TABLEAU DE BORD COMEX ══ -->
+    <div class="section">
+      <div class="section-header green">
+        <div class="section-num">1</div>
+        <div class="section-title">Tableau de bord COMEX — Pipeline commercial</div>
+        <div class="section-badge">Nouveau</div>
+      </div>
+      <div class="section-body">
+        <div class="url-path">GET /crm/comex/</div>
+        <p class="section-desc">
+          Nouvelle page de synthèse pipeline à destination de la Direction et du Comité Exécutif.
+          Toutes les données sont calculées dynamiquement depuis le modèle <code>Lead</code> en temps réel.
+          La page est imprimable (bouton Imprimer, CSS @print intégré).
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Bannière KPI :</strong> Pipeline total, Pipeline pondéré, Projets actifs, Alertes à corriger, HIGH Priority</li>
+          <li class="feat-item"><strong>Répartition par Commercial :</strong> projets actifs, potentiel, % pipeline, pondéré, H.Priority — avec ligne TOTAL</li>
+          <li class="feat-item"><strong>Répartition par Statut :</strong> Prospection / En cours / Négociation / Gagné / Perdu</li>
+          <li class="feat-item"><strong>Répartition par Segment :</strong> Residential, Commercial, Hospitality, Institutional, Industrial &amp; Logistics</li>
+          <li class="feat-item"><strong>Analyse géographique :</strong> Top 12 villes par potentiel</li>
+          <li class="feat-item"><strong>Top 10 Projets :</strong> classés par montant pondéré, avec badges d'alerte individuels</li>
+          <li class="feat-item"><strong>Dépendance Commerciale :</strong> barre visuelle, signal coloré (OK / Watch / Danger si &gt; 50%)</li>
+          <li class="feat-item"><strong>Pilotage Temporel :</strong> buckets 0–30 j / 30–90 j / +90 j / Dépassé + couverture en mois</li>
+          <li class="feat-item"><strong>Synthèse Alertes :</strong> SANS ACTION / 80%+ SANS ACTION / INCOHÉRENT / MONTANT VIDE / PROB MANQUANTE</li>
+          <li class="feat-item"><strong>Liste détaillée des alertes :</strong> 50 premières, avec lien direct vers le lead</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-red">DIRECTEUR</span>
+          <span class="tag tag-amber">MANAGER</span>
+          <span class="tag tag-slate">ADMIN</span>
+        </div>
+        <div class="tech-block">
+          <div class="tech-title">Détails techniques</div>
+          <ul>
+            <li>Vue <code>COMEXDashboardView</code> — un seul queryset <code>select_related</code>, tous les calculs en Python</li>
+            <li>Pondération : LOW → 10 %, MED → 50 %, HIGH → 80 %, GAGNEE → 100 %</li>
+            <li>Lien sidebar "Tableau COMEX" ajouté pour les rôles autorisés</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 2. IMPORT EN MASSE ══ -->
+    <div class="section">
+      <div class="section-header teal">
+        <div class="section-num">2</div>
+        <div class="section-title">Import en masse de leads — Pipeline CRM</div>
+        <div class="section-badge">Nouveau</div>
+      </div>
+      <div class="section-body">
+        <div class="url-path">GET / POST /crm/import/</div>
+        <p class="section-desc">
+          Interface d'import CSV par glisser-déposer permettant d'injecter en masse des leads dans le pipeline commercial.
+          Deux formats sont auto-détectés : le format DC (export Excel du Directeur Commercial)
+          et le format canevas interne.
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Drag &amp; Drop :</strong> zone d'upload interactive avec Alpine.js</li>
+          <li class="feat-item"><strong>Détection automatique de format :</strong> export Excel DC ou canevas standard</li>
+          <li class="feat-item"><strong>Mapping statut :</strong> Prospection → VISITE, En cours → CHIFFRAGE, Négociation → OFFRE, Gagné / Perdu</li>
+          <li class="feat-item"><strong>Mapping probabilité :</strong> 0–10 % → LOW, 50 % → MED, 80–100 % → HIGH</li>
+          <li class="feat-item"><strong>Encodages acceptés :</strong> utf-8-sig, utf-8, latin-1, cp1252</li>
+          <li class="feat-item"><strong>Rapport d'import :</strong> lignes créées / ignorées / erreurs détaillées en session</li>
+          <li class="feat-item"><strong>Téléchargement du canevas vierge :</strong> bouton "Télécharger le canevas" → CSV prêt à remplir</li>
+          <li class="feat-item"><strong>Prénoms reconnus :</strong> affichage des commerciaux disponibles dans la base</li>
+          <li class="feat-item"><strong>Bouton pipeline :</strong> "Import en masse" visible dans la topbar pour DIRECTEUR / MANAGER / ADMIN</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-red">DIRECTEUR</span>
+          <span class="tag tag-amber">MANAGER</span>
+          <span class="tag tag-slate">ADMIN</span>
+        </div>
+        <div class="tech-block">
+          <div class="tech-title">Détails techniques</div>
+          <ul>
+            <li>Vue <code>ImportLeadsView</code> — GET affiche le formulaire, POST traite le fichier</li>
+            <li>Commande CLI complémentaire : <code>python manage.py import_leads fichier.csv --dry-run</code></li>
+            <li>Action <code>?action=template</code> sert le CSV canevas en téléchargement direct</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 3. SÉPARATEUR DE MILLIERS ══ -->
+    <div class="section">
+      <div class="section-header blue">
+        <div class="section-num">3</div>
+        <div class="section-title">Formatage français des montants — Séparateur de milliers</div>
+        <div class="section-badge">Amélioration</div>
+      </div>
+      <div class="section-body">
+        <p class="section-desc">
+          Tous les montants en MAD dans les tableaux de bord CRM et COMEX utilisent désormais
+          l'espace comme séparateur de milliers (format français).
+          Ex : <code>723 669 016 MAD</code> au lieu de <code>723669016</code>.
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Filtre Django <code>sep_milliers</code> :</strong> créé dans <code>apps/crm/templatetags/crm_filters.py</code></li>
+          <li class="feat-item"><strong>Appliqué sur :</strong> tous les montants MAD du tableau COMEX (pipeline, pondéré, commercial, segments, villes, top 10…)</li>
+          <li class="feat-item"><strong>Appliqué sur :</strong> budget "Top opportunités" et colonne "Pipeline" du Dashboard CRM</li>
+          <li class="feat-item">Enregistré explicitement dans <code>settings.py</code> → <code>TEMPLATES.OPTIONS.libraries</code> pour garantie de disponibilité</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-green">Tous les rôles</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 4. LIGNE TOTAUX COMEX ══ -->
+    <div class="section">
+      <div class="section-header purple">
+        <div class="section-num">4</div>
+        <div class="section-title">Ligne totaux — Tableau COMEX "Répartition par Commercial"</div>
+        <div class="section-badge">Amélioration</div>
+      </div>
+      <div class="section-body">
+        <p class="section-desc">
+          Le tableau de répartition par commercial du dashboard COMEX affiche désormais
+          une ligne de totaux en bas de tableau (<code>&lt;tfoot&gt;</code>), cohérente
+          avec les KPIs de la bannière en tête de page.
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Total Projets actifs :</strong> somme de tous les commerciaux</li>
+          <li class="feat-item"><strong>Total Potentiel :</strong> pipeline global formaté</li>
+          <li class="feat-item"><strong>% Pipeline :</strong> toujours 100 %</li>
+          <li class="feat-item"><strong>Total Pondéré :</strong> somme pondérée globale</li>
+          <li class="feat-item"><strong>Total H.Priority :</strong> nombre de leads IMPORTANT</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-red">DIRECTEUR</span>
+          <span class="tag tag-amber">MANAGER</span>
+          <span class="tag tag-slate">ADMIN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 5. FILTRES CHIFFRAGE ══ -->
+    <div class="section">
+      <div class="section-header amber">
+        <div class="section-num">5</div>
+        <div class="section-title">Filtres Commercial &amp; Méthodiste — Dashboard Chiffrage</div>
+        <div class="section-badge">Nouveau</div>
+      </div>
+      <div class="section-body">
+        <div class="url-path">GET /chiffrage/?commercial=&lt;id&gt;&amp;methodiste=&lt;id&gt;</div>
+        <p class="section-desc">
+          La barre de filtre du dashboard Chiffrage s'enrichit de deux nouveaux selects permettant
+          de filtrer les demandes par commercial émetteur et par méthodiste assigné.
+          Ces filtres sont visibles uniquement pour les rôles ayant une vue globale.
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Filtre Commercial :</strong> select dynamique alimenté par les utilisateurs rôle COMMERCIAL</li>
+          <li class="feat-item"><strong>Filtre Méthodiste :</strong> select dynamique alimenté par les rôles RESP_METHODES et ESTIMATEUR</li>
+          <li class="feat-item">Soumission automatique à la sélection (<code>onchange</code>)</li>
+          <li class="feat-item">Intégrés dans la condition "Réinitialiser" et le message "Aucun résultat"</li>
+          <li class="feat-item">Masqués pour les commerciaux (ils ne voient que leurs propres demandes)</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-red">DIRECTEUR</span>
+          <span class="tag tag-amber">MANAGER</span>
+          <span class="tag tag-blue">RESP_METHODES</span>
+          <span class="tag tag-slate">ESTIMATEUR</span>
+          <span class="tag tag-slate">ADMIN</span>
+        </div>
+        <div class="tech-block">
+          <div class="tech-title">Détails techniques</div>
+          <ul>
+            <li>Filtres DB : <code>filter(commercial_id=...)</code> et <code>filter(assigned_to_id=...)</code></li>
+            <li>Paramètre <code>can_filter_people</code> transmis au template pour contrôle d'affichage conditionnel</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 6. SUPPRESSION DOCUMENTS CHIFFRAGE ══ -->
+    <div class="section">
+      <div class="section-header red">
+        <div class="section-num">6</div>
+        <div class="section-title">Suppression de documents — Fiche Chiffrage</div>
+        <div class="section-badge">Nouveau</div>
+      </div>
+      <div class="section-body">
+        <div class="url-path">POST /chiffrage/&lt;pk&gt;/fichier/&lt;fichier_pk&gt;/supprimer/</div>
+        <p class="section-desc">
+          Les administrateurs peuvent désormais supprimer un document attaché à une demande de chiffrage
+          directement depuis la fiche, sans passer par l'interface d'administration Django.
+          La suppression est physique (fichier et entrée base de données).
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Bouton Supprimer</strong> en rouge, affiché à côté du bouton "Télécharger" pour chaque fichier</li>
+          <li class="feat-item">Confirmation native du navigateur avant suppression définitive</li>
+          <li class="feat-item">Suppression physique du fichier sur le disque + entrée en base de données</li>
+          <li class="feat-item">Action journalisée dans l'historique de la demande (« Fichier supprimé : nom »)</li>
+          <li class="feat-item">Message de confirmation affiché après suppression réussie</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-red">ADMIN uniquement</span>
+          <span class="tag tag-slate">Superuser</span>
+        </div>
+        <div class="tech-block">
+          <div class="tech-title">Détails techniques</div>
+          <ul>
+            <li>Vue <code>FichierDeleteView</code> — POST uniquement, lève <code>PermissionDenied</code> si rôle insuffisant</li>
+            <li>Appel <code>fichier.fichier.delete(save=False)</code> pour suppression physique avant <code>fichier.delete()</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 7. DASHBOARD CRM — FORMATAGE ══ -->
+    <div class="section">
+      <div class="section-header slate">
+        <div class="section-num">7</div>
+        <div class="section-title">Dashboard CRM — Formatage des montants</div>
+        <div class="section-badge">Amélioration</div>
+      </div>
+      <div class="section-body">
+        <p class="section-desc">
+          Le Dashboard CRM (<code>/crm/tableau-de-bord/</code>) applique désormais
+          le séparateur de milliers sur les montants affichés dans les tableaux.
+        </p>
+        <ul class="feat-list">
+          <li class="feat-item"><strong>Top opportunités :</strong> budget de chaque lead formaté avec espace (<code>12 500 000 MAD</code>)</li>
+          <li class="feat-item"><strong>Performance commerciaux :</strong> colonne "Pipeline" formatée (<code>437 355 658 MAD</code>)</li>
+          <li class="feat-item">Le KPI "Valeur pipeline" conserve son format abrégé (<code>723.7 M MAD</code>) adapté à la card compacte</li>
+        </ul>
+        <div class="access-tags">
+          <span class="tag tag-green">Tous les rôles CRM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Tableau récapitulatif ══ -->
+    <table class="recap-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Fonctionnalité</th>
+          <th>URL / Composant</th>
+          <th>Type</th>
+          <th>Accès</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Tableau de bord COMEX</td>
+          <td><code>/crm/comex/</code></td>
+          <td>Nouvelle page</td>
+          <td>Directeur, Manager, Admin</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Import en masse de leads</td>
+          <td><code>/crm/import/</code></td>
+          <td>Nouvelle page</td>
+          <td>Directeur, Manager, Admin</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Séparateur de milliers (format FR)</td>
+          <td>Filtre <code>sep_milliers</code></td>
+          <td>Amélioration affichage</td>
+          <td>Tous</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Ligne TOTAL — tableau COMEX commercial</td>
+          <td><code>/crm/comex/</code></td>
+          <td>Amélioration</td>
+          <td>Directeur, Manager, Admin</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Filtres Commercial &amp; Méthodiste — Chiffrage</td>
+          <td><code>/chiffrage/</code></td>
+          <td>Nouveau filtre</td>
+          <td>Directeur, Manager, Méthodes</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Suppression documents — Chiffrage</td>
+          <td><code>/chiffrage/&lt;pk&gt;/fichier/&lt;f_pk&gt;/supprimer/</code></td>
+          <td>Nouvelle action</td>
+          <td>Admin uniquement</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>Formatage montants Dashboard CRM</td>
+          <td><code>/crm/tableau-de-bord/</code></td>
+          <td>Amélioration affichage</td>
+          <td>Tous rôles CRM</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div><!-- /body -->
+
+  <!-- ═══ PIED DE PAGE ═══ -->
+  <div class="footer">
+    <div><strong>Bois&amp;Co</strong> — Système d'information interne v1.1.0</div>
+    <div>Sprint Juin 2026 · 7 évolutions · 2 modules</div>
+    <div>Publié le 16/06/2026</div>
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>

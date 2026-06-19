@@ -11,6 +11,7 @@ from django.contrib import messages as django_messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View, ListView
 import mimetypes
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseForbidden, JsonResponse, FileResponse, Http404
 from django.db.models import Q, Count
 from django.utils import timezone
@@ -861,6 +862,40 @@ class DevisPreviewView(ChiffrageRequiredMixin, View):
 
 
 # ---------------------------------------------------------------------------
+# Téléchargement sécurisé d'un fichier du dossier
+# ---------------------------------------------------------------------------
+
+class FichierDownloadView(ChiffrageRequiredMixin, View):
+    """Sert un FichierChiffrage (is_devis=False) avec Content-Disposition: attachment."""
+
+    def get(self, request, pk, fichier_pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        fichier = get_object_or_404(FichierChiffrage, pk=fichier_pk, demande=demande, is_devis=False)
+
+        is_commercial = request.user.role == 'COMMERCIAL' and not request.user.is_superuser
+        if is_commercial and demande.commercial != request.user:
+            django_messages.error(request, "Vous n'avez pas accès aux documents de ce dossier.")
+            return redirect('chiffrage:detail', pk=pk)
+        if is_commercial and fichier.is_internal:
+            django_messages.error(request, "Ce document est réservé à l'usage interne.")
+            return redirect('chiffrage:detail', pk=pk)
+
+        try:
+            content_type, _ = mimetypes.guess_type(fichier.fichier.name)
+            content_type = content_type or 'application/octet-stream'
+            response = FileResponse(fichier.fichier.open('rb'), content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{fichier.nom}"'
+            return response
+        except FileNotFoundError:
+            django_messages.error(
+                request,
+                f'Le fichier « {fichier.nom} » est introuvable sur le serveur. '
+                'Contactez un administrateur.'
+            )
+            return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
 # Suppression fichier — réservé aux administrateurs
 # ---------------------------------------------------------------------------
 
@@ -870,7 +905,11 @@ class FichierDeleteView(ChiffrageRequiredMixin, View):
     def post(self, request, pk, fichier_pk):
         if not (request.user.is_superuser or
                 getattr(request.user, 'role', None) == User.Role.ADMIN):
-            raise PermissionDenied
+            django_messages.error(
+                request,
+                "Action non autorisée : seuls les administrateurs peuvent supprimer des documents."
+            )
+            return redirect('chiffrage:detail', pk=pk)
 
         demande = get_object_or_404(DemandeChiffrage, pk=pk)
         fichier = get_object_or_404(FichierChiffrage, pk=fichier_pk, demande=demande)
