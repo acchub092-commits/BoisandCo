@@ -218,6 +218,10 @@ class DemandeCreateView(ChiffrageRequiredMixin, View):
             })
 
         lead_id = request.POST.get('lead_id') or None
+        # Un DC (MANAGER) qui crée sa propre demande la valide automatiquement côté DC
+        # et la transmet directement aux Méthodes — pas de passage en EN_ATTENTE.
+        created_by_dc = (getattr(request.user, 'role', None) == 'MANAGER')
+
         demande = DemandeChiffrage.objects.create(
             commercial=request.user,
             client_nom=client_nom,
@@ -243,20 +247,44 @@ class DemandeCreateView(ChiffrageRequiredMixin, View):
                 uploaded_by=request.user,
             )
 
-        _log(demande, request.user, 'Demande soumise',
-             nouveau=DemandeChiffrage.Statut.EN_ATTENTE)
+        if created_by_dc:
+            # Auto-validation DC : passe directement en VALIDEE_DC
+            demande.statut = DemandeChiffrage.Statut.VALIDEE_DC
+            demande.validated_by_dc = request.user
+            demande.validated_dc_at = timezone.now()
+            demande.save()
 
-        # Notification → tous les DC (MANAGER)
-        dc_users = User.objects.filter(role='MANAGER', is_active_employee=True)
-        _notify(
-            dc_users,
-            f'Nouvelle demande de chiffrage — {demande.reference}',
-            f'{request.user.get_full_name()} a soumis une demande pour {client_nom}.',
-            sender=request.user, demande=demande,
-        )
+            _log(demande, request.user, 'Demande soumise',
+                 nouveau=DemandeChiffrage.Statut.EN_ATTENTE)
+            _log(demande, request.user, 'Validée automatiquement — créée par le DC',
+                 ancien=DemandeChiffrage.Statut.EN_ATTENTE,
+                 nouveau=DemandeChiffrage.Statut.VALIDEE_DC)
 
-        django_messages.success(request,
-            f'Demande {demande.reference} soumise avec succès — en attente de validation.')
+            # Notification → Responsable Méthodes (la DC ayant déjà validé)
+            resp_methodes = User.objects.filter(role='RESP_METHODES', is_active_employee=True)
+            _notify(
+                resp_methodes,
+                f'Nouvelle demande de chiffrage — {demande.reference}',
+                f'{request.user.get_full_name()} (DC) a soumis une demande pour {client_nom}.',
+                sender=request.user, demande=demande,
+            )
+            django_messages.success(request,
+                f'Demande {demande.reference} soumise et transmise aux Méthodes.')
+        else:
+            _log(demande, request.user, 'Demande soumise',
+                 nouveau=DemandeChiffrage.Statut.EN_ATTENTE)
+
+            # Notification → tous les DC (MANAGER)
+            dc_users = User.objects.filter(role='MANAGER', is_active_employee=True)
+            _notify(
+                dc_users,
+                f'Nouvelle demande de chiffrage — {demande.reference}',
+                f'{request.user.get_full_name()} a soumis une demande pour {client_nom}.',
+                sender=request.user, demande=demande,
+            )
+            django_messages.success(request,
+                f'Demande {demande.reference} soumise avec succès — en attente de validation.')
+
         return redirect('chiffrage:detail', pk=demande.pk)
 
     def _ctx(self):
