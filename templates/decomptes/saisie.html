@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}
+  {% if is_edit %}Modifier décompte{% else %}Nouveau décompte{% endif %} — {{ projet.reference }}
+{% endblock %}
+{% block page_title %}
+  {% if is_edit %}Modifier décompte{% else %}Nouveau décompte{% endif %} – {{ projet.reference }}
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="flex items-center gap-2">
+  <a href="{% url 'projects:decompte_projet' projet.pk %}" class="btn-secondary btn-sm">
+    ← Fiche projet
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+
+  {# ── KPI recap ── #}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="card p-3 text-center border-t-2 border-foret-600">
+      <p class="text-xs text-ardoise-400 uppercase">Marché yc Av.</p>
+      <p class="font-bold text-ardoise-900 num mt-0.5 text-sm">{{ kpis.marche_yc_avenants|floatformat:0|intcomma }}</p>
+    </div>
+    <div class="card p-3 text-center border-t-2 border-blue-500">
+      <p class="text-xs text-ardoise-400 uppercase">Liv. Système</p>
+      <p class="font-bold text-blue-700 num mt-0.5 text-sm">{{ kpis.cumul_liv_systeme|floatformat:0|intcomma }}</p>
+    </div>
+    <div class="card p-3 text-center border-t-2 border-amber-400">
+      <p class="text-xs text-ardoise-400 uppercase">Reste à livrer</p>
+      <p class="font-bold text-amber-700 num mt-0.5 text-sm">{{ kpis.reste_a_livrer|floatformat:0|intcomma }}</p>
+    </div>
+    <div class="card p-3 text-center border-t-2 border-green-500">
+      <p class="text-xs text-ardoise-400 uppercase">Règlements</p>
+      <p class="font-bold text-green-700 num mt-0.5 text-sm">{{ kpis.cumul_reglements|floatformat:0|intcomma }}</p>
+    </div>
+  </div>
+
+  {# ── Formulaire ── #}
+  <div class="card p-6">
+    <h3 class="font-semibold text-ardoise-800 mb-5 pb-3 border-b border-gray-200">
+      {% if is_edit %}Modifier la ligne N° {{ ligne.numero_decompte|default:ligne.pk }}{% else %}Saisir un nouveau décompte{% endif %}
+    </h3>
+
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+
+      {# Identification #}
+      <div>
+        <h4 class="text-xs font-semibold uppercase text-ardoise-500 mb-3">Identification</h4>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">N° décompte</label>
+            {{ form.numero_decompte }}
+            {% if form.numero_decompte.errors %}<p class="form-error">{{ form.numero_decompte.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Type opération</label>
+            {{ form.type_operation }}
+            {% if form.type_operation.errors %}<p class="form-error">{{ form.type_operation.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Réf. pièce</label>
+            {{ form.ref_piece }}
+          </div>
+          <div>
+            <label class="form-label">Date édition facture</label>
+            {{ form.date_edition_facture }}
+          </div>
+          <div>
+            <label class="form-label">Semaine</label>
+            {{ form.semaine }}
+          </div>
+          <div>
+            <label class="form-label">Année</label>
+            {{ form.annee }}
+          </div>
+        </div>
+      </div>
+
+      {# Montants #}
+      <div>
+        <h4 class="text-xs font-semibold uppercase text-ardoise-500 mb-3 border-t border-gray-100 pt-4">
+          Montants (MAD HT, cumuls à date)
+        </h4>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">Attachement</label>
+            {{ form.attachement }}
+            {% if form.attachement.errors %}<p class="form-error">{{ form.attachement.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">RG (Retenue de Garantie)</label>
+            {{ form.rg }}
+          </div>
+          <div>
+            <label class="form-label">RF (Retenue de bonne Fin)</label>
+            {{ form.rf }}
+          </div>
+          <div>
+            <label class="form-label">Prorata</label>
+            {{ form.prorata }}
+          </div>
+          <div>
+            <label class="form-label">Amort. Acompte</label>
+            {{ form.amortissement_acompte }}
+          </div>
+          <div>
+            <label class="form-label">Autre</label>
+            {{ form.autre }}
+          </div>
+          <div>
+            <label class="form-label font-semibold">Acompte (versé au projet)</label>
+            {{ form.acompte }}
+          </div>
+          <div>
+            <label class="form-label font-semibold text-ardoise-800">HT net facturé</label>
+            {{ form.ht }}
+            {% if form.ht.errors %}<p class="form-error">{{ form.ht.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Règlement reçu</label>
+            {{ form.reglement }}
+          </div>
+          <div class="col-span-2 md:col-span-1">
+            <label class="form-label font-semibold text-blue-700">Livraison Système (cumul à date)</label>
+            {{ form.liv_systeme }}
+            {% if form.liv_systeme.errors %}<p class="form-error">{{ form.liv_systeme.errors.0 }}</p>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# Flags #}
+      <div class="border-t border-gray-200 pt-4 flex items-center gap-3">
+        {{ form.is_dernier_decompte }}
+        <div>
+          <label class="text-sm font-medium text-ardoise-800">Dernier décompte actif</label>
+          <p class="text-xs text-ardoise-400">Si coché, tous les autres décomptes de ce projet seront désactivés automatiquement.</p>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+      <div class="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+        {{ form.non_field_errors }}
+      </div>
+      {% endif %}
+
+      <div class="flex justify-between items-center border-t border-gray-200 pt-4">
+        <a href="{% url 'projects:decompte_projet' projet.pk %}" class="btn-secondary btn-sm">Annuler</a>
+        <button type="submit" class="btn-primary">
+          {% if is_edit %}Enregistrer les modifications{% else %}Créer le décompte{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+<style>.num { font-variant-numeric: tabular-nums; }</style>
+{% endblock %}

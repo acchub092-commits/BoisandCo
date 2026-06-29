@@ -1019,3 +1019,201 @@ class ProjectComment(models.Model):
 
     def __str__(self):
         return f'[{self.project.reference}] {self.author} — {self.created_at:%d/%m/%Y}'
+
+
+# ---------------------------------------------------------------------------
+# Suivi Décomptes — module autonome, aucune liaison avec le modèle Project
+# ---------------------------------------------------------------------------
+from decimal import Decimal as _D  # noqa: E402
+
+
+class DecompteProjet(models.Model):
+    """
+    Projet standalone pour le suivi des décomptes ADV.
+    Aucune FK vers le modèle Project — identification par champs texte.
+    """
+
+    class Regime(models.TextChoices):
+        AVEC_TVA = 'AVEC_TVA', 'Avec TVA'
+        SANS_TVA = 'SANS_TVA', 'Sans TVA'
+
+    # Identification — stocké en clair, aucune liaison avec Project
+    reference   = models.CharField(max_length=100, unique=True, verbose_name='Référence projet')
+    client_name = models.CharField(max_length=200, verbose_name='Client')
+    nom_projet  = models.CharField(max_length=300, blank=True, verbose_name='Intitulé projet')
+
+    # Responsables (FK User uniquement, pas de lien Project)
+    commercial     = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='decomptes_commercial',
+        verbose_name='Commercial',
+    )
+    chef_de_projet = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='decomptes_chef',
+        verbose_name='Chef de projet',
+    )
+
+    # Données marché
+    montant_marche_ht = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Montant Marché HT')
+    lot               = models.CharField(max_length=100, blank=True, verbose_name='Lot')
+    adjudication      = models.BooleanField(default=False, verbose_name='Adjudication')
+    regime            = models.CharField(max_length=10, choices=Regime.choices, default=Regime.AVEC_TVA, verbose_name='Régime TVA')
+
+    # Cumuls d'ouverture (soldes avant migration, = 0 si import complet)
+    init_attachement = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Cumul attachement initial')
+    init_rg          = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Cumul RG initial')
+    init_rf          = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Cumul RF initial')
+    init_prorata     = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Cumul prorata initial')
+    init_acompte     = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Acompte initial')
+    init_reglements  = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Cumul règlements initial')
+    init_liv_systeme = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Liv. système initiale')
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='decomptes_crees',
+        verbose_name='Créé par',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Projet décompte'
+        verbose_name_plural = 'Projets décompte'
+        ordering = ['client_name', 'reference']
+
+    def __str__(self):
+        return f'{self.reference} — {self.client_name}'
+
+    @property
+    def marche_yc_avenants(self):
+        total_av = sum((a.montant_ht for a in self.avenants_decompte.all()), _D('0'))
+        return (self.montant_marche_ht or _D('0')) + total_av
+
+    @property
+    def _dernier(self):
+        return self.decompte_lignes.filter(is_dernier_decompte=True).first()
+
+    @property
+    def cumul_attachement(self):
+        d = self._dernier
+        return self.init_attachement + (d.attachement if d else _D('0'))
+
+    @property
+    def cumul_rg(self):
+        d = self._dernier
+        return self.init_rg + (d.rg if d else _D('0'))
+
+    @property
+    def cumul_rf(self):
+        d = self._dernier
+        return self.init_rf + (d.rf if d else _D('0'))
+
+    @property
+    def cumul_prorata(self):
+        d = self._dernier
+        return self.init_prorata + (d.prorata if d else _D('0'))
+
+    @property
+    def cumul_reglements(self):
+        d = self._dernier
+        return self.init_reglements + (d.reglement if d else _D('0'))
+
+    @property
+    def cumul_liv_systeme(self):
+        d = self._dernier
+        return self.init_liv_systeme + (d.liv_systeme if d else _D('0'))
+
+    @property
+    def cumul_amortissement_acompte(self):
+        from django.db.models import Sum
+        res = self.decompte_lignes.aggregate(s=Sum('amortissement_acompte'))['s']
+        return res or _D('0')
+
+    @property
+    def alerte_acompte(self):
+        d = self._dernier
+        acompte_cumul = self.init_acompte + (d.acompte if d else _D('0'))
+        return acompte_cumul - self.cumul_amortissement_acompte
+
+    @property
+    def reste_a_livrer(self):
+        return self.marche_yc_avenants - self.cumul_liv_systeme
+
+    @property
+    def reste_a_attacher(self):
+        return self.cumul_liv_systeme - self.cumul_attachement
+
+
+class DecompteAvenant(models.Model):
+    """Avenant au marché — modifie le montant de référence."""
+
+    projet        = models.ForeignKey(DecompteProjet, on_delete=models.CASCADE, related_name='avenants_decompte', verbose_name='Projet')
+    libelle       = models.CharField(max_length=200, verbose_name='Libellé')
+    montant_ht    = models.DecimalField(max_digits=16, decimal_places=2, verbose_name='Montant HT (MAD)')
+    date_avenant  = models.DateField(null=True, blank=True, verbose_name="Date de l'avenant")
+    reference_doc = models.CharField(max_length=100, blank=True, verbose_name='Référence document')
+    created_by    = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='avenants_crees', verbose_name='Créé par')
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Avenant'
+        verbose_name_plural = 'Avenants'
+        ordering = ['date_avenant']
+
+    def __str__(self):
+        return f'{self.projet.reference} — {self.libelle}'
+
+
+class DecompteLigne(models.Model):
+    """Ligne de décompte hebdomadaire saisie par l'ADV (cumuls à date)."""
+
+    class TypeOperation(models.TextChoices):
+        DECOMPTE  = 'DECOMPTE',  'Décompte'
+        SITUATION = 'SITUATION', 'Situation'
+        FACTURE   = 'FACTURE',   'Facture finale'
+        AVOIR     = 'AVOIR',     'Avoir'
+
+    projet               = models.ForeignKey(DecompteProjet, on_delete=models.CASCADE, related_name='decompte_lignes', verbose_name='Projet')
+    numero_decompte      = models.CharField(max_length=50, blank=True, verbose_name='N° Décompte')
+    type_operation       = models.CharField(max_length=20, choices=TypeOperation.choices, default=TypeOperation.DECOMPTE, verbose_name='Type opération')
+    date_edition_facture = models.DateField(null=True, blank=True, verbose_name='Date édition facture')
+    ref_piece            = models.CharField(max_length=100, blank=True, verbose_name='Réf. Pièce')
+
+    attachement           = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Attachement')
+    prorata               = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Prorata')
+    rg                    = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='RG')
+    rf                    = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='RF')
+    autre                 = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Autre')
+    amortissement_acompte = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Amortissement acompte')
+    acompte               = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Acompte')
+    ht                    = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='HT')
+    reglement             = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Règlement')
+    liv_systeme           = models.DecimalField(max_digits=16, decimal_places=2, default=0, verbose_name='Liv. Système')
+
+    semaine             = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='Semaine')
+    annee               = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='Année')
+    is_dernier_decompte = models.BooleanField(default=False, verbose_name='Dernier décompte actif')
+
+    saisie_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='decomptes_saisis', verbose_name='Saisi par')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Ligne de décompte'
+        verbose_name_plural = 'Lignes de décompte'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.projet.reference} — {self.numero_decompte or "—"} ({self.get_type_operation_display()})'
+
+    @property
+    def ttc(self):
+        return self.ht * _D('1.20') if self.projet.regime == DecompteProjet.Regime.AVEC_TVA else self.ht
+
+    def save(self, *args, **kwargs):
+        if self.is_dernier_decompte:
+            DecompteLigne.objects.filter(
+                projet=self.projet, is_dernier_decompte=True,
+            ).exclude(pk=self.pk).update(is_dernier_decompte=False)
+        super().save(*args, **kwargs)

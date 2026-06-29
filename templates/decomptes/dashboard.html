@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard Décomptes{% endblock %}
+{% block page_title %}Dashboard Décomptes{% endblock %}
+
+{% block topbar_actions %}
+<div class="flex items-center gap-2">
+  {% if peut_ecrire %}
+  <a href="{% url 'projects:decompte_create' %}" class="btn-primary btn-sm">
+    + Nouveau projet
+  </a>
+  <a href="{% url 'projects:decompte_import_csv' %}" class="btn-secondary btn-sm">
+    Import CSV
+  </a>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── KPI Banner ── #}
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+
+    <div class="card p-4 border-l-4 border-foret-600">
+      <p class="text-xs text-ardoise-500 uppercase tracking-wide font-medium">Projets suivis</p>
+      <p class="text-2xl font-bold text-ardoise-900 mt-1">{{ rows|length }}</p>
+    </div>
+
+    <div class="card p-4 border-l-4 border-blue-500">
+      <p class="text-xs text-ardoise-500 uppercase tracking-wide font-medium">Total Marché yc Avenants</p>
+      <p class="text-xl font-bold text-ardoise-900 mt-1 num">{{ total_marche|floatformat:0|intcomma }} MAD</p>
+    </div>
+
+    <div class="card p-4 border-l-4 border-green-500">
+      <p class="text-xs text-ardoise-500 uppercase tracking-wide font-medium">Cumul Livraisons</p>
+      <p class="text-xl font-bold text-ardoise-900 mt-1 num">{{ total_liv|floatformat:0|intcomma }} MAD</p>
+    </div>
+
+    <div class="card p-4 border-l-4 {% if total_non_attach > 0 %}border-amber-500{% else %}border-gray-300{% endif %}">
+      <p class="text-xs text-ardoise-500 uppercase tracking-wide font-medium">Livraisons non attachées</p>
+      <p class="text-xl font-bold mt-1 num {% if total_non_attach > 0 %}text-amber-600{% else %}text-gray-500{% endif %}">
+        {{ total_non_attach|floatformat:0|intcomma }} MAD
+      </p>
+    </div>
+
+    <div class="card p-4 border-l-4 {% if nb_alertes > 0 %}border-red-500{% else %}border-gray-300{% endif %}">
+      <p class="text-xs text-ardoise-500 uppercase tracking-wide font-medium">Alertes Acompte</p>
+      <p class="text-xl font-bold mt-1 {% if nb_alertes > 0 %}text-red-600{% else %}text-gray-500{% endif %}">
+        {{ nb_alertes }}
+      </p>
+    </div>
+
+  </div>
+
+  {# ── Tableau des projets ── #}
+  <div class="card overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="font-semibold text-ardoise-800">Encours projets — suivi décomptes</h3>
+      <span class="text-xs text-ardoise-400">{{ rows|length }} projet(s)</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-xs uppercase text-ardoise-500 border-b border-gray-200">
+          <tr>
+            <th class="px-3 py-3 text-left">Référence</th>
+            <th class="px-3 py-3 text-left">Client</th>
+            <th class="px-3 py-3 text-left">Commercial</th>
+            <th class="px-3 py-3 text-left">Chef Proj.</th>
+            <th class="px-3 py-3 text-left">Lot</th>
+            <th class="px-3 py-3 text-left">Adj.</th>
+            <th class="px-3 py-3 text-left">Régime</th>
+            <th class="px-3 py-3 text-right">Marché yc Av.</th>
+            <th class="px-3 py-3 text-right">Cumul Attach.</th>
+            <th class="px-3 py-3 text-right">Cumul RG</th>
+            <th class="px-3 py-3 text-right">Cumul RF</th>
+            <th class="px-3 py-3 text-right">Cumul Prorata</th>
+            <th class="px-3 py-3 text-right">Cumul Acompte</th>
+            <th class="px-3 py-3 text-right">Liv. Système</th>
+            <th class="px-3 py-3 text-right">Reste à livrer</th>
+            <th class="px-3 py-3 text-right">Reste à attacher</th>
+            <th class="px-3 py-3 text-right">Cumul Règlements</th>
+            <th class="px-3 py-3 text-right">Alerte Acompte</th>
+            <th class="px-3 py-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for r in rows %}
+          <tr class="hover:bg-gray-50 {% if r.reste_a_attacher > 0 %}bg-amber-50/30{% endif %}">
+            <td class="px-3 py-2 font-mono text-xs text-foret-700 font-semibold whitespace-nowrap">
+              <a href="{% url 'projects:decompte_projet' r.projet.pk %}" class="hover:underline">
+                {{ r.projet.reference }}
+              </a>
+            </td>
+            <td class="px-3 py-2 font-medium text-ardoise-800 text-xs whitespace-nowrap">{{ r.projet.client_name }}</td>
+            <td class="px-3 py-2 text-ardoise-600 text-xs whitespace-nowrap">
+              {{ r.projet.commercial.get_full_name|default:r.projet.commercial|default:"—" }}
+            </td>
+            <td class="px-3 py-2 text-ardoise-500 text-xs whitespace-nowrap">
+              {{ r.projet.chef_de_projet.get_full_name|default:"—" }}
+            </td>
+            <td class="px-3 py-2 text-ardoise-500 text-xs">{{ r.projet.lot|default:"—" }}</td>
+            <td class="px-3 py-2 text-center text-xs">
+              {% if r.projet.adjudication %}
+              <span class="text-amber-600 font-semibold">Oui</span>
+              {% else %}
+              <span class="text-ardoise-300">Non</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-2 text-xs whitespace-nowrap">
+              <span class="px-1.5 py-0.5 rounded text-[10px]
+                {% if r.projet.regime == 'SANS_TVA' %}bg-gray-100 text-gray-600{% else %}bg-blue-50 text-blue-700{% endif %}">
+                {{ r.projet.get_regime_display }}
+              </span>
+            </td>
+            <td class="px-3 py-2 text-right num font-semibold text-ardoise-800">
+              {{ r.marche_yc_avenants|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-ardoise-600">
+              {{ r.cumul_attachement|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-ardoise-500">
+              {{ r.cumul_rg|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-ardoise-500">
+              {{ r.cumul_rf|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-ardoise-500">
+              {{ r.cumul_prorata|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-purple-600">
+              {{ r.dernier_decompte.acompte|default:0|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-blue-700">
+              {{ r.cumul_liv_systeme|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num {% if r.reste_a_livrer > 0 %}text-ardoise-700{% else %}text-green-600 font-semibold{% endif %}">
+              {{ r.reste_a_livrer|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num {% if r.reste_a_attacher > 0 %}text-amber-600 font-semibold{% else %}text-ardoise-400{% endif %}">
+              {{ r.reste_a_attacher|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num text-green-700">
+              {{ r.cumul_reglements|floatformat:0|intcomma }}
+            </td>
+            <td class="px-3 py-2 text-right num {% if r.alerte_acompte < 0 %}text-red-600 font-bold{% else %}text-ardoise-400{% endif %}">
+              {{ r.alerte_acompte|floatformat:0|intcomma }}
+              {% if r.alerte_acompte < 0 %}
+              <span class="ml-1 text-[10px] bg-red-100 text-red-700 px-1 rounded">!</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+              <a href="{% url 'projects:decompte_projet' r.projet.pk %}" class="btn-secondary btn-sm text-xs">
+                Détail
+              </a>
+              {% if peut_ecrire %}
+              <a href="{% url 'projects:decompte_saisie' r.projet.pk %}" class="btn-primary btn-sm text-xs ml-1">
+                + Saisir
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="19" class="px-4 py-8 text-center text-ardoise-400">
+              Aucun projet avec suivi décompte.
+              {% if peut_ecrire %}
+              Commencez par importer les données ou saisir un décompte depuis la fiche projet.
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+
+        {% if rows %}
+        <tfoot class="bg-foret-50 border-t-2 border-foret-700 text-xs font-bold text-foret-800">
+          <tr>
+            <td colspan="7" class="px-3 py-3">TOTAL ({{ rows|length }} projets)</td>
+            <td class="px-3 py-3 text-right num">{{ total_marche|floatformat:0|intcomma }}</td>
+            <td colspan="4"></td>
+            <td></td>
+            <td class="px-3 py-3 text-right num">{{ total_liv|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-3 text-right num">{{ total_reste_liv|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-3 text-right num text-amber-700">{{ total_non_attach|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-3 text-right num">{{ total_reglements|floatformat:0|intcomma }}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<style>.num { font-variant-numeric: tabular-nums; }</style>
+{% endblock %}

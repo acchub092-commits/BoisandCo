@@ -52,4 +52,11 @@ urlpatterns = [
 
     # ── COMEX Dashboard ───────────────────────────────────────────────────────
     path('comex/',                           views.COMEXDashboardView.as_view(),      name='comex'),
+
+    # ── Pipeline Commercial — Saisie & Analyse ───────────────────────────────
+    path('saisie-pipeline/',                          views.SaisiePipelineView.as_view(),       name='saisie_pipeline'),
+    path('saisie-pipeline/<int:pk>/modifier/',        views.SaisiePipelineEditView.as_view(),   name='saisie_pipeline_edit'),
+    path('saisie-pipeline/<int:pk>/supprimer/',       views.SaisiePipelineDeleteView.as_view(), name='saisie_pipeline_delete'),
+    path('analyse-pipeline/',                         views.AnalysePipelineView.as_view(),      name='analyse_pipeline'),
+    path('import-pipeline/',                          views.ImportPipelineView.as_view(),        name='import_pipeline'),
 ]

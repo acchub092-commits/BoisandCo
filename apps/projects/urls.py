@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import decompte_views
 
 app_name = 'projects'
 
@@ -50,4 +51,14 @@ urlpatterns = [
     path('pose/projets/<int:pk>/', views.PoseProjectView.as_view(), name='pose_project'),
     path('pose/projets/<int:pk>/plan/', views.InstallationPlanUpdateView.as_view(), name='pose_plan_update'),
     path('pose/projets/<int:pk>/rapport/', views.InstallationReportCreateView.as_view(), name='pose_report_create'),
+
+    # ── Suivi Décomptes — module autonome ──────────────────────────────────────
+    path('decomptes/',                                          decompte_views.DecompteDashboardView.as_view(),    name='decompte_dashboard'),
+    path('decomptes/nouveau/',                                  decompte_views.DecompteProjetCreateView.as_view(), name='decompte_create'),
+    path('decomptes/import-csv/',                               decompte_views.ImportDecompteCSVView.as_view(),    name='decompte_import_csv'),
+    path('decomptes/<int:pk>/',                                 decompte_views.DecompteProjetDetailView.as_view(), name='decompte_projet'),
+    path('decomptes/<int:pk>/saisie/',                          decompte_views.DecompteSaisieView.as_view(),       name='decompte_saisie'),
+    path('decomptes/<int:pk>/ligne/<int:lid>/modifier/',        decompte_views.DecompteSaisieView.as_view(),       name='decompte_ligne_edit'),
+    path('decomptes/<int:pk>/avenant/ajouter/',                 decompte_views.AvenantCreateView.as_view(),        name='avenant_create'),
+    path('decomptes/<int:pk>/avenant/<int:aid>/supprimer/',     decompte_views.AvenantDeleteView.as_view(),        name='avenant_delete'),
 ]

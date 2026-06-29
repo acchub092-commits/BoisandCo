@@ -521,3 +521,151 @@ class LeadActivityLog(models.Model):
             self.LogType.RDV_ADDED:      ('text-blue-600',     'bg-blue-100'),
             self.LogType.RDV_DONE:       ('text-foret-600',    'bg-foret-100'),
         }.get(self.log_type, ('text-ardoise-500', 'bg-ardoise-100'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pipeline Commercial — Suivi structuré des opportunités
+# ─────────────────────────────────────────────────────────────────────────────
+
+PROBABILITE_CHOICES = [
+    ('0.10', '10 %'),
+    ('0.50', '50 %'),
+    ('0.80', '80 %'),
+    ('1.00', '100 %'),
+]
+
+
+class OpportunitePipeline(models.Model):
+    """Opportunité commerciale saisie par un commercial dans le pipeline structuré."""
+
+    class Segment(models.TextChoices):
+        RESIDENTIAL          = 'Residential',           'Residential'
+        COMMERCIAL_SEG       = 'Commercial',            'Commercial'
+        HOSPITALITY          = 'Hospitality',           'Hospitality'
+        INSTITUTIONAL        = 'Institutional',         'Institutional'
+        INDUSTRIAL_LOGISTICS = 'Industrial & Logistics', 'Industrial & Logistics'
+
+    class Statut(models.TextChoices):
+        PROSPECTION = 'Prospection', 'Prospection'
+        EN_COURS    = 'En cours',    'En cours'
+        NEGOCIATION = 'Négociation', 'Négociation'
+        GAGNE       = 'Gagné',       'Gagné'
+        PERDU       = 'Perdu',       'Perdu'
+
+    class Risque(models.TextChoices):
+        HIGH   = 'High',   'High'
+        MEDIUM = 'Medium', 'Medium'
+        LOW    = 'Low',    'Low'
+
+    commercial          = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='opportunites_pipeline', verbose_name='Commercial',
+    )
+    client              = models.CharField(max_length=200, verbose_name='Client')
+    projet              = models.CharField(max_length=200, verbose_name='Projet')
+    segment             = models.CharField(max_length=30, choices=Segment.choices, verbose_name='Segment')
+    ville               = models.CharField(max_length=100, blank=True, verbose_name='Ville')
+    region              = models.CharField(max_length=100, blank=True, verbose_name='Région')
+    pays                = models.CharField(max_length=100, default='Maroc', verbose_name='Pays')
+    potentiel_mad       = models.DecimalField(
+        max_digits=16, decimal_places=2, null=True, blank=True, verbose_name='Potentiel (MAD)',
+    )
+    probabilite         = models.CharField(
+        max_length=4, blank=True, default='',
+        choices=PROBABILITE_CHOICES, verbose_name='Probabilité',
+    )
+    commentaire_terrain = models.TextField(blank=True, verbose_name='Commentaire terrain')
+    statut              = models.CharField(
+        max_length=20, choices=Statut.choices, default=Statut.PROSPECTION, verbose_name='Statut',
+    )
+    prochaine_action    = models.CharField(max_length=255, blank=True, verbose_name='Prochaine action')
+    date_action         = models.DateField(null=True, blank=True, verbose_name='Date action')
+    date_closing_est    = models.DateField(null=True, blank=True, verbose_name='Date closing estimée')
+    risque              = models.CharField(
+        max_length=10, choices=Risque.choices, blank=True, verbose_name='Risque',
+    )
+    derniere_maj        = models.DateTimeField(auto_now=True, verbose_name='Dernière mise à jour')
+    created_at          = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Opportunité Pipeline'
+        verbose_name_plural = 'Opportunités Pipeline'
+        ordering            = ['-derniere_maj']
+
+    def __str__(self):
+        return f'{self.client} — {self.projet}'
+
+    # ── Champs calculés (jamais persistés) ──────────────────────────────────
+
+    @property
+    def pondere(self):
+        from decimal import Decimal
+        if not self.potentiel_mad or not self.probabilite:
+            return None
+        return self.potentiel_mad * Decimal(self.probabilite)
+
+    @property
+    def priorite(self):
+        from decimal import Decimal
+        from datetime import date as _d
+        if self.statut == self.Statut.PERDU:
+            return '—'
+        if not self.probabilite:
+            return 'LOW'
+        p     = Decimal(self.probabilite)
+        today = _d.today()
+        closing_near = (
+            self.date_closing_est is not None
+            and self.date_closing_est >= today
+            and (self.date_closing_est - today).days <= 30
+        )
+        if (
+            p >= Decimal('1.00')
+            or (p >= Decimal('0.80') and self.statut in (
+                self.Statut.EN_COURS, self.Statut.NEGOCIATION, self.Statut.GAGNE,
+            ))
+            or (p >= Decimal('0.80') and closing_near)
+        ):
+            return 'HIGH'
+        if p >= Decimal('0.50'):
+            return 'MEDIUM'
+        return 'LOW'
+
+    @property
+    def alerte(self):
+        from decimal import Decimal
+        from datetime import date as _d
+        today = _d.today()
+        parts = []
+        if not self.probabilite:
+            parts.append('PROB MANQUANTE')
+        if self.probabilite and Decimal(self.probabilite) >= Decimal('0.80') and self.statut == self.Statut.PROSPECTION:
+            parts.append('STATUT/PROB INCOHÉRENT')
+        if self.probabilite and Decimal(self.probabilite) >= Decimal('1.00') and self.statut == self.Statut.EN_COURS:
+            parts.append('100% EN COURS')
+        if not self.potentiel_mad:
+            parts.append('MONTANT VIDE')
+        if not self.prochaine_action:
+            parts.append('SANS ACTION PLANIFIÉE')
+        if self.date_action and self.date_action < today:
+            parts.append('DATE ACTION DÉPASSÉE')
+        if self.statut == self.Statut.NEGOCIATION and (
+            not self.probabilite or Decimal(self.probabilite) < Decimal('0.80')
+        ):
+            parts.append('NÉGOCIATION <80%')
+        return ' · '.join(parts)
+
+    @property
+    def bucket(self):
+        from datetime import date as _d
+        if not self.date_closing_est:
+            return 'Non renseigné'
+        today = _d.today()
+        delta = (self.date_closing_est - today).days
+        if delta < 0:
+            return 'Dépassé'
+        if delta <= 30:
+            return '0-30j'
+        if delta <= 90:
+            return '30-90j'
+        return '+90j'

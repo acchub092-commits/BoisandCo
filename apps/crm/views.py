@@ -1322,7 +1322,6 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
     """Tableau de bord COMEX — synthèse pipeline commercial pour la Direction."""
     template_name = 'crm/comex.html'
 
-    _PROBA_PCT = {'LOW': 10, 'MED': 50, 'HIGH': 80, '': 10}
     MONTHLY_TARGET = 20_000_000  # MAD — objectif mensuel de référence
 
     def dispatch(self, request, *args, **kwargs):
@@ -1331,53 +1330,38 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
-    def _w(self, lead):
-        """Montant pondéré d'un lead selon sa probabilité et son statut."""
-        if lead.status == Lead.Status.GAGNEE:
-            return float(lead.budget_mad or 0)
-        if lead.status == Lead.Status.PERDUE:
-            return 0.0
-        return float(lead.budget_mad or 0) * self._PROBA_PCT.get(lead.probability, 10) / 100
-
     def get_context_data(self, **kwargs):
         from collections import defaultdict
         ctx = super().get_context_data(**kwargs)
         today = date.today()
 
-        # Fetch unique — tout calcul se fait en Python sur cette liste
-        all_leads = list(Lead.objects.select_related('assigned_to').all())
-        active   = [l for l in all_leads if l.status != Lead.Status.PERDUE]
-        pipeline = [l for l in active   if l.status != Lead.Status.GAGNEE]
+        # ── Source : OpportunitePipeline (données saisies dans Saisie Pipeline) ──
+        all_opps = list(OpportunitePipeline.objects.select_related('commercial').all())
+        active   = [o for o in all_opps if o.statut != OpportunitePipeline.Statut.PERDU]
+        pipeline = [o for o in active   if o.statut != OpportunitePipeline.Statut.GAGNE]
 
-        # ── KPIs ─────────────────────────────────────────────────────────
-        total_pot  = sum(float(l.budget_mad or 0) for l in pipeline)
-        total_pond = sum(self._w(l) for l in active)
+        # ── KPIs ──────────────────────────────────────────────────────────────
+        total_pot  = sum(float(o.potentiel_mad or 0) for o in pipeline)
+        total_pond = sum(float(o.pondere or 0) for o in active)
         nb_actifs  = len(active)
-        nb_high    = sum(1 for l in active if l.potential == Lead.Potential.IMPORTANT)
+        nb_high    = sum(1 for o in active if o.priorite == 'HIGH')
 
-        # ── Alertes brutes ────────────────────────────────────────────────
+        # ── Alertes brutes (une entrée par type d'alerte par opportunité) ────────
         alerts_raw = []
-        for l in active:
-            if not l.budget_mad:
-                alerts_raw.append({'lead': l, 'type': 'MONTANT VIDE'})
-            if l.probability == 'HIGH' and l.status in (Lead.Status.VISITE, Lead.Status.OPPORTUNITE):
-                alerts_raw.append({'lead': l, 'type': 'STATUT/PROB INCOHÉRENT'})
-            if not l.next_followup_date:
-                alerts_raw.append({'lead': l, 'type': 'SANS ACTION PLANIFIÉE'})
-                if l.probability == 'HIGH':
-                    alerts_raw.append({'lead': l, 'type': '80%+ SANS ACTION'})
+        for o in active:
+            for alert_type in (o.alerte.split(' · ') if o.alerte else []):
+                alerts_raw.append({'opp': o, 'type': alert_type})
 
-        # ── Par commercial ────────────────────────────────────────────────
+        # ── Par commercial ────────────────────────────────────────────────────
         com = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'pond': 0.0, 'high': 0, 'user': None})
-        for l in active:
-            k = l.assigned_to.get_full_name() if l.assigned_to else 'Non assigné'
+        for o in active:
+            k = o.commercial.get_full_name() if o.commercial else 'Non assigné'
             com[k]['count'] += 1
-            com[k]['pot']   += float(l.budget_mad or 0)
-            com[k]['pond']  += self._w(l)
-            if l.potential == Lead.Potential.IMPORTANT:
+            com[k]['pot']   += float(o.potentiel_mad or 0)
+            com[k]['pond']  += float(o.pondere or 0)
+            if o.priorite == 'HIGH':
                 com[k]['high'] += 1
-            if l.assigned_to:
-                com[k]['user'] = l.assigned_to
+            com[k]['user'] = o.commercial
         tot_com = sum(d['pot'] for d in com.values()) or 1
         commerciaux = sorted([
             {'name': k, 'user': d['user'], 'count': d['count'],
@@ -1386,31 +1370,31 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
             for k, d in com.items()
         ], key=lambda x: -x['pot'])
 
-        # ── Par statut (groupes PDF) ──────────────────────────────────────
-        stat_groups = [
-            ('Prospection', [Lead.Status.VISITE, Lead.Status.OPPORTUNITE, Lead.Status.QUALIFICATION]),
-            ('En cours',    [Lead.Status.CHIFFRAGE]),
-            ('Négociation', [Lead.Status.OFFRE]),
-            ('Gagné',       [Lead.Status.GAGNEE]),
-            ('Perdu',       [Lead.Status.PERDUE]),
+        # ── Par statut ────────────────────────────────────────────────────────
+        stat_labels = [
+            ('Prospection', [OpportunitePipeline.Statut.PROSPECTION]),
+            ('En cours',    [OpportunitePipeline.Statut.EN_COURS]),
+            ('Négociation', [OpportunitePipeline.Statut.NEGOCIATION]),
+            ('Gagné',       [OpportunitePipeline.Statut.GAGNE]),
+            ('Perdu',       [OpportunitePipeline.Statut.PERDU]),
         ]
-        tot_all = sum(float(l.budget_mad or 0) for l in all_leads) or 1
+        tot_all = sum(float(o.potentiel_mad or 0) for o in all_opps) or 1
         statuts = []
-        for label, statuses in stat_groups:
-            grp  = [l for l in all_leads if l.status in statuses]
-            pot  = sum(float(l.budget_mad or 0) for l in grp)
-            pond = sum(self._w(l) for l in grp)
+        for label, codes in stat_labels:
+            grp  = [o for o in all_opps if o.statut in codes]
+            pot  = sum(float(o.potentiel_mad or 0) for o in grp)
+            pond = sum(float(o.pondere or 0) for o in grp)
             statuts.append({'label': label, 'count': len(grp),
                             'pot': pot, 'pct': round(pot / tot_all * 100, 1), 'pond': pond})
 
-        # ── Par segment ───────────────────────────────────────────────────
+        # ── Par segment ───────────────────────────────────────────────────────
         seg = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'pond': 0.0, 'high': 0})
-        for l in pipeline:
-            k = l.project_type or 'Non défini'
+        for o in pipeline:
+            k = o.segment or 'Non défini'
             seg[k]['count'] += 1
-            seg[k]['pot']   += float(l.budget_mad or 0)
-            seg[k]['pond']  += self._w(l)
-            if l.potential == Lead.Potential.IMPORTANT:
+            seg[k]['pot']   += float(o.potentiel_mad or 0)
+            seg[k]['pond']  += float(o.pondere or 0)
+            if o.priorite == 'HIGH':
                 seg[k]['high'] += 1
         tot_seg = sum(d['pot'] for d in seg.values()) or 1
         segments = sorted([
@@ -1419,75 +1403,76 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
             for k, d in seg.items()
         ], key=lambda x: -x['pot'])
 
-        # ── Top villes ────────────────────────────────────────────────────
+        # ── Top villes ────────────────────────────────────────────────────────
         geo = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'pond': 0.0})
-        for l in pipeline:
-            city = (l.location or '').split(',')[0].strip().title() or 'Non renseigné'
+        for o in pipeline:
+            city = (o.ville or '').strip().title() or 'Non renseigné'
             geo[city]['count'] += 1
-            geo[city]['pot']   += float(l.budget_mad or 0)
-            geo[city]['pond']  += self._w(l)
+            geo[city]['pot']   += float(o.potentiel_mad or 0)
+            geo[city]['pond']  += float(o.pondere or 0)
         tot_geo = sum(d['pot'] for d in geo.values()) or 1
         top_villes = sorted(
             [{'ville': k, 'count': d['count'], 'pot': d['pot'],
               'pct': round(d['pot'] / tot_geo * 100, 1), 'pond': d['pond']}
-             for k, d in geo.items() if k != 'Non Renseigné' and d['pot'] > 0],
+             for k, d in geo.items() if k not in ('Non Renseigné', 'Non renseigné') and d['pot'] > 0],
             key=lambda x: -x['pot']
         )[:12]
 
-        # ── Top 10 projets prioritaires ───────────────────────────────────
-        top_raw = sorted([l for l in pipeline if l.budget_mad], key=lambda l: -self._w(l))[:10]
-        top_projets = []
-        for l in top_raw:
-            al = []
-            if l.probability == 'HIGH' and l.status in (Lead.Status.VISITE, Lead.Status.OPPORTUNITE):
-                al.append('INCOHÉRENT')
-            if not l.next_followup_date:
-                al.append('SANS ACTION')
-            top_projets.append({'lead': l, 'pond': self._w(l), 'alerts': al})
+        # ── Top 10 projets prioritaires ───────────────────────────────────────
+        top_raw = sorted(
+            [o for o in pipeline if o.potentiel_mad],
+            key=lambda o: -(float(o.pondere or 0))
+        )[:10]
+        top_projets = [
+            {'opp': o, 'pond': float(o.pondere or 0),
+             'alerts': o.alerte.split(' · ') if o.alerte else []}
+            for o in top_raw
+        ]
 
-        # ── Dépendance commerciale ────────────────────────────────────────
+        # ── Dépendance commerciale ────────────────────────────────────────────
         dependance = sorted([
             {'name': c['name'], 'user': c['user'], 'pct': c['pct'], 'pot': c['pot'],
              'signal': 'danger' if c['pct'] > 50 else ('warning' if c['pct'] > 30 else 'ok')}
             for c in commerciaux
         ], key=lambda x: -x['pct'])
 
-        # ── Pilotage temporel ─────────────────────────────────────────────
+        # ── Pilotage temporel ─────────────────────────────────────────────────
         j30 = today + timedelta(days=30)
         j90 = today + timedelta(days=90)
         bmap = {'0-30 j': [], '30-90 j': [], '+90 j': [], 'Dépassé': [], 'Non renseigné': []}
-        for l in pipeline:
-            if not l.end_date_est:
-                bmap['Non renseigné'].append(l)
-            elif l.end_date_est < today:
-                bmap['Dépassé'].append(l)
-            elif l.end_date_est <= j30:
-                bmap['0-30 j'].append(l)
-            elif l.end_date_est <= j90:
-                bmap['30-90 j'].append(l)
+        for o in pipeline:
+            if not o.date_closing_est:
+                bmap['Non renseigné'].append(o)
+            elif o.date_closing_est < today:
+                bmap['Dépassé'].append(o)
+            elif o.date_closing_est <= j30:
+                bmap['0-30 j'].append(o)
+            elif o.date_closing_est <= j90:
+                bmap['30-90 j'].append(o)
             else:
-                bmap['+90 j'].append(l)
-        tot_tp = sum(float(l.budget_mad or 0) for l in pipeline) or 1
-        tot_tpond = sum(self._w(l) for l in pipeline) or 1
-        temporal = []
+                bmap['+90 j'].append(o)
+        tot_tp    = sum(float(o.potentiel_mad or 0) for o in pipeline) or 1
+        tot_tpond = sum(float(o.pondere or 0)       for o in pipeline) or 1
+        temporal  = []
         for label in ['0-30 j', '30-90 j', '+90 j', 'Dépassé', 'Non renseigné']:
             ls   = bmap[label]
-            pot  = sum(float(l.budget_mad or 0) for l in ls)
-            pond = sum(self._w(l) for l in ls)
+            pot  = sum(float(o.potentiel_mad or 0) for o in ls)
+            pond = sum(float(o.pondere or 0) for o in ls)
             temporal.append({
                 'label': label, 'count': len(ls), 'pot': pot,
-                'pct_pot': round(pot / tot_tp * 100, 1),
+                'pct_pot':  round(pot  / tot_tp    * 100, 1),
                 'pond': pond,
                 'pct_pond': round(pond / tot_tpond * 100, 1),
             })
 
-        # ── Synthèse alertes ──────────────────────────────────────────────
-        sans_action      = sum(1 for l in active if not l.next_followup_date)
-        high_sans_action = sum(1 for l in active if l.probability == 'HIGH' and not l.next_followup_date)
-        incoherent       = sum(1 for l in active if l.probability == 'HIGH'
-                               and l.status in (Lead.Status.VISITE, Lead.Status.OPPORTUNITE))
-        montant_vide     = sum(1 for l in active if not l.budget_mad)
-        prob_manquante   = sum(1 for l in active if not l.probability)
+        # ── Synthèse alertes ──────────────────────────────────────────────────
+        sans_action      = sum(1 for o in active if not o.prochaine_action)
+        high_sans_action = sum(1 for o in active if o.priorite == 'HIGH' and not o.prochaine_action)
+        incoherent       = sum(1 for o in active
+                               if o.probabilite and Decimal(o.probabilite) >= Decimal('0.80')
+                               and o.statut == OpportunitePipeline.Statut.PROSPECTION)
+        montant_vide     = sum(1 for o in active if not o.potentiel_mad)
+        prob_manquante   = sum(1 for o in active if not o.probabilite)
 
         synthese = [
             {'type': 'SANS ACTION PLANIFIÉE',    'count': sans_action,      'niveau': 'Immédiat'},
@@ -1496,6 +1481,25 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
             {'type': 'MONTANT VIDE',              'count': montant_vide,     'niveau': 'Immédiat'},
             {'type': 'PROB MANQUANTE',            'count': prob_manquante,   'niveau': 'Haute'},
         ]
+
+        # ── Totaux lignes de pied de tableau ─────────────────────────────────
+        statut_total = {
+            'count': len(all_opps),
+            'pot':   sum(float(o.potentiel_mad or 0) for o in all_opps),
+            'pond':  sum(float(o.pondere or 0)       for o in all_opps),
+        }
+        segment_total = {
+            'count': sum(s['count'] for s in segments),
+            'pot':   sum(s['pot']   for s in segments),
+            'pond':  sum(s['pond']  for s in segments),
+            'high':  sum(s['high']  for s in segments),
+        }
+        villes_total = {
+            'count': sum(v['count'] for v in top_villes),
+            'pot':   sum(v['pot']   for v in top_villes),
+            'pond':  sum(v['pond']  for v in top_villes),
+            'pct':   round(sum(v['pot'] for v in top_villes) / tot_geo * 100, 1),
+        }
 
         ctx.update({
             'today': today,
@@ -1513,8 +1517,277 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
             'alerts_list': alerts_raw[:50],
             'temporal': temporal,
             'couverture_mois': round(total_pond / self.MONTHLY_TARGET, 1) if self.MONTHLY_TARGET else 0,
-            'pipeline_30j': sum(self._w(l) for l in bmap['0-30 j']),
+            'pipeline_30j': sum(float(o.pondere or 0) for o in bmap['0-30 j']),
             'monthly_target': self.MONTHLY_TARGET,
             'synthese': synthese,
+            'statut_total':  statut_total,
+            'segment_total': segment_total,
+            'villes_total':  villes_total,
         })
         return ctx
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pipeline Commercial — Saisie & Analyse
+# ─────────────────────────────────────────────────────────────────────────────
+
+from .models import OpportunitePipeline  # noqa: E402
+from .forms import OpportunitePipelineForm  # noqa: E402
+from .permissions import CRMAccessMixin  # noqa: E402
+
+
+class ImportPipelineView(CRMAccessMixin, View):
+    """Import CSV des opportunités pipeline — réservé DC/DG."""
+    template_name = 'crm/import_pipeline.html'
+
+    PROBA_MAP = {
+        '0%': '', '0 %': '',
+        '10%': '0.10', '10 %': '0.10',
+        '50%': '0.50', '50 %': '0.50',
+        '80%': '0.80', '80 %': '0.80',
+        '100%': '1.00', '100 %': '1.00',
+    }
+    STATUTS_VALIDES  = {'Prospection', 'En cours', 'Négociation', 'Gagné', 'Perdu'}
+    SEGMENTS_VALIDES = {
+        'Residential', 'Commercial', 'Hospitality',
+        'Institutional', 'Industrial & Logistics',
+    }
+
+    def dispatch(self, request, *args, **kwargs):
+        if not (is_director(request.user) or request.user.is_superuser):
+            messages.error(request, "Import réservé au Directeur Commercial / DG.")
+            return redirect('crm:analyse_pipeline')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        fichier = request.FILES.get('fichier')
+        if not fichier:
+            messages.error(request, "Aucun fichier sélectionné.")
+            return render(request, self.template_name)
+
+        # Lecture (UTF-8-BOM puis Latin-1 en fallback)
+        try:
+            content = fichier.read().decode('utf-8-sig')
+        except UnicodeDecodeError:
+            fichier.seek(0)
+            content = fichier.read().decode('cp1252')
+
+        # Carte prénom → User
+        commercial_map = {
+            u.first_name.strip().lower(): u
+            for u in User.objects.filter(
+                role__in=('COMMERCIAL', 'MANAGER'), is_active_employee=True,
+            )
+        }
+
+        reader   = csv.reader(io.StringIO(content), delimiter=';')
+        imported = []
+        skipped  = []
+
+        for i, row in enumerate(reader):
+            if i == 0:
+                continue                          # en-tête
+            row = (row + [''] * 25)[:25]          # normaliser la longueur
+
+            comm_name = row[0].strip()
+            client    = row[1].strip()
+            projet    = row[2].strip()
+
+            if not comm_name and not client:
+                continue                          # ligne vide
+
+            commercial = commercial_map.get(comm_name.lower())
+            if not commercial:
+                skipped.append({'ligne': i + 1, 'client': client or '—',
+                                'projet': projet or '—',
+                                'raison': f'Commercial « {comm_name} » introuvable'})
+                continue
+
+            if not client or not projet:
+                skipped.append({'ligne': i + 1, 'client': client or '—',
+                                'projet': projet or '—',
+                                'raison': 'Client ou Projet vide'})
+                continue
+
+            seg_raw  = row[3].strip()
+            segment  = seg_raw if seg_raw in self.SEGMENTS_VALIDES else 'Residential'
+
+            ville = row[4].strip()
+            if ville.startswith('#'):
+                ville = ''
+
+            region = row[5].strip()
+            pays   = row[6].strip() or 'Maroc'
+
+            potentiel    = self._parse_mad(row[7])
+            probabilite  = self.PROBA_MAP.get(row[8].strip(), '')
+            commentaire  = row[10].strip()
+
+            stat_raw = row[11].strip()
+            statut   = stat_raw if stat_raw in self.STATUTS_VALIDES else 'Prospection'
+
+            prochaine_action = row[12].strip()
+            date_action      = self._parse_date(row[13])
+            date_closing     = self._parse_date(row[16])
+
+            risque_raw = row[18].strip()
+            risque     = risque_raw if risque_raw in ('High', 'Medium', 'Low') else ''
+
+            OpportunitePipeline.objects.create(
+                commercial=commercial,
+                client=client,
+                projet=projet,
+                segment=segment,
+                ville=ville,
+                region=region,
+                pays=pays,
+                potentiel_mad=potentiel,
+                probabilite=probabilite,
+                commentaire_terrain=commentaire,
+                statut=statut,
+                prochaine_action=prochaine_action,
+                date_action=date_action,
+                date_closing_est=date_closing,
+                risque=risque,
+            )
+            imported.append({
+                'client':     client,
+                'projet':     projet,
+                'commercial': commercial.get_full_name(),
+                'statut':     statut,
+            })
+
+        return render(request, self.template_name, {
+            'imported': imported,
+            'skipped':  skipped,
+            'done':     True,
+        })
+
+    @staticmethod
+    def _parse_date(s):
+        s = s.strip()
+        if not s:
+            return None
+        from datetime import datetime as _dt
+        for fmt in ('%d/%m/%Y', '%Y-%m-%d'):
+            try:
+                return _dt.strptime(s, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    @staticmethod
+    def _parse_mad(s):
+        cleaned = s.strip().replace('\xa0', '').replace(' ', '').replace(',', '.')
+        if not cleaned:
+            return None
+        try:
+            return Decimal(cleaned)
+        except Exception:
+            return None
+
+
+class SaisiePipelineView(CRMAccessMixin, View):
+    template_name = 'crm/saisie_pipeline.html'
+
+    def get(self, request):
+        form = OpportunitePipelineForm(user=request.user)
+        return render(request, self.template_name, {'form': form, 'is_edit': False})
+
+    def post(self, request):
+        form = OpportunitePipelineForm(request.POST, user=request.user)
+        if form.is_valid():
+            opp = form.save(commit=False)
+            if is_commercial(request.user):
+                opp.commercial = request.user
+            opp.save()
+            messages.success(request, f'Opportunité « {opp.client} — {opp.projet} » enregistrée.')
+            return redirect('crm:saisie_pipeline')
+        return render(request, self.template_name, {'form': form, 'is_edit': False})
+
+
+class SaisiePipelineEditView(CRMAccessMixin, View):
+    template_name = 'crm/saisie_pipeline.html'
+
+    def _get_opp(self, request, pk):
+        opp = get_object_or_404(OpportunitePipeline, pk=pk)
+        if not is_director(request.user) and opp.commercial != request.user:
+            messages.error(request, "Vous ne pouvez modifier que vos propres opportunités.")
+            return None
+        return opp
+
+    def get(self, request, pk):
+        opp = self._get_opp(request, pk)
+        if opp is None:
+            return redirect('crm:analyse_pipeline')
+        form = OpportunitePipelineForm(instance=opp, user=request.user)
+        return render(request, self.template_name, {'form': form, 'opp': opp, 'is_edit': True})
+
+    def post(self, request, pk):
+        opp = self._get_opp(request, pk)
+        if opp is None:
+            return redirect('crm:analyse_pipeline')
+        form = OpportunitePipelineForm(request.POST, instance=opp, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Opportunité mise à jour.')
+            return redirect('crm:analyse_pipeline')
+        return render(request, self.template_name, {'form': form, 'opp': opp, 'is_edit': True})
+
+
+class SaisiePipelineDeleteView(CRMAccessMixin, View):
+    def post(self, request, pk):
+        if not is_director(request.user):
+            messages.error(request, 'Suppression réservée au Directeur Commercial / DG.')
+            return redirect('crm:analyse_pipeline')
+        opp   = get_object_or_404(OpportunitePipeline, pk=pk)
+        label = str(opp)
+        opp.delete()
+        messages.success(request, f'Opportunité « {label} » supprimée.')
+        return redirect('crm:analyse_pipeline')
+
+
+class AnalysePipelineView(CRMAccessMixin, View):
+    template_name = 'crm/analyse_pipeline.html'
+
+    def get(self, request):
+        qs = OpportunitePipeline.objects.select_related('commercial').all()
+        if is_commercial(request.user):
+            qs = qs.filter(commercial=request.user)
+
+        f_commercial = request.GET.get('commercial', '')
+        f_statut     = request.GET.get('statut', '')
+        f_segment    = request.GET.get('segment', '')
+        if f_commercial and is_director(request.user):
+            qs = qs.filter(commercial_id=f_commercial)
+        if f_statut:
+            qs = qs.filter(statut=f_statut)
+        if f_segment:
+            qs = qs.filter(segment=f_segment)
+
+        opportunites = list(qs)
+
+        total_mad  = sum(o.potentiel_mad for o in opportunites if o.potentiel_mad) or 0
+        total_pond = sum(o.pondere for o in opportunites if o.pondere) or 0
+        nb_actifs  = sum(1 for o in opportunites if o.statut not in ('Gagné', 'Perdu'))
+        nb_alertes = sum(1 for o in opportunites if o.alerte)
+
+        commerciaux = User.objects.filter(role__in=('COMMERCIAL', 'MANAGER'), is_active_employee=True).order_by('last_name')
+
+        return render(request, self.template_name, {
+            'opportunites': opportunites,
+            'total_mad':    total_mad,
+            'total_pond':   total_pond,
+            'nb_actifs':    nb_actifs,
+            'nb_alertes':   nb_alertes,
+            'commerciaux':  commerciaux,
+            'statuts':      OpportunitePipeline.Statut.choices,
+            'segments':     OpportunitePipeline.Segment.choices,
+            'f_commercial': f_commercial,
+            'f_statut':     f_statut,
+            'f_segment':    f_segment,
+            'is_director':  is_director(request.user),
+        })

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Import CSV Décomptes{% endblock %}
+{% block page_title %}Import CSV — Suivi Décomptes{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:decompte_dashboard' %}" class="btn-secondary btn-sm">
+  ← Dashboard Décomptes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+
+  {# ── Guide colonnes ── #}
+  <div class="card p-5 border-l-4 border-blue-400">
+    <h3 class="font-semibold text-ardoise-800 mb-3">Format du fichier CSV</h3>
+    <p class="text-sm text-ardoise-600 mb-3">
+      Séparateur <code class="bg-gray-100 px-1 rounded">;</code> — encodage UTF-8 ou Windows-1252.
+      <strong>Structure multi-lignes</strong> : une ligne par décompte. Plusieurs lignes peuvent appartenir au
+      même projet — la première ligne contient les infos projet, les suivantes (avec la colonne <em>Projet</em> vide)
+      sont les décomptes historiques du même projet.
+    </p>
+
+    {# Avertissement re-import #}
+    <div class="bg-amber-50 border border-amber-200 rounded p-3 mb-4 text-xs text-amber-800">
+      ⚠ Un import <strong>remplace toutes les lignes décompte existantes</strong> pour chaque projet trouvé.
+      Utilisez cette fonction uniquement pour la migration initiale des données.
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="text-xs min-w-full border border-gray-200 rounded">
+        <thead class="bg-gray-50 text-ardoise-500 uppercase">
+          <tr>
+            <th class="px-3 py-2 text-left border-b border-gray-200">Colonne CSV</th>
+            <th class="px-3 py-2 text-left border-b border-gray-200">Obligatoire</th>
+            <th class="px-3 py-2 text-left border-b border-gray-200">Description</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 text-ardoise-700">
+
+          <tr class="bg-blue-50/50"><td colspan="3" class="px-3 py-1 font-semibold text-blue-700 text-[10px] uppercase">Colonnes BLEUES — infos projet (1ère ligne uniquement)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Client</td><td class="px-3 py-1.5 text-ardoise-400">Non*</td><td class="px-3 py-1.5">Nom du client (utilisé si Projet introuvable)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono text-red-700">Projet</td><td class="px-3 py-1.5 text-red-600">Oui</td><td class="px-3 py-1.5">Nom exact du projet dans le système (ex: WELIVE)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Adjudication</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">OUI / NON</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Commercial</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Prénom du commercial (doit correspondre à un compte actif)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Lot</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Libellé du lot (ex: MNB)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Régime</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Avec TVA / Sans TVA</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Montant Marché HT</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Montant initial du marché HT (MAD) → mis à jour sur le projet</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Avenants</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Montant total des avenants → crée un DecompteAvenant si non vide</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Chef de Projet</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Prénom du chef de projet (doit correspondre à un compte actif)</td></tr>
+
+          <tr class="bg-green-50/50"><td colspan="3" class="px-3 py-1 font-semibold text-green-700 text-[10px] uppercase">Colonnes VERTES — données décompte (1 ligne = 1 décompte)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">ATTACHEMENT</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Cumul attachement à date de ce décompte (MAD)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">PRORATA</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Prorata</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">RG</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Retenue de Garantie</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">RF</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Retenue de bonne Fin</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">AUTRE</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Autre retenue</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">AMORTISSEMENT D'ACOMPTE</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Amortissement d'acompte</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">ACOMPTE</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Acompte versé au projet</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Type Opération</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Décompte / Situation / Facture / Avoir</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">N° Décompte</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Numéro de décompte</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">HT</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Montant HT net facturé de ce décompte</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Réf. Pièce</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Référence pièce comptable</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">Date édition facture</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Format M/J/AAAA (ex: 2/9/2026 = 9 février 2026)</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">REGLEMENT</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Règlement reçu pour ce décompte</td></tr>
+          <tr><td class="px-3 py-1.5 font-mono">LIV SYSTÈME</td><td class="px-3 py-1.5 text-ardoise-400">Non</td><td class="px-3 py-1.5">Livraison système cumul à date</td></tr>
+
+          <tr class="bg-gray-50"><td colspan="3" class="px-3 py-1 font-semibold text-gray-500 text-[10px] uppercase">Colonnes IGNORÉES (calculées automatiquement)</td></tr>
+          <tr class="text-ardoise-400"><td class="px-3 py-1.5 font-mono line-through">Marché yc Avenants</td><td class="px-3 py-1.5">—</td><td class="px-3 py-1.5">Calculé = Montant Marché HT + Avenants</td></tr>
+          <tr class="text-ardoise-400"><td class="px-3 py-1.5 font-mono line-through">TTC</td><td class="px-3 py-1.5">—</td><td class="px-3 py-1.5">Calculé = HT × 1.20 si Avec TVA</td></tr>
+          <tr class="text-ardoise-400"><td class="px-3 py-1.5 font-mono line-through">ALERTE ACOMPTE</td><td class="px-3 py-1.5">—</td><td class="px-3 py-1.5">Calculé = Acompte − Amortissement</td></tr>
+          <tr class="text-ardoise-400"><td class="px-3 py-1.5 font-mono line-through">CUMUL REGLEMENTS</td><td class="px-3 py-1.5">—</td><td class="px-3 py-1.5">Calculé sur le dernier décompte</td></tr>
+          <tr class="text-ardoise-400"><td class="px-3 py-1.5 font-mono line-through">RESTE A LIVRER</td><td class="px-3 py-1.5">—</td><td class="px-3 py-1.5">Calculé = Marché yc Av. − Liv Système</td></tr>
+          <tr class="text-ardoise-400"><td class="px-3 py-1.5 font-mono line-through">RESTE A ATTACHER</td><td class="px-3 py-1.5">—</td><td class="px-3 py-1.5">Calculé = Liv Système − Attachement</td></tr>
+
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-ardoise-400 mt-2">
+      * La recherche se fait d'abord par <strong>Projet</strong> (nom exact), puis par <strong>Client</strong> si introuvable.
+      La dernière ligne de décompte par projet est automatiquement marquée comme «&nbsp;Dernier décompte actif&nbsp;».
+    </p>
+  </div>
+
+  {# ── Upload ── #}
+  {% if not done %}
+  <div class="card p-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="form-label">Fichier CSV <span class="text-red-500">*</span></label>
+        <input type="file" name="fichier" accept=".csv,.txt"
+               class="block w-full text-sm text-ardoise-600
+                      file:mr-4 file:py-2 file:px-4 file:rounded file:border-0
+                      file:text-sm file:font-medium file:bg-foret-50 file:text-foret-700
+                      hover:file:bg-foret-100 cursor-pointer" required>
+      </div>
+
+      {% for msg in messages %}
+      {% if msg.tags == "error" %}
+      <div class="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">{{ msg }}</div>
+      {% endif %}
+      {% endfor %}
+
+      <button type="submit" class="btn-primary">Importer</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ── Résultats ── #}
+  {% if done %}
+  <div class="card overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-200 flex items-center gap-3">
+      <span class="w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">✓</span>
+      <h3 class="font-semibold text-ardoise-800">Import terminé — {{ imported|length }} projet(s) traité(s)</h3>
+    </div>
+
+    {% if imported %}
+    <div class="px-5 pt-3 pb-1">
+      <h4 class="text-xs font-semibold uppercase text-foret-700 mb-2">Projets importés</h4>
+      <div class="divide-y divide-gray-100">
+        {% for item in imported %}
+        <div class="py-1.5 text-sm flex items-center gap-3">
+          <span class="text-green-500">✓</span>
+          <span class="font-mono text-xs text-foret-700 font-semibold w-28">{{ item.ref }}</span>
+          <span class="text-ardoise-600">{{ item.client }}</span>
+          <span class="text-ardoise-500 text-xs">{{ item.projet }}</span>
+          <span class="ml-auto text-xs bg-foret-100 text-foret-700 px-2 py-0.5 rounded font-medium">
+            {{ item.nb_lignes }} décompte(s)
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if skipped %}
+    <div class="px-5 py-3 border-t border-gray-200">
+      <h4 class="text-xs font-semibold uppercase text-amber-700 mb-2">Lignes ignorées ({{ skipped|length }})</h4>
+      <div class="divide-y divide-gray-100">
+        {% for item in skipped %}
+        <div class="py-1.5 text-sm flex items-start gap-3">
+          <span class="text-amber-500 mt-0.5">⚠</span>
+          <span class="text-xs text-ardoise-400 w-14 shrink-0">Ligne {{ item.ligne }}</span>
+          <span class="font-mono text-xs text-ardoise-600 w-28 shrink-0">{{ item.ref }}</span>
+          <span class="text-ardoise-500 text-xs">{{ item.raison }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="px-5 py-4 border-t border-gray-200 flex gap-3">
+      <a href="{% url 'projects:decompte_dashboard' %}" class="btn-primary btn-sm">Voir le dashboard</a>
+      <a href="{% url 'projects:decompte_import_csv' %}" class="btn-secondary btn-sm">Nouvel import</a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

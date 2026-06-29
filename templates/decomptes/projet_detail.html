@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Décomptes — {{ projet.reference }}{% endblock %}
+{% block page_title %}Décomptes – {{ projet.reference }}{% endblock %}
+
+{% block topbar_actions %}
+<div class="flex items-center gap-2">
+  <a href="{% url 'projects:decompte_dashboard' %}" class="btn-secondary btn-sm">
+    ← Dashboard
+  </a>
+  {% if peut_ecrire %}
+  <a href="{% url 'projects:decompte_saisie' projet.pk %}" class="btn-primary btn-sm">
+    + Nouveau décompte
+  </a>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── En-tête projet ── #}
+  <div class="card p-5">
+    <div class="flex flex-col md:flex-row md:items-start gap-4">
+      <div class="flex-1">
+        <h2 class="text-lg font-bold text-ardoise-900">{{ projet.name }}</h2>
+        <p class="text-sm text-ardoise-500 mt-0.5">{{ projet.client_name }}
+          {% if projet.commercial %}· <span class="text-foret-700">{{ projet.commercial.get_full_name }}</span>{% endif %}
+        </p>
+        {% if projet.lot %}
+        <span class="inline-block mt-1 text-xs bg-foret-100 text-foret-800 px-2 py-0.5 rounded">Lot : {{ projet.lot }}</span>
+        {% endif %}
+        {% if projet.adjudication %}
+        <span class="inline-block mt-1 ml-1 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Adjudication</span>
+        {% endif %}
+        <span class="inline-block mt-1 ml-1 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{{ projet.get_regime_display }}</span>
+      </div>
+
+      {# Bouton édit méta #}
+      {% if peut_ecrire %}
+      <button onclick="document.getElementById('modal-meta').showModal()"
+              class="btn-secondary btn-sm text-xs shrink-0">
+        ✎ Modifier infos projet
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── KPI Banner ── #}
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+
+    <div class="card p-3 border-t-2 border-foret-600 text-center">
+      <p class="text-xs text-ardoise-400 uppercase">Marché yc Av.</p>
+      <p class="font-bold text-ardoise-900 num mt-0.5">{{ kpis.marche_yc_avenants|floatformat:0|intcomma }}</p>
+    </div>
+    <div class="card p-3 border-t-2 border-blue-500 text-center">
+      <p class="text-xs text-ardoise-400 uppercase">Liv. Système</p>
+      <p class="font-bold text-blue-700 num mt-0.5">{{ kpis.cumul_liv_systeme|floatformat:0|intcomma }}</p>
+    </div>
+    <div class="card p-3 border-t-2 {% if kpis.reste_a_livrer > 0 %}border-amber-400{% else %}border-green-500{% endif %} text-center">
+      <p class="text-xs text-ardoise-400 uppercase">Reste à livrer</p>
+      <p class="font-bold num mt-0.5 {% if kpis.reste_a_livrer > 0 %}text-amber-700{% else %}text-green-600{% endif %}">
+        {{ kpis.reste_a_livrer|floatformat:0|intcomma }}
+      </p>
+    </div>
+    <div class="card p-3 border-t-2 {% if kpis.reste_a_attacher > 0 %}border-amber-400{% else %}border-gray-200{% endif %} text-center">
+      <p class="text-xs text-ardoise-400 uppercase">Reste à attacher</p>
+      <p class="font-bold num mt-0.5 {% if kpis.reste_a_attacher > 0 %}text-amber-600{% else %}text-ardoise-400{% endif %}">
+        {{ kpis.reste_a_attacher|floatformat:0|intcomma }}
+      </p>
+    </div>
+    <div class="card p-3 border-t-2 border-green-400 text-center">
+      <p class="text-xs text-ardoise-400 uppercase">Cumul Règlements</p>
+      <p class="font-bold text-green-700 num mt-0.5">{{ kpis.cumul_reglements|floatformat:0|intcomma }}</p>
+    </div>
+    <div class="card p-3 border-t-2 {% if kpis.alerte_acompte < 0 %}border-red-500{% else %}border-gray-200{% endif %} text-center">
+      <p class="text-xs text-ardoise-400 uppercase">Alerte Acompte</p>
+      <p class="font-bold num mt-0.5 {% if kpis.alerte_acompte < 0 %}text-red-600{% else %}text-ardoise-400{% endif %}">
+        {{ kpis.alerte_acompte|floatformat:0|intcomma }}
+      </p>
+    </div>
+
+  </div>
+
+  {# ── Avenants ── #}
+  <div class="card overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="font-semibold text-ardoise-800">Avenants</h3>
+      {% if peut_ecrire %}
+      <a href="{% url 'projects:avenant_create' projet.pk %}" class="btn-secondary btn-sm text-xs">+ Avenant</a>
+      {% endif %}
+    </div>
+    {% if avenants %}
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-xs uppercase text-ardoise-500 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-2 text-left">Libellé</th>
+          <th class="px-4 py-2 text-right">Montant HT</th>
+          <th class="px-4 py-2 text-left">Date</th>
+          <th class="px-4 py-2 text-left">Réf. doc</th>
+          {% if peut_ecrire %}<th class="px-4 py-2"></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for av in avenants %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2">{{ av.libelle }}</td>
+          <td class="px-4 py-2 text-right num font-semibold {% if av.montant_ht >= 0 %}text-foret-700{% else %}text-red-600{% endif %}">
+            {{ av.montant_ht|floatformat:0|intcomma }}
+          </td>
+          <td class="px-4 py-2 text-ardoise-500 text-xs">{{ av.date_avenant|date:"d/m/Y"|default:"—" }}</td>
+          <td class="px-4 py-2 text-ardoise-500 text-xs">{{ av.reference_doc|default:"—" }}</td>
+          {% if peut_ecrire %}
+          <td class="px-4 py-2 text-right">
+            <form method="post" action="{% url 'projects:avenant_delete' projet.pk av.pk %}"
+                  onsubmit="return confirm('Supprimer cet avenant ?')">
+              {% csrf_token %}
+              <button type="submit" class="text-red-400 hover:text-red-600 text-xs">Suppr.</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="bg-foret-50 border-t border-foret-200 text-xs font-bold text-foret-800">
+        <tr>
+          <td class="px-4 py-2">TOTAL AVENANTS</td>
+          <td class="px-4 py-2 text-right num">
+            {{ avenants|length }} avenant(s)
+          </td>
+          <td colspan="{% if peut_ecrire %}3{% else %}2{% endif %}"></td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="px-5 py-4 text-sm text-ardoise-400">Aucun avenant enregistré.</p>
+    {% endif %}
+  </div>
+
+  {# ── Historique des lignes ── #}
+  <div class="card overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="font-semibold text-ardoise-800">Historique des décomptes</h3>
+      <span class="text-xs text-ardoise-400">{{ lignes|length }} ligne(s)</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-xs">
+        <thead class="bg-gray-50 text-[10px] uppercase text-ardoise-500 border-b border-gray-200">
+          <tr>
+            <th class="px-3 py-2 text-center">Dernier</th>
+            <th class="px-3 py-2 text-left">N° décompte</th>
+            <th class="px-3 py-2 text-left">Type</th>
+            <th class="px-3 py-2 text-left">Date facture</th>
+            <th class="px-3 py-2 text-left">Réf. Pièce</th>
+            <th class="px-3 py-2 text-right">Attachement</th>
+            <th class="px-3 py-2 text-right">RG</th>
+            <th class="px-3 py-2 text-right">RF</th>
+            <th class="px-3 py-2 text-right">Prorata</th>
+            <th class="px-3 py-2 text-right">Autre</th>
+            <th class="px-3 py-2 text-right">Amort. Acompte</th>
+            <th class="px-3 py-2 text-right">Acompte</th>
+            <th class="px-3 py-2 text-right">HT</th>
+            <th class="px-3 py-2 text-right">TTC</th>
+            <th class="px-3 py-2 text-right">Règlement</th>
+            <th class="px-3 py-2 text-right">Liv. Système</th>
+            <th class="px-3 py-2 text-left">S/A</th>
+            <th class="px-3 py-2 text-left">Saisi par</th>
+            {% if peut_ecrire %}<th class="px-3 py-2"></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for lg in lignes %}
+          <tr class="hover:bg-gray-50 {% if lg.is_dernier_decompte %}bg-foret-50/40{% endif %}">
+            <td class="px-3 py-2 text-center">
+              {% if lg.is_dernier_decompte %}
+              <span class="inline-block w-2 h-2 rounded-full bg-foret-500" title="Dernier décompte actif"></span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-2 font-mono text-ardoise-700">{{ lg.numero_decompte|default:"—" }}</td>
+            <td class="px-3 py-2">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-medium
+                {% if lg.type_operation == 'DECOMPTE' %}bg-blue-100 text-blue-700
+                {% elif lg.type_operation == 'FACTURE' %}bg-purple-100 text-purple-700
+                {% elif lg.type_operation == 'AVOIR' %}bg-red-100 text-red-700
+                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ lg.get_type_operation_display }}
+              </span>
+            </td>
+            <td class="px-3 py-2 text-ardoise-500">{{ lg.date_edition_facture|date:"d/m/Y"|default:"—" }}</td>
+            <td class="px-3 py-2 text-ardoise-400 text-xs font-mono">{{ lg.ref_piece|default:"—" }}</td>
+            <td class="px-3 py-2 text-right num">{{ lg.attachement|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num">{{ lg.rg|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num">{{ lg.rf|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num">{{ lg.prorata|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num text-ardoise-500">{{ lg.autre|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num text-purple-600">{{ lg.amortissement_acompte|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num text-purple-700 font-semibold">{{ lg.acompte|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num font-semibold text-ardoise-800">{{ lg.ht|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num text-ardoise-600">{{ lg.ttc|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num text-green-700">{{ lg.reglement|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-right num text-blue-700">{{ lg.liv_systeme|floatformat:0|intcomma }}</td>
+            <td class="px-3 py-2 text-ardoise-400">
+              {% if lg.semaine %}S{{ lg.semaine }}/{{ lg.annee }}{% else %}—{% endif %}
+            </td>
+            <td class="px-3 py-2 text-ardoise-500">{{ lg.saisie_par.get_full_name|default:"—" }}</td>
+            {% if peut_ecrire %}
+            <td class="px-3 py-2">
+              <a href="{% url 'projects:decompte_ligne_edit' projet.pk lg.pk %}"
+                 class="text-foret-600 hover:text-foret-800 font-medium">Éditer</a>
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if peut_ecrire %}19{% else %}18{% endif %}"
+                class="px-4 py-8 text-center text-ardoise-400">
+              Aucune ligne de décompte.
+              {% if peut_ecrire %}
+              <a href="{% url 'projects:decompte_saisie' projet.pk %}" class="text-foret-600 underline">Saisir le premier décompte</a>.
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+{# ── Modal méta projet ── #}
+{% if peut_ecrire %}
+<dialog id="modal-meta"
+        class="rounded-xl shadow-2xl w-full max-w-2xl p-0 backdrop:bg-black/40">
+  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="font-semibold text-ardoise-800">Informations projet — {{ projet.reference }}</h3>
+    <button onclick="document.getElementById('modal-meta').close()"
+            class="text-ardoise-400 hover:text-ardoise-700 text-xl leading-none">&times;</button>
+  </div>
+  <form method="post" class="px-6 py-5 space-y-4">
+    {% csrf_token %}
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="form-label">Commercial</label>
+        {{ meta_form.commercial }}
+      </div>
+      <div>
+        <label class="form-label">Lot</label>
+        {{ meta_form.lot }}
+      </div>
+      <div class="flex items-center gap-2 col-span-2">
+        {{ meta_form.adjudication }}
+        <label class="text-sm text-ardoise-700">Marché par adjudication</label>
+      </div>
+      <div>
+        <label class="form-label">Régime TVA</label>
+        {{ meta_form.regime }}
+      </div>
+    </div>
+
+    <h4 class="text-xs font-semibold uppercase text-ardoise-500 border-t border-gray-200 pt-4 mt-2">
+      Soldes d'ouverture (historique avant migration)
+    </h4>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_attachement.label }}</label>
+        {{ meta_form.init_attachement }}
+      </div>
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_rg.label }}</label>
+        {{ meta_form.init_rg }}
+      </div>
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_rf.label }}</label>
+        {{ meta_form.init_rf }}
+      </div>
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_prorata.label }}</label>
+        {{ meta_form.init_prorata }}
+      </div>
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_acompte.label }}</label>
+        {{ meta_form.init_acompte }}
+      </div>
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_reglements.label }}</label>
+        {{ meta_form.init_reglements }}
+      </div>
+      <div>
+        <label class="form-label text-xs">{{ meta_form.init_liv_systeme.label }}</label>
+        {{ meta_form.init_liv_systeme }}
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-3 border-t border-gray-200 pt-4">
+      <button type="button" onclick="document.getElementById('modal-meta').close()"
+              class="btn-secondary btn-sm">Annuler</button>
+      <button type="submit" class="btn-primary btn-sm">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+
+<style>.num { font-variant-numeric: tabular-nums; }</style>
+{% endblock %}

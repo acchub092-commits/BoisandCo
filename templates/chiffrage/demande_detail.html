@@ -29,6 +29,8 @@
           {% elif demande.statut == 'REVISION_DG' %}bg-orange-100 text-orange-800
           {% elif demande.statut == 'DEVIS_VALIDE' or demande.statut == 'TRANSMIS' or demande.statut == 'ACCEPTE' %}bg-green-100 text-green-800
           {% elif demande.statut == 'REFUSE_CLI' %}bg-red-100 text-red-800
+          {% elif demande.statut == 'REVISION_DEMANDEE' %}bg-amber-100 text-amber-800
+          {% elif demande.statut == 'REVISION_INFO_DC' %}bg-orange-100 text-orange-800
           {% else %}bg-ardoise-100 text-ardoise-600{% endif %}"
           {% if demande.statut == 'SOUMIS_RM' %}style="background-color:#ede9fe; color:#5b21b6;"{% endif %}>
           {{ demande.get_statut_display }}
@@ -164,9 +166,11 @@
         <div class="flex flex-col items-center gap-1.5 w-20 text-center">
           <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center
             {% if s == 'ACCEPTE' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' %}border-foret-500 bg-foret-500 text-white
+            {% elif s == 'REVISION_DEMANDEE' or s == 'REVISION_INFO_DC' %}border-amber-500 bg-amber-500 text-white ring-4 ring-amber-100
             {% elif s == 'REFUSE_CLI' or s == 'ARCHIVE' %}border-ardoise-400 bg-ardoise-400 text-white
             {% else %}border-ardoise-300 bg-white text-ardoise-400{% endif %}">
             {% if s == 'ACCEPTE' or s == 'DEVIS_VALIDE' or s == 'TRANSMIS' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            {% elif s == 'REVISION_DEMANDEE' or s == 'REVISION_INFO_DC' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             {% elif s == 'REFUSE_CLI' or s == 'ARCHIVE' %}<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
             {% else %}<span class="text-xs font-bold">6</span>{% endif %}
           </div>
@@ -175,6 +179,8 @@
             {% if s == 'ACCEPTE' %}<span class="text-foret-600 font-semibold">Accepté ✓</span>
             {% elif s == 'TRANSMIS' %}<span class="text-foret-600">Transmis</span>
             {% elif s == 'DEVIS_VALIDE' %}<span class="text-foret-600">Validé DG</span>
+            {% elif s == 'REVISION_DEMANDEE' %}<span class="text-amber-600 font-semibold">Révision DC</span>
+            {% elif s == 'REVISION_INFO_DC' %}<span class="text-orange-600 font-semibold">Info requise</span>
             {% elif s == 'REFUSE_CLI' %}<span class="text-red-500">Refusé</span>
             {% elif s == 'ARCHIVE' %}<span class="text-ardoise-400">Archivé</span>
             {% else %}<span class="text-ardoise-300">—</span>{% endif %}
@@ -934,9 +940,73 @@
               <button type="submit" name="action" value="accepte" class="w-full py-2.5 rounded-lg bg-foret-600 text-white text-sm font-semibold hover:bg-foret-700 transition-colors">Le client a accepté ✓</button>
               <button type="submit" name="action" value="refuse" class="w-full py-2 rounded-lg border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors">Le client a refusé</button>
             </form>
+            {# Révision technique/prix #}
+            <hr class="border-ardoise-100">
+            <div x-data="{ showRevision: false }">
+              <button @click="showRevision = !showRevision" type="button"
+                      class="w-full py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Demander une révision technique / prix
+              </button>
+              <div x-show="showRevision" x-transition class="mt-2">
+                <form method="post" action="{% url 'chiffrage:revision' demande.pk %}" enctype="multipart/form-data" class="space-y-2">
+                  {% csrf_token %}
+                  <textarea name="motif" rows="3" required placeholder="Décrivez la révision souhaitée (raison, éléments à modifier…)"
+                            class="w-full rounded-lg border border-ardoise-200 px-3 py-2 text-xs text-ardoise-700 focus:outline-none focus:ring-1 focus:ring-amber-300 resize-none"></textarea>
+                  <label class="block text-xs text-ardoise-500">Pièce jointe (optionnelle)</label>
+                  <input type="file" name="fichier"
+                         class="w-full text-xs text-ardoise-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-ardoise-300 file:text-xs file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
+                  <button type="submit" class="w-full py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors">
+                    Soumettre la révision au DC
+                  </button>
+                </form>
+              </div>
+            </div>
             {% endif %}
           </div>
         </div>
+
+        {# ── État : révision en attente de décision DC ── #}
+        {% elif demande.statut == 'REVISION_DEMANDEE' %}
+        <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-amber-400">
+          <div class="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h3 class="text-sm font-bold text-amber-800">Révision en attente de validation</h3>
+          </div>
+          <div class="px-5 py-4 space-y-2">
+            <p class="text-xs text-ardoise-500 font-semibold uppercase tracking-wide">Votre demande</p>
+            <p class="text-sm text-ardoise-700 whitespace-pre-line">{{ demande.revision_motif }}</p>
+            <p class="text-xs text-amber-600 mt-3 text-center">En attente de la décision du Directeur Commercial</p>
+          </div>
+        </div>
+
+        {# ── État : DC demande des infos complémentaires ── #}
+        {% elif demande.statut == 'REVISION_INFO_DC' %}
+        <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-orange-400">
+          <div class="px-5 py-3 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
+            <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h3 class="text-sm font-bold text-orange-800">Informations complémentaires requises</h3>
+          </div>
+          <div class="px-5 py-4 space-y-3">
+            <div class="p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <p class="text-xs text-orange-600 font-semibold mb-1">Question du Directeur Commercial</p>
+              <p class="text-sm text-orange-800 italic">« {{ demande.revision_commentaire_dc }} »</p>
+            </div>
+            <form method="post" action="{% url 'chiffrage:revision' demande.pk %}" enctype="multipart/form-data" class="space-y-2">
+              {% csrf_token %}
+              <label class="block text-xs font-semibold text-ardoise-600">Votre réponse / compléments d'information</label>
+              <textarea name="motif" rows="3" required placeholder="Apportez les précisions demandées…"
+                        class="w-full rounded-lg border border-ardoise-200 px-3 py-2 text-xs text-ardoise-700 focus:outline-none focus:ring-1 focus:ring-orange-300 resize-none"></textarea>
+              <label class="block text-xs text-ardoise-500">Pièce jointe (optionnelle)</label>
+              <input type="file" name="fichier"
+                     class="w-full text-xs text-ardoise-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-ardoise-300 file:text-xs file:bg-white file:text-ardoise-700 hover:file:bg-ardoise-50 cursor-pointer">
+              <button type="submit" class="w-full py-2.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors">
+                Transmettre les informations au DC
+              </button>
+            </form>
+          </div>
+        </div>
+
         {% elif demande.statut == 'ACCEPTE' %}
         <div class="bg-foret-50 border border-foret-200 rounded-xl p-5 text-center">
           <div class="w-12 h-12 rounded-full bg-foret-100 flex items-center justify-center mx-auto mb-2">
@@ -951,6 +1021,67 @@
           <p class="text-sm text-red-500 mt-1">Le client n'a pas retenu cette offre.</p>
         </div>
         {% endif %}
+      {% endif %}
+
+      {# ── PANEL DC — décision révision ─────────────────────────── #}
+      {% if demande.statut == 'REVISION_DEMANDEE' and user.role == 'MANAGER' or demande.statut == 'REVISION_DEMANDEE' and user.is_superuser %}
+      <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden border-l-4 border-amber-500" x-data="{ showInfo: false, showRefus: false }">
+        <div class="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+          <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <h3 class="text-sm font-bold text-amber-800">Révision technique/prix — Décision DC</h3>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+          {# Motif du commercial #}
+          <div class="p-3 bg-ardoise-50 rounded-lg">
+            <p class="text-xs font-semibold text-ardoise-500 uppercase tracking-wide mb-1">Motif de révision (commercial)</p>
+            <p class="text-sm text-ardoise-700 whitespace-pre-line">{{ demande.revision_motif }}</p>
+          </div>
+
+          {# Approuver #}
+          <form method="post" action="{% url 'chiffrage:revision_dc' demande.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="valider">
+            <button type="submit" class="w-full py-2.5 rounded-lg bg-foret-500 text-white text-sm font-semibold hover:bg-foret-600 transition-colors flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              Approuver — Transmettre aux Méthodes
+            </button>
+          </form>
+
+          {# Demande d'info #}
+          <div>
+            <button @click="showInfo = !showInfo; showRefus = false" type="button"
+                    class="w-full py-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-colors">
+              Demander des informations complémentaires
+            </button>
+            <div x-show="showInfo" x-transition class="mt-2">
+              <form method="post" action="{% url 'chiffrage:revision_dc' demande.pk %}" class="space-y-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="info">
+                <textarea name="commentaire" rows="3" required placeholder="Précisez les informations attendues…"
+                          class="w-full rounded-lg border border-ardoise-200 px-3 py-2 text-xs text-ardoise-700 focus:outline-none focus:ring-1 focus:ring-amber-300 resize-none"></textarea>
+                <button type="submit" class="w-full py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors">Envoyer la demande</button>
+              </form>
+            </div>
+          </div>
+
+          {# Refuser #}
+          <div>
+            <button @click="showRefus = !showRefus; showInfo = false" type="button"
+                    class="w-full py-2 rounded-lg border border-ardoise-200 text-ardoise-500 text-sm font-medium hover:bg-ardoise-50 transition-colors">
+              Refuser la révision
+            </button>
+            <div x-show="showRefus" x-transition class="mt-2">
+              <form method="post" action="{% url 'chiffrage:revision_dc' demande.pk %}" class="space-y-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="refuser">
+                <textarea name="commentaire" rows="3" required placeholder="Motif du refus…"
+                          class="w-full rounded-lg border border-ardoise-200 px-3 py-2 text-xs text-ardoise-700 focus:outline-none focus:ring-1 focus:ring-red-300 resize-none"></textarea>
+                <button type="submit" class="w-full py-2 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">Confirmer le refus</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
       {% endif %}
 
       {# ── FIL DE DISCUSSION ────────────────────────────────────── #}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Modifier l'opportunité{% else %}Saisie Pipeline{% endif %}{% endblock %}
+{% block page_title %}{% if is_edit %}Modifier l'opportunité{% else %}Nouvelle opportunité{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:analyse_pipeline' %}" class="btn-secondary btn-sm">← Analyse Pipeline</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <form method="post" class="space-y-5">
+    {% csrf_token %}
+
+    {# Champ commercial caché si commercial #}
+    {% if form.commercial.is_hidden %}{{ form.commercial }}{% endif %}
+
+    {# ── 1. Identification ──────────────────────────────────────────────────── #}
+    <div class="card space-y-4">
+      <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+        Identification
+      </h2>
+      {% if not form.commercial.is_hidden %}
+      <div>
+        <label class="form-label" for="{{ form.commercial.id_for_label }}">
+          {{ form.commercial.label }} <span class="text-red-500">*</span>
+        </label>
+        {{ form.commercial }}
+        {% if form.commercial.errors %}<p class="text-xs text-red-500 mt-1">{{ form.commercial.errors.0 }}</p>{% endif %}
+      </div>
+      {% endif %}
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label" for="{{ form.client.id_for_label }}">
+            {{ form.client.label }} <span class="text-red-500">*</span>
+          </label>
+          {{ form.client }}
+          {% if form.client.errors %}<p class="text-xs text-red-500 mt-1">{{ form.client.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.projet.id_for_label }}">
+            {{ form.projet.label }} <span class="text-red-500">*</span>
+          </label>
+          {{ form.projet }}
+          {% if form.projet.errors %}<p class="text-xs text-red-500 mt-1">{{ form.projet.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.segment.id_for_label }}">
+            {{ form.segment.label }} <span class="text-red-500">*</span>
+          </label>
+          {{ form.segment }}
+          {% if form.segment.errors %}<p class="text-xs text-red-500 mt-1">{{ form.segment.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.statut.id_for_label }}">
+            {{ form.statut.label }} <span class="text-red-500">*</span>
+          </label>
+          {{ form.statut }}
+          {% if form.statut.errors %}<p class="text-xs text-red-500 mt-1">{{ form.statut.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# ── 2. Localisation ─────────────────────────────────────────────────────── #}
+    <div class="card space-y-4">
+      <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+        Localisation
+      </h2>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="form-label" for="{{ form.ville.id_for_label }}">{{ form.ville.label }}</label>
+          {{ form.ville }}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.region.id_for_label }}">{{ form.region.label }}</label>
+          {{ form.region }}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.pays.id_for_label }}">{{ form.pays.label }}</label>
+          {{ form.pays }}
+        </div>
+      </div>
+    </div>
+
+    {# ── 3. Qualification ────────────────────────────────────────────────────── #}
+    <div class="card space-y-4">
+      <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+        Qualification commerciale
+      </h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label" for="{{ form.potentiel_mad.id_for_label }}">{{ form.potentiel_mad.label }}</label>
+          {{ form.potentiel_mad }}
+          {% if form.potentiel_mad.errors %}<p class="text-xs text-red-500 mt-1">{{ form.potentiel_mad.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.probabilite.id_for_label }}">{{ form.probabilite.label }}</label>
+          {{ form.probabilite }}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.risque.id_for_label }}">{{ form.risque.label }}</label>
+          {{ form.risque }}
+        </div>
+      </div>
+      <div>
+        <label class="form-label" for="{{ form.commentaire_terrain.id_for_label }}">{{ form.commentaire_terrain.label }}</label>
+        {{ form.commentaire_terrain }}
+      </div>
+    </div>
+
+    {# ── 4. Suivi & planning ──────────────────────────────────────────────────── #}
+    <div class="card space-y-4">
+      <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">4</span>
+        Suivi & planning
+      </h2>
+      <div>
+        <label class="form-label" for="{{ form.prochaine_action.id_for_label }}">{{ form.prochaine_action.label }}</label>
+        {{ form.prochaine_action }}
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label" for="{{ form.date_action.id_for_label }}">{{ form.date_action.label }}</label>
+          {{ form.date_action }}
+        </div>
+        <div>
+          <label class="form-label" for="{{ form.date_closing_est.id_for_label }}">{{ form.date_closing_est.label }}</label>
+          {{ form.date_closing_est }}
+        </div>
+      </div>
+    </div>
+
+    {# ── Actions ─────────────────────────────────────────────────────────────── #}
+    <div class="flex items-center justify-end gap-3">
+      <a href="{% url 'crm:analyse_pipeline' %}" class="btn-secondary">Annuler</a>
+      <button type="submit" class="btn-primary">
+        {% if is_edit %}Enregistrer les modifications{% else %}Créer l'opportunité{% endif %}
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

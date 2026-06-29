@@ -696,6 +696,142 @@ class ResultatView(ChiffrageRequiredMixin, View):
 
 
 # ---------------------------------------------------------------------------
+# Révision technique/prix — demande par le commercial
+# ---------------------------------------------------------------------------
+
+class RevisionDemandeView(ChiffrageRequiredMixin, View):
+    """Commercial demande une révision technique ou de prix après transmission au client."""
+
+    STATUTS_AUTORISÉS = {
+        DemandeChiffrage.Statut.TRANSMIS,
+        DemandeChiffrage.Statut.REVISION_INFO_DC,
+    }
+
+    def post(self, request, pk):
+        demande = get_object_or_404(DemandeChiffrage, pk=pk)
+
+        if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            django_messages.error(request, "Vous n'avez pas accès à cette demande.")
+            return redirect('chiffrage:detail', pk=pk)
+
+        if demande.statut not in self.STATUTS_AUTORISÉS:
+            django_messages.error(request, "Une révision ne peut être demandée que depuis le statut « Transmis au client ».")
+            return redirect('chiffrage:detail', pk=pk)
+
+        motif = request.POST.get('motif', '').strip()
+        if not motif:
+            django_messages.error(request, 'Le motif de révision est obligatoire.')
+            return redirect('chiffrage:detail', pk=pk)
+
+        ancien = demande.statut
+        demande.revision_motif = motif
+        demande.revision_commentaire_dc = ''   # remet à zéro le commentaire DC sur re-soumission
+        demande.statut = DemandeChiffrage.Statut.REVISION_DEMANDEE
+        demande.save()
+
+        # Pièce jointe optionnelle
+        fichier = request.FILES.get('fichier')
+        if fichier:
+            FichierChiffrage.objects.create(
+                demande=demande, fichier=fichier, nom=fichier.name,
+                uploaded_by=request.user,
+            )
+
+        _log(demande, request.user, 'Révision technique/prix demandée', detail=motif,
+             ancien=ancien, nouveau=DemandeChiffrage.Statut.REVISION_DEMANDEE)
+
+        dc_users = User.objects.filter(role='MANAGER', is_active_employee=True)
+        _notify(dc_users,
+            f'Révision demandée — {demande.reference}',
+            f'{request.user.get_full_name()} demande une révision : {motif[:120]}',
+            sender=request.user, demande=demande)
+
+        django_messages.success(request, 'Demande de révision transmise au Directeur Commercial.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Révision technique/prix — décision du Directeur Commercial
+# ---------------------------------------------------------------------------
+
+class RevisionDCView(ChiffrageRequiredMixin, View):
+    """DC valide, demande des infos ou refuse une révision commerciale."""
+
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role != 'MANAGER':
+            django_messages.error(request, "Action réservée au Directeur Commercial.")
+            return redirect('chiffrage:detail', pk=pk)
+
+        demande = get_object_or_404(
+            DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.REVISION_DEMANDEE
+        )
+        action      = request.POST.get('action', '').strip()
+        commentaire = request.POST.get('commentaire', '').strip()
+        ancien      = demande.statut
+
+        if action == 'valider':
+            # DC approuve → retour circuit Méthodes (comme après validation DC normale)
+            demande.statut           = DemandeChiffrage.Statut.VALIDEE_DC
+            demande.validated_by_dc  = request.user
+            demande.validated_dc_at  = timezone.now()
+            demande.save()
+
+            _log(demande, request.user, 'Révision approuvée par DC — transmis aux Méthodes',
+                 ancien=ancien, nouveau=DemandeChiffrage.Statut.VALIDEE_DC)
+
+            resp_methodes = User.objects.filter(role='RESP_METHODES', is_active_employee=True)
+            _notify(resp_methodes,
+                f'Révision à chiffrer — {demande.reference}',
+                f'Révision approuvée par {request.user.get_full_name()}. Mise à jour du devis requise.',
+                sender=request.user, demande=demande)
+
+            django_messages.success(request, 'Révision approuvée — transmise au Responsable Méthodes.')
+
+        elif action == 'info':
+            if not commentaire:
+                django_messages.error(request, 'Un commentaire est requis pour demander des informations.')
+                return redirect('chiffrage:detail', pk=pk)
+
+            demande.revision_commentaire_dc = commentaire
+            demande.statut = DemandeChiffrage.Statut.REVISION_INFO_DC
+            demande.save()
+
+            _log(demande, request.user, 'Informations complémentaires demandées (révision)',
+                 detail=commentaire, ancien=ancien, nouveau=DemandeChiffrage.Statut.REVISION_INFO_DC)
+
+            _notify([demande.commercial],
+                f'Informations requises — {demande.reference}',
+                f'{request.user.get_full_name()} demande des précisions : {commentaire[:120]}',
+                sender=request.user, demande=demande)
+
+            django_messages.success(request, 'Demande d\'informations complémentaires transmise au commercial.')
+
+        elif action == 'refuser':
+            if not commentaire:
+                django_messages.error(request, 'Un motif de refus est requis.')
+                return redirect('chiffrage:detail', pk=pk)
+
+            demande.statut = DemandeChiffrage.Statut.TRANSMIS   # devis initial toujours valable
+            demande.revision_motif = ''
+            demande.save()
+
+            _log(demande, request.user, 'Révision refusée par DC', detail=commentaire,
+                 ancien=ancien, nouveau=DemandeChiffrage.Statut.TRANSMIS)
+
+            _notify([demande.commercial],
+                f'Révision refusée — {demande.reference}',
+                f'{request.user.get_full_name()} a refusé la révision : {commentaire[:120]}',
+                sender=request.user, demande=demande)
+
+            django_messages.success(request, 'Demande de révision refusée — devis initial maintenu.')
+
+        else:
+            django_messages.error(request, 'Action inconnue.')
+
+        return redirect('chiffrage:detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
 # Fil de discussion
 # ---------------------------------------------------------------------------
 

@@ -28,9 +28,11 @@ class DemandeChiffrage(models.Model):
         REVISION_DG  = 'REVISION_DG',  'En révision — Retour DG'
         DEVIS_VALIDE = 'DEVIS_VALIDE', 'Devis validé'
         TRANSMIS     = 'TRANSMIS',     'Transmis au client'
-        ACCEPTE      = 'ACCEPTE',      'Accepté par le client'
-        REFUSE_CLI   = 'REFUSE_CLI',   'Refusé par le client'
-        ARCHIVE      = 'ARCHIVE',      'Archivé'
+        ACCEPTE           = 'ACCEPTE',           'Accepté par le client'
+        REFUSE_CLI        = 'REFUSE_CLI',        'Refusé par le client'
+        ARCHIVE           = 'ARCHIVE',           'Archivé'
+        REVISION_DEMANDEE = 'REVISION_DEMANDEE', 'Révision demandée — En attente DC'
+        REVISION_INFO_DC  = 'REVISION_INFO_DC',  'Révision — Informations complémentaires demandées'
 
     class Urgence(models.TextChoices):
         STANDARD = 'STANDARD', 'Standard'
@@ -98,6 +100,10 @@ class DemandeChiffrage(models.Model):
     # Résultat financier (rempli par Méthodes, visible commercial qu'après validation DG)
     montant_ht = models.DecimalField(max_digits=14, decimal_places=2,
                                      null=True, blank=True, verbose_name='Montant HT (MAD)')
+
+    # Révision technique/prix (demandée par le commercial après transmission au client)
+    revision_motif          = models.TextField(blank=True, default='', verbose_name='Motif de révision')
+    revision_commentaire_dc = models.TextField(blank=True, default='', verbose_name='Commentaire DC (révision)')
 
     # Timestamps
     created_at         = models.DateTimeField(auto_now_add=True)

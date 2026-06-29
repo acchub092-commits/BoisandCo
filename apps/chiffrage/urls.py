@@ -36,6 +36,10 @@ urlpatterns = [
     # Visionneuse sécurisée — devis final
     path('<int:pk>/devis/<int:fichier_pk>/apercu/', views.DevisPreviewView.as_view(), name='devis_preview'),
 
+    # Révision technique/prix
+    path('<int:pk>/revision/',    views.RevisionDemandeView.as_view(), name='revision'),
+    path('<int:pk>/revision-dc/', views.RevisionDCView.as_view(),      name='revision_dc'),
+
     # Téléchargement sécurisé (force attachment)
     path('<int:pk>/fichier/<int:fichier_pk>/telecharger/', views.FichierDownloadView.as_view(), name='fichier_download'),
 

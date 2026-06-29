@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Modifier projet{% else %}Nouveau projet décompte{% endif %}{% endblock %}
+{% block page_title %}{% if is_edit %}Modifier — {{ form.instance.reference }}{% else %}Nouveau projet décompte{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:decompte_dashboard' %}" class="btn-secondary btn-sm">← Dashboard</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="card p-6">
+    <h3 class="font-semibold text-ardoise-800 mb-5 pb-3 border-b border-gray-200">
+      {% if is_edit %}Modifier le projet{% else %}Créer un nouveau projet décompte{% endif %}
+    </h3>
+
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <h4 class="text-xs font-semibold uppercase text-ardoise-500 mb-3">Identification</h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Référence <span class="text-red-500">*</span></label>
+            {{ form.reference }}
+            {% if form.reference.errors %}<p class="form-error">{{ form.reference.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Client <span class="text-red-500">*</span></label>
+            {{ form.client_name }}
+            {% if form.client_name.errors %}<p class="form-error">{{ form.client_name.errors.0 }}</p>{% endif %}
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Intitulé projet</label>
+            {{ form.nom_projet }}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-semibold uppercase text-ardoise-500 mb-3 border-t border-gray-100 pt-4">Responsables</h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Commercial</label>
+            {{ form.commercial }}
+          </div>
+          <div>
+            <label class="form-label">Chef de projet</label>
+            {{ form.chef_de_projet }}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-semibold uppercase text-ardoise-500 mb-3 border-t border-gray-100 pt-4">Données marché</h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Montant Marché HT (MAD) <span class="text-red-500">*</span></label>
+            {{ form.montant_marche_ht }}
+            {% if form.montant_marche_ht.errors %}<p class="form-error">{{ form.montant_marche_ht.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="form-label">Lot</label>
+            {{ form.lot }}
+          </div>
+          <div class="flex items-center gap-2">
+            {{ form.adjudication }}
+            <label class="text-sm text-ardoise-700">Marché par adjudication</label>
+          </div>
+          <div>
+            <label class="form-label">Régime TVA</label>
+            {{ form.regime }}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="text-xs font-semibold uppercase text-ardoise-500 mb-3 border-t border-gray-100 pt-4">
+          Soldes d'ouverture (= 0 si import complet des décomptes)
+        </h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="form-label text-xs">{{ form.init_attachement.label }}</label>{{ form.init_attachement }}</div>
+          <div><label class="form-label text-xs">{{ form.init_rg.label }}</label>{{ form.init_rg }}</div>
+          <div><label class="form-label text-xs">{{ form.init_rf.label }}</label>{{ form.init_rf }}</div>
+          <div><label class="form-label text-xs">{{ form.init_prorata.label }}</label>{{ form.init_prorata }}</div>
+          <div><label class="form-label text-xs">{{ form.init_acompte.label }}</label>{{ form.init_acompte }}</div>
+          <div><label class="form-label text-xs">{{ form.init_reglements.label }}</label>{{ form.init_reglements }}</div>
+          <div><label class="form-label text-xs">{{ form.init_liv_systeme.label }}</label>{{ form.init_liv_systeme }}</div>
+        </div>
+      </div>
+
+      {% if form.non_field_errors %}
+      <div class="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="flex justify-between border-t border-gray-200 pt-4">
+        <a href="{% url 'projects:decompte_dashboard' %}" class="btn-secondary btn-sm">Annuler</a>
+        <button type="submit" class="btn-primary">
+          {% if is_edit %}Enregistrer{% else %}Créer le projet{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

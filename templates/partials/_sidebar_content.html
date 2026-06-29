@@ -95,46 +95,98 @@
   </a>
   {% endif %}
 
-  {# ── CRM Dashboard ── #}
-  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
-  <a href="{% url 'crm:crm_dashboard' %}"
-     class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' in request.path %}nav-link-active{% endif %}"
-     :class="sidebarOpen ? '' : 'justify-center px-0'"
-     title="Dashboard CRM">
-    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-    </svg>
-    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Dashboard CRM</span>
-  </a>
-  {% endif %}
-
-  {# ── Tableau COMEX ── #}
-  {% if user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser or user.role == 'ADMIN' %}
-  <a href="{% url 'crm:comex' %}"
-     class="nav-link {% if 'comex' in request.path %}nav-link-active{% endif %}"
-     :class="sidebarOpen ? '' : 'justify-center px-0'"
-     title="Tableau COMEX">
-    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-    </svg>
-    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Tableau COMEX</span>
-  </a>
-  {% endif %}
-
-  {# ── Pipeline commercial ── #}
+  {# ── CRM (ex-Pipeline commercial) ── #}
   {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
   <a href="{% url 'crm:pipeline' %}"
-     class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' not in request.path and 'agenda' not in request.path %}nav-link-active{% endif %}"
+     class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' not in request.path and 'agenda' not in request.path and 'comex' not in request.path %}nav-link-active{% endif %}"
      :class="sidebarOpen ? '' : 'justify-center px-0'"
-     title="Pipeline commercial">
+     title="CRM">
     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
     </svg>
-    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Pipeline</span>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">CRM</span>
   </a>
+
+  {# ── Tdb CRM (Dashboard CRM) — en dessous de CRM ── #}
+  <a href="{% url 'crm:crm_dashboard' %}"
+     class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Tdb CRM">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Tdb CRM</span>
+  </a>
+
+  {# ── Analyse Pipeline ── #}
+  <a href="{% url 'crm:analyse_pipeline' %}"
+     class="nav-link {% if 'analyse-pipeline' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Analyse Pipeline">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Analyse Pipeline</span>
+  </a>
+  {% endif %}
+
+  {# ── Performance commercial (ex-Tableau COMEX) ── #}
+  {% if user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser or user.role == 'ADMIN' %}
+  <a href="{% url 'crm:comex' %}"
+     class="nav-link {% if 'comex' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Performance commercial">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Performance commercial</span>
+  </a>
+  {% endif %}
+
+  {# ── Suivi Financier ── #}
+  {% if user.role == 'ADV' or user.role == 'DIRECTEUR' or user.role == 'MANAGER' or user.role == 'FINANCE' or user.role == 'ADMIN' or user.is_superuser %}
+
+  {# Séparateur section Suivi Financier #}
+  <div class="pt-3 pb-1">
+    <div :class="sidebarOpen ? 'px-2' : 'px-1'">
+      <span :class="sidebarOpen ? 'block' : 'hidden'"
+            class="text-[10px] font-semibold uppercase tracking-widest text-creme-200/35">
+        Suivi Financier
+      </span>
+      <div :class="sidebarOpen ? 'hidden' : 'block'" class="border-t border-creme-200/10 mx-1"></div>
+    </div>
+  </div>
+
+  {# Dashboard Décomptes #}
+  <a href="{% url 'projects:decompte_dashboard' %}"
+     class="nav-link {% if 'decomptes' in request.path and 'import' not in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Dashboard Décomptes">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Dashboard Décomptes</span>
+  </a>
+
+  {# Import CSV Décomptes — ADV et ADMIN uniquement #}
+  {% if user.role == 'ADV' or user.role == 'ADMIN' or user.is_superuser %}
+  <a href="{% url 'projects:decompte_import_csv' %}"
+     class="nav-link {% if 'decomptes/import' in request.path %}nav-link-active{% endif %}"
+     :class="sidebarOpen ? '' : 'justify-center px-0'"
+     title="Import CSV Décomptes">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+    </svg>
+    <span :class="sidebarOpen ? 'block' : 'hidden'" class="truncate">Import CSV Décomptes</span>
+  </a>
+  {% endif %}
+
   {% endif %}
 
   {# ── Séparateur section outils ── #}

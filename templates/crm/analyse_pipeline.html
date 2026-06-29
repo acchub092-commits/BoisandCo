@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Analyse Pipeline{% endblock %}
+{% block page_title %}Analyse Pipeline Commercial{% endblock %}
+
+{% block topbar_actions %}
+<div class="flex items-center gap-2">
+  {% if is_director %}
+  <a href="{% url 'crm:import_pipeline' %}" class="btn-secondary btn-sm">
+    <svg class="w-4 h-4 mr-1 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+    </svg>
+    Importer CSV
+  </a>
+  {% endif %}
+  <a href="{% url 'crm:saisie_pipeline' %}" class="btn-primary btn-sm">+ Nouvelle opportunité</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  {# ── KPI Cards ──────────────────────────────────────────────────────────── #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+    <div class="card flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-foret-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-[11px] text-ardoise-500 uppercase tracking-wide font-medium">Pipeline Total</p>
+        <p class="text-lg font-bold text-ardoise-800">{{ total_mad|floatformat:0|intcomma }} MAD</p>
+      </div>
+    </div>
+
+    <div class="card flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-[11px] text-ardoise-500 uppercase tracking-wide font-medium">Pipeline Pondéré</p>
+        <p class="text-lg font-bold text-ardoise-800">{{ total_pond|floatformat:0|intcomma }} MAD</p>
+      </div>
+    </div>
+
+    <div class="card flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-[11px] text-ardoise-500 uppercase tracking-wide font-medium">Projets Actifs</p>
+        <p class="text-lg font-bold text-ardoise-800">{{ nb_actifs }}</p>
+      </div>
+    </div>
+
+    <div class="card flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-[11px] text-ardoise-500 uppercase tracking-wide font-medium">Alertes</p>
+        <p class="text-lg font-bold text-ardoise-800">{{ nb_alertes }}</p>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Filtres ─────────────────────────────────────────────────────────────── #}
+  <div class="card">
+    <form method="get" class="flex flex-wrap items-end gap-3">
+      {% if is_director %}
+      <div class="flex-1 min-w-[160px]">
+        <label class="form-label">Commercial</label>
+        <select name="commercial" class="form-input">
+          <option value="">Tous les commerciaux</option>
+          {% for c in commerciaux %}
+          <option value="{{ c.pk }}" {% if f_commercial == c.pk|stringformat:"s" %}selected{% endif %}>
+            {{ c.get_full_name|default:c.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="flex-1 min-w-[140px]">
+        <label class="form-label">Statut</label>
+        <select name="statut" class="form-input">
+          <option value="">Tous les statuts</option>
+          {% for val, lbl in statuts %}
+          <option value="{{ val }}" {% if f_statut == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-1 min-w-[160px]">
+        <label class="form-label">Segment</label>
+        <select name="segment" class="form-input">
+          <option value="">Tous les segments</option>
+          {% for val, lbl in segments %}
+          <option value="{{ val }}" {% if f_segment == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn-primary btn-sm">Filtrer</button>
+      {% if f_commercial or f_statut or f_segment %}
+      <a href="{% url 'crm:analyse_pipeline' %}" class="btn-secondary btn-sm">Réinitialiser</a>
+      {% endif %}
+    </form>
+  </div>
+
+  {# ── Tableau ─────────────────────────────────────────────────────────────── #}
+  <div class="card p-0 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-ardoise-50 border-b border-ardoise-100">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Client / Projet</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Segment</th>
+            {% if is_director %}
+            <th class="px-4 py-3 text-left text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Commercial</th>
+            {% endif %}
+            <th class="px-4 py-3 text-right text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Potentiel (MAD)</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Proba</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Pondéré (MAD)</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Statut</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Priorité</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Bucket</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Alerte</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-ardoise-600 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ardoise-50">
+          {% for opp in opportunites %}
+          <tr class="hover:bg-ardoise-50/40 transition-colors">
+
+            {# Client / Projet #}
+            <td class="px-4 py-3">
+              <p class="font-medium text-ardoise-800">{{ opp.client }}</p>
+              <p class="text-xs text-ardoise-500">{{ opp.projet }}</p>
+              {% if opp.ville %}<p class="text-xs text-ardoise-400">{{ opp.ville }}{% if opp.pays %}, {{ opp.pays }}{% endif %}</p>{% endif %}
+            </td>
+
+            {# Segment #}
+            <td class="px-4 py-3">
+              <span class="text-xs text-ardoise-600 bg-ardoise-100 px-2 py-0.5 rounded-full">{{ opp.segment }}</span>
+            </td>
+
+            {# Commercial (director only) #}
+            {% if is_director %}
+            <td class="px-4 py-3 text-sm text-ardoise-700">{{ opp.commercial.get_full_name|default:opp.commercial.username }}</td>
+            {% endif %}
+
+            {# Potentiel #}
+            <td class="px-4 py-3 text-right font-mono text-sm text-ardoise-800">
+              {% if opp.potentiel_mad %}{{ opp.potentiel_mad|floatformat:0|intcomma }}{% else %}<span class="text-ardoise-300">—</span>{% endif %}
+            </td>
+
+            {# Probabilité #}
+            <td class="px-4 py-3 text-center text-sm text-ardoise-700">
+              {% if opp.probabilite %}{{ opp.probabilite|floatformat:0 }} %{% else %}<span class="text-ardoise-300">—</span>{% endif %}
+            </td>
+
+            {# Pondéré #}
+            <td class="px-4 py-3 text-right font-mono text-sm text-ardoise-800">
+              {% if opp.pondere %}{{ opp.pondere|floatformat:0|intcomma }}{% else %}<span class="text-ardoise-300">—</span>{% endif %}
+            </td>
+
+            {# Statut #}
+            <td class="px-4 py-3 text-center">
+              {% if opp.statut == 'Gagné' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-foret-100 text-foret-700">{{ opp.statut }}</span>
+              {% elif opp.statut == 'Perdu' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">{{ opp.statut }}</span>
+              {% elif opp.statut == 'Négociation' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">{{ opp.statut }}</span>
+              {% elif opp.statut == 'En cours' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{ opp.statut }}</span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-ardoise-100 text-ardoise-600">{{ opp.statut }}</span>
+              {% endif %}
+            </td>
+
+            {# Priorité #}
+            <td class="px-4 py-3 text-center">
+              {% if opp.priorite == 'HIGH' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">HIGH</span>
+              {% elif opp.priorite == 'MEDIUM' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">MEDIUM</span>
+              {% elif opp.priorite == 'LOW' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-600">LOW</span>
+              {% else %}
+                <span class="text-ardoise-300 text-xs">—</span>
+              {% endif %}
+            </td>
+
+            {# Bucket #}
+            <td class="px-4 py-3 text-center">
+              {% if opp.bucket == 'Dépassé' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Dépassé</span>
+              {% elif opp.bucket == '0-30j' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">0-30j</span>
+              {% elif opp.bucket == '30-90j' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600">30-90j</span>
+              {% elif opp.bucket == '+90j' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-ardoise-100 text-ardoise-600">+90j</span>
+              {% else %}
+                <span class="text-ardoise-300 text-xs">—</span>
+              {% endif %}
+            </td>
+
+            {# Alerte #}
+            <td class="px-4 py-3 max-w-[200px]">
+              {% if opp.alerte %}
+                <span class="text-xs text-red-600 font-medium">{{ opp.alerte }}</span>
+              {% else %}
+                <span class="text-ardoise-300 text-xs">—</span>
+              {% endif %}
+            </td>
+
+            {# Actions #}
+            <td class="px-4 py-3 text-center">
+              <div class="flex items-center justify-center gap-2">
+                <a href="{% url 'crm:saisie_pipeline_edit' opp.pk %}"
+                   class="p-1.5 rounded-lg text-ardoise-400 hover:text-foret-600 hover:bg-foret-50 transition-colors"
+                   title="Modifier">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </a>
+                {% if is_director %}
+                <form method="post" action="{% url 'crm:saisie_pipeline_delete' opp.pk %}"
+                      onsubmit="return confirm('Supprimer « {{ opp.client }} — {{ opp.projet }} » ?')">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="p-1.5 rounded-lg text-ardoise-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Supprimer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if is_director %}11{% else %}10{% endif %}" class="px-4 py-10 text-center text-ardoise-400">
+              <p class="text-sm">Aucune opportunité trouvée.</p>
+              <a href="{% url 'crm:saisie_pipeline' %}" class="btn-primary btn-sm mt-3 inline-block">+ Créer la première opportunité</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

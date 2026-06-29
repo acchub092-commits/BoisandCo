@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load static crm_filters %}
 
-{% block title %}COMEX — Pipeline commercial{% endblock %}
-{% block page_title %}Tableau de bord COMEX{% endblock %}
+{% block title %}Tableau performance commerciale{% endblock %}
+{% block page_title %}Tableau performance commerciale{% endblock %}
 
 {% block topbar_actions %}
 <span class="text-xs text-ardoise-400 hidden sm:block">Arrêté au {{ today|date:"d/m/Y" }}</span>
@@ -17,6 +17,7 @@
 {% endblock %}
 
 {% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   /* ── Variables couleurs COMEX ── */
   :root {
@@ -42,6 +43,35 @@
     align-items: center;
     justify-content: space-between;
     border-radius: 0.5rem 0.5rem 0 0;
+  }
+
+  /* ── Toggle tableau/graphique ── */
+  .view-toggle {
+    display: flex;
+    background: rgba(255,255,255,0.12);
+    border-radius: 0.35rem;
+    padding: 2px;
+    gap: 2px;
+  }
+  .view-toggle-btn {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 2px 9px;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    color: rgba(242,232,213,0.55);
+    border: none;
+    background: transparent;
+    text-transform: none;
+    transition: all 0.15s;
+  }
+  .view-toggle-btn.active {
+    background: rgba(255,255,255,0.28);
+    color: var(--comex-creme);
+  }
+  .view-toggle-btn:hover:not(.active) {
+    color: rgba(242,232,213,0.85);
   }
 
   /* ── Tableau COMEX ── */
@@ -96,6 +126,16 @@
 
   /* ── Barre dépendance ── */
   .dep-bar { height: 6px; border-radius: 3px; transition: width 0.3s ease; }
+
+  /* ── Zone canvas graphique ── */
+  .chart-zone {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+  }
+  .chart-zone canvas { max-height: 260px; }
 
   /* ── Print ── */
   @media print {
@@ -153,109 +193,140 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
 
   {# ── Répartition par Commercial ── #}
-  <div class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
+  <div x-data="{ mode: 'table', inited: false }" class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
     <div class="comex-section-header">
       <span>Répartition par Commercial — Pipeline actif</span>
-      <span style="color:rgba(242,232,213,0.6);">{{ nb_actifs }} projets</span>
+      <div class="flex items-center gap-3">
+        <span style="color:rgba(242,232,213,0.6);">{{ nb_actifs }} projets</span>
+        <div class="view-toggle no-print">
+          <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
+          <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
+                  @click="mode='chart'; if(!inited){ initChartComm(); inited=true; }">📊 Graphique</button>
+        </div>
+      </div>
     </div>
-    <table class="comex-table">
-      <thead>
-        <tr>
-          <th>Commercial</th>
-          <th>Proj.</th>
-          <th>Potentiel (MAD)</th>
-          <th>% Pipeline</th>
-          <th>Pondéré (MAD)</th>
-          <th>H.Prio</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in commerciaux %}
-        <tr>
-          <td>
-            <div class="flex items-center gap-1.5">
-              <div class="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                   style="background:var(--comex-accent);">
-                {{ c.name|first|upper }}
+
+    {# Tableau #}
+    <div x-show="mode==='table'">
+      <table class="comex-table">
+        <thead>
+          <tr>
+            <th>Commercial</th>
+            <th>Proj.</th>
+            <th>Potentiel (MAD)</th>
+            <th>% Pipeline</th>
+            <th>Pondéré (MAD)</th>
+            <th>H.Prio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in commerciaux %}
+          <tr>
+            <td>
+              <div class="flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                     style="background:var(--comex-accent);">
+                  {{ c.name|first|upper }}
+                </div>
+                {{ c.name }}
               </div>
-              {{ c.name }}
-            </div>
-          </td>
-          <td class="num">{{ c.count }}</td>
-          <td class="num">{{ c.pot|sep_milliers }}</td>
-          <td class="num">{{ c.pct }}&nbsp;%</td>
-          <td class="num">{{ c.pond|sep_milliers }}</td>
-          <td class="num">
-            {% if c.high > 0 %}
-            <span class="badge-green">{{ c.high }}</span>
-            {% else %}<span class="text-ardoise-300">—</span>{% endif %}
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-center py-4 text-ardoise-300">Aucune donnée</td></tr>
-        {% endfor %}
-      </tbody>
-      {% if commerciaux %}
-      <tfoot>
-        <tr style="background:#f0f7f2; border-top:2px solid #163228;">
-          <td style="text-align:left; font-weight:700; color:#163228; padding:0.5rem 0.75rem; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em;">
-            Total
-          </td>
-          <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ nb_actifs }}</td>
-          <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ total_pot|sep_milliers }}</td>
-          <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">100&nbsp;%</td>
-          <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ total_pond|sep_milliers }}</td>
-          <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">
-            <span class="badge-green">{{ nb_high }}</span>
-          </td>
-        </tr>
-      </tfoot>
-      {% endif %}
-    </table>
+            </td>
+            <td class="num">{{ c.count }}</td>
+            <td class="num">{{ c.pot|sep_milliers }}</td>
+            <td class="num">{{ c.pct }}&nbsp;%</td>
+            <td class="num">{{ c.pond|sep_milliers }}</td>
+            <td class="num">
+              {% if c.high > 0 %}<span class="badge-green">{{ c.high }}</span>
+              {% else %}<span class="text-ardoise-300">—</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center py-4 text-ardoise-300">Aucune donnée</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if commerciaux %}
+        <tfoot>
+          <tr style="background:#f0f7f2; border-top:2px solid #163228;">
+            <td style="text-align:left; font-weight:700; color:#163228; padding:0.5rem 0.75rem; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em;">Total</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ nb_actifs }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ total_pot|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">100&nbsp;%</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ total_pond|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;"><span class="badge-green">{{ nb_high }}</span></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+
+    {# Graphique #}
+    <div x-show="mode==='chart'" style="display:none;" class="chart-zone">
+      <canvas id="chartComm"></canvas>
+    </div>
   </div>
 
   {# ── Répartition par Statut ── #}
-  <div class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
+  <div x-data="{ mode: 'table', inited: false }" class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
     <div class="comex-section-header">
       <span>Répartition par Statut</span>
+      <div class="view-toggle no-print">
+        <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
+        <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
+                @click="mode='chart'; if(!inited){ initChartStat(); inited=true; }">📊 Graphique</button>
+      </div>
     </div>
-    <table class="comex-table">
-      <thead>
-        <tr>
-          <th>Statut</th>
-          <th>Projets</th>
-          <th>Potentiel (MAD)</th>
-          <th>% Total</th>
-          <th>Pondéré (MAD)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in statuts %}
-        <tr>
-          <td>
-            <span class="inline-flex items-center gap-1">
-              {% if s.label == 'Gagné' %}
-              <span class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
-              {% elif s.label == 'Perdu' %}
-              <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-              {% elif s.label == 'Négociation' %}
-              <span class="w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0"></span>
-              {% elif s.label == 'En cours' %}
-              <span class="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0"></span>
-              {% else %}
-              <span class="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0"></span>
-              {% endif %}
-              {{ s.label }}
-            </span>
-          </td>
-          <td class="num">{{ s.count }}</td>
-          <td class="num">{{ s.pot|sep_milliers }}</td>
-          <td class="num">{{ s.pct }}&nbsp;%</td>
-          <td class="num">{{ s.pond|sep_milliers }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    {# Tableau #}
+    <div x-show="mode==='table'">
+      <table class="comex-table">
+        <thead>
+          <tr>
+            <th>Statut</th>
+            <th>Projets</th>
+            <th>Potentiel (MAD)</th>
+            <th>% Total</th>
+            <th>Pondéré (MAD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in statuts %}
+          <tr>
+            <td>
+              <span class="inline-flex items-center gap-1">
+                {% if s.label == 'Gagné' %}<span class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+                {% elif s.label == 'Perdu' %}<span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                {% elif s.label == 'Négociation' %}<span class="w-2 h-2 rounded-full bg-cyan-500 flex-shrink-0"></span>
+                {% elif s.label == 'En cours' %}<span class="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0"></span>
+                {% else %}<span class="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0"></span>
+                {% endif %}
+                {{ s.label }}
+              </span>
+            </td>
+            <td class="num">{{ s.count }}</td>
+            <td class="num">{{ s.pot|sep_milliers }}</td>
+            <td class="num">{{ s.pct }}&nbsp;%</td>
+            <td class="num">{{ s.pond|sep_milliers }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if statuts %}
+        <tfoot>
+          <tr style="background:#f0f7f2; border-top:2px solid #163228;">
+            <td style="text-align:left; font-weight:700; color:#163228; padding:0.5rem 0.75rem; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em;">Total</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ statut_total.count }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ statut_total.pot|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">100&nbsp;%</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ statut_total.pond|sep_milliers }}</td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+
+    {# Graphique #}
+    <div x-show="mode==='chart'" style="display:none;" class="chart-zone">
+      <canvas id="chartStat"></canvas>
+    </div>
   </div>
 
 </div>
@@ -266,71 +337,124 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
 
   {# ── Répartition par Segment ── #}
-  <div class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
+  <div x-data="{ mode: 'table', inited: false }" class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
     <div class="comex-section-header">
       <span>Répartition par Segment — Pipeline actif</span>
+      <div class="view-toggle no-print">
+        <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
+        <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
+                @click="mode='chart'; if(!inited){ initChartSeg(); inited=true; }">📊 Graphique</button>
+      </div>
     </div>
-    <table class="comex-table">
-      <thead>
-        <tr>
-          <th>Segment</th>
-          <th>Proj.</th>
-          <th>Potentiel (MAD)</th>
-          <th>% Pipeline</th>
-          <th>Pondéré (MAD)</th>
-          <th>H.Prio</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for sg in segments %}
-        <tr>
-          <td>{{ sg.label }}</td>
-          <td class="num">{{ sg.count }}</td>
-          <td class="num">{{ sg.pot|sep_milliers }}</td>
-          <td class="num">{{ sg.pct }}&nbsp;%</td>
-          <td class="num">{{ sg.pond|sep_milliers }}</td>
-          <td class="num">
-            {% if sg.high > 0 %}
-            <span class="badge-green">{{ sg.high }}</span>
-            {% else %}<span class="text-ardoise-300">—</span>{% endif %}
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-center py-4 text-ardoise-300">Aucune donnée</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    {# Tableau #}
+    <div x-show="mode==='table'">
+      <table class="comex-table">
+        <thead>
+          <tr>
+            <th>Segment</th>
+            <th>Proj.</th>
+            <th>Potentiel (MAD)</th>
+            <th>% Pipeline</th>
+            <th>Pondéré (MAD)</th>
+            <th>H.Prio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sg in segments %}
+          <tr>
+            <td>{{ sg.label }}</td>
+            <td class="num">{{ sg.count }}</td>
+            <td class="num">{{ sg.pot|sep_milliers }}</td>
+            <td class="num">{{ sg.pct }}&nbsp;%</td>
+            <td class="num">{{ sg.pond|sep_milliers }}</td>
+            <td class="num">
+              {% if sg.high > 0 %}<span class="badge-green">{{ sg.high }}</span>
+              {% else %}<span class="text-ardoise-300">—</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center py-4 text-ardoise-300">Aucune donnée</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if segments %}
+        <tfoot>
+          <tr style="background:#f0f7f2; border-top:2px solid #163228;">
+            <td style="text-align:left; font-weight:700; color:#163228; padding:0.5rem 0.75rem; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em;">Total</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ segment_total.count }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ segment_total.pot|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">100&nbsp;%</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ segment_total.pond|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">
+              {% if segment_total.high > 0 %}<span class="badge-green">{{ segment_total.high }}</span>
+              {% else %}<span class="text-ardoise-300">—</span>{% endif %}
+            </td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+
+    {# Graphique #}
+    <div x-show="mode==='chart'" style="display:none;" class="chart-zone">
+      <canvas id="chartSeg"></canvas>
+    </div>
   </div>
 
   {# ── Analyse géographique ── #}
-  <div class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
+  <div x-data="{ mode: 'table', inited: false }" class="bg-white rounded-lg border border-ardoise-100 shadow-sm overflow-hidden">
     <div class="comex-section-header">
       <span>Analyse Géographique — Top Villes</span>
+      <div class="view-toggle no-print">
+        <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
+        <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
+                @click="mode='chart'; if(!inited){ initChartVille(); inited=true; }">📊 Graphique</button>
+      </div>
     </div>
-    <table class="comex-table">
-      <thead>
-        <tr>
-          <th>Ville</th>
-          <th>Proj.</th>
-          <th>Potentiel (MAD)</th>
-          <th>Pondéré (MAD)</th>
-          <th>% Pipeline</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for v in top_villes %}
-        <tr>
-          <td>{{ v.ville }}</td>
-          <td class="num">{{ v.count }}</td>
-          <td class="num">{{ v.pot|sep_milliers }}</td>
-          <td class="num">{{ v.pond|sep_milliers }}</td>
-          <td class="num">{{ v.pct }}&nbsp;%</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5" class="text-center py-4 text-ardoise-300">Aucune donnée</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    {# Tableau #}
+    <div x-show="mode==='table'">
+      <table class="comex-table">
+        <thead>
+          <tr>
+            <th>Ville</th>
+            <th>Proj.</th>
+            <th>Potentiel (MAD)</th>
+            <th>Pondéré (MAD)</th>
+            <th>% Pipeline</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in top_villes %}
+          <tr>
+            <td>{{ v.ville }}</td>
+            <td class="num">{{ v.count }}</td>
+            <td class="num">{{ v.pot|sep_milliers }}</td>
+            <td class="num">{{ v.pond|sep_milliers }}</td>
+            <td class="num">{{ v.pct }}&nbsp;%</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center py-4 text-ardoise-300">Aucune donnée</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if top_villes %}
+        <tfoot>
+          <tr style="background:#f0f7f2; border-top:2px solid #163228;">
+            <td style="text-align:left; font-weight:700; color:#163228; padding:0.5rem 0.75rem; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em;">Total affiché</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ villes_total.count }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ villes_total.pot|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ villes_total.pond|sep_milliers }}</td>
+            <td class="num" style="font-weight:700; color:#163228; padding:0.5rem 0.75rem;">{{ villes_total.pct }}&nbsp;%</td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+
+    {# Graphique #}
+    <div x-show="mode==='chart'" style="display:none;" class="chart-zone">
+      <canvas id="chartVille"></canvas>
+    </div>
   </div>
 
 </div>
@@ -362,37 +486,39 @@
       </thead>
       <tbody>
         {% for item in top_projets %}
-        {% with l=item.lead %}
+        {% with o=item.opp %}
         <tr>
           <td class="text-ardoise-400">{{ forloop.counter }}</td>
-          <td>{{ l.assigned_to.first_name|default:"—" }}</td>
-          <td>{{ l.company|default:l.contact_name|truncatechars:20 }}</td>
+          <td>{{ o.commercial.get_full_name|default:"—" }}</td>
+          <td>{{ o.client|truncatechars:20 }}</td>
           <td>
-            <a href="{% url 'crm:lead_detail' l.pk %}" class="hover:underline" style="color:var(--comex-vert);">
-              {{ l.project_name|truncatechars:28 }}
+            <a href="{% url 'crm:saisie_pipeline_edit' o.pk %}" class="hover:underline" style="color:var(--comex-vert);">
+              {{ o.projet|truncatechars:28 }}
             </a>
           </td>
-          <td>{{ l.project_type|default:"—" }}</td>
-          <td>{{ l.location|truncatechars:15|default:"—" }}</td>
+          <td>{{ o.segment|default:"—" }}</td>
+          <td>{{ o.ville|truncatechars:15|default:"—" }}</td>
           <td>
-            {% if l.status == 'OFFRE' %}<span class="badge-green">Négociation</span>
-            {% elif l.status == 'CHIFFRAGE' %}<span class="badge-amber">En cours</span>
-            {% elif l.status == 'GAGNEE' %}<span class="badge-green">Gagné</span>
-            {% else %}<span class="text-ardoise-500">{{ l.get_status_display }}</span>
+            {% if o.statut == 'Gagné' %}<span class="badge-green">Gagné</span>
+            {% elif o.statut == 'Négociation' %}<span class="badge-amber">Négociation</span>
+            {% elif o.statut == 'En cours' %}<span class="badge-amber">En cours</span>
+            {% else %}<span class="text-ardoise-500">{{ o.statut }}</span>
             {% endif %}
           </td>
           <td class="text-center">
-            {% if l.probability == 'HIGH' %}<span class="badge-green">HIGH</span>
-            {% elif l.probability == 'MED' %}<span class="badge-amber">MED</span>
-            {% elif l.probability == 'LOW' %}<span class="badge-red">LOW</span>
+            {% if o.probabilite == '1.00' %}<span class="badge-green">100%</span>
+            {% elif o.probabilite == '0.80' %}<span class="badge-amber">80%</span>
+            {% elif o.probabilite == '0.50' %}<span class="badge-red">50%</span>
+            {% elif o.probabilite == '0.10' %}<span class="badge-red">10%</span>
             {% else %}<span class="text-ardoise-300">—</span>{% endif %}
           </td>
-          <td class="num">{{ l.budget_mad|sep_milliers }}</td>
+          <td class="num">{{ o.potentiel_mad|sep_milliers }}</td>
           <td class="num font-semibold" style="color:var(--comex-accent);">{{ item.pond|sep_milliers }}</td>
           <td class="text-center">
-            {% if l.potential == 'IMPORTANT' %}<span class="badge-green">HIGH</span>
-            {% elif l.potential == 'MOYEN' %}<span class="badge-amber">MED</span>
-            {% else %}<span class="badge-red">LOW</span>{% endif %}
+            {% if o.priorite == 'HIGH' %}<span class="badge-green">HIGH</span>
+            {% elif o.priorite == 'MEDIUM' %}<span class="badge-amber">MED</span>
+            {% elif o.priorite == 'LOW' %}<span class="badge-red">LOW</span>
+            {% else %}<span class="text-ardoise-300">—</span>{% endif %}
           </td>
           <td>
             {% for a in item.alerts %}
@@ -475,12 +601,9 @@
         {% for t in temporal %}
         <tr {% if t.label == 'Dépassé' %}style="background:#fff5f5;"{% endif %}>
           <td>
-            {% if t.label == 'Dépassé' %}
-            <span class="badge-red">{{ t.label }}</span>
-            {% elif t.label == '0-30 j' %}
-            <span class="badge-amber">{{ t.label }}</span>
-            {% else %}
-            {{ t.label }}
+            {% if t.label == 'Dépassé' %}<span class="badge-red">{{ t.label }}</span>
+            {% elif t.label == '0-30 j' %}<span class="badge-amber">{{ t.label }}</span>
+            {% else %}{{ t.label }}
             {% endif %}
           </td>
           <td class="num">{{ t.count }}</td>
@@ -536,9 +659,7 @@
           <td style="font-size:0.72rem;">{{ a.type }}</td>
           <td class="num font-bold {% if a.count > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ a.count }}</td>
           <td>
-            {% if a.niveau == 'Critique' %}
-            <span class="badge-red">{{ a.niveau }}</span>
-            {% elif a.niveau == 'Immédiat' %}
+            {% if a.niveau == 'Critique' or a.niveau == 'Immédiat' %}
             <span class="badge-red">{{ a.niveau }}</span>
             {% else %}
             <span class="badge-amber">{{ a.niveau }}</span>
@@ -568,13 +689,13 @@
         </thead>
         <tbody>
           {% for item in alerts_list %}
-          {% with l=item.lead %}
+          {% with o=item.opp %}
           <tr>
-            <td>{{ l.assigned_to.first_name|default:"—" }}</td>
-            <td>{{ l.company|default:l.contact_name|truncatechars:15 }}</td>
+            <td>{{ o.commercial.get_full_name|default:"—" }}</td>
+            <td>{{ o.client|truncatechars:15 }}</td>
             <td style="text-align:left;">
-              <a href="{% url 'crm:lead_detail' l.pk %}" class="hover:underline" style="color:var(--comex-vert);">
-                {{ l.project_name|truncatechars:22 }}
+              <a href="{% url 'crm:saisie_pipeline_edit' o.pk %}" class="hover:underline" style="color:var(--comex-vert);">
+                {{ o.projet|truncatechars:22 }}
               </a>
             </td>
             <td><span class="badge-red" style="font-size:0.62rem;">{{ item.type }}</span></td>
@@ -592,7 +713,156 @@
 
 {# ── Pied de page ── #}
 <div class="text-center text-xs text-ardoise-300 py-2">
-  Bois&amp;Co — Tableau de bord COMEX · Généré le {{ today|date:"d/m/Y" }} · Données pipeline CRM en temps réel
+  Bois&amp;Co — Tableau performance commerciale · Généré le {{ today|date:"d/m/Y" }} · Données pipeline CRM en temps réel
 </div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{#  DONNÉES GRAPHIQUES (JSON embarqué depuis Django)               #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<script>
+(function() {
+
+  /* ── Palette couleurs ── */
+  const C_COMM  = ['#163228','#2d7a4f','#1e4535','#4a9d6f','#0891b2','#7c3aed'];
+  const C_STAT  = { 'Prospection':'#94a3b8','En cours':'#8b5cf6','Négociation':'#06b6d4','Gagné':'#16a34a','Perdu':'#dc2626' };
+  const C_SEG   = ['#163228','#2d7a4f','#0891b2','#7c3aed','#b45309','#0f766e'];
+  const C_VILLE = ['#163228','#1e4535','#2d7a4f','#3a8f5f','#4aab77','#5ec490','#74d9ab','#8eecc5','#aaf3d8','#c4f8e8'];
+
+  /* ── Formatter MAD ── */
+  function fmtMAD(v) {
+    return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v) + ' MAD';
+  }
+
+  /* ── Options communes ── */
+  function baseOpts(extraTooltip) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '55%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { boxWidth: 12, padding: 11, font: { size: 11 }, color: '#3d4857' },
+        },
+        tooltip: {
+          callbacks: {
+            label: extraTooltip || ((ctx) => ' ' + ctx.label + ' : ' + fmtMAD(ctx.raw)),
+          },
+        },
+      },
+    };
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     Graphique 1 — Répartition par Commercial (Potentiel MAD)
+  ───────────────────────────────────────────────────────────── */
+  window.initChartComm = function() {
+    const labels = [{% for c in commerciaux %}"{{ c.name }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for c in commerciaux %}{{ c.pot|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const projs  = [{% for c in commerciaux %}{{ c.count|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    new Chart(document.getElementById('chartComm'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: pots,
+          backgroundColor: C_COMM.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 6,
+        }],
+      },
+      options: baseOpts((ctx) => {
+        const n = projs[ctx.dataIndex];
+        return ' ' + ctx.label + ' : ' + fmtMAD(ctx.raw) + ' (' + n + ' proj.)';
+      }),
+    });
+  };
+
+  /* ─────────────────────────────────────────────────────────────
+     Graphique 2 — Répartition par Statut (Potentiel MAD)
+  ───────────────────────────────────────────────────────────── */
+  window.initChartStat = function() {
+    const labels = [{% for s in statuts %}"{{ s.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for s in statuts %}{{ s.pot|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const projs  = [{% for s in statuts %}{{ s.count|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const colors = labels.map(l => C_STAT[l] || '#94a3b8');
+
+    new Chart(document.getElementById('chartStat'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: pots,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 6,
+        }],
+      },
+      options: baseOpts((ctx) => {
+        const n = projs[ctx.dataIndex];
+        return ' ' + ctx.label + ' : ' + fmtMAD(ctx.raw) + ' (' + n + ' proj.)';
+      }),
+    });
+  };
+
+  /* ─────────────────────────────────────────────────────────────
+     Graphique 3 — Répartition par Segment (Potentiel MAD)
+  ───────────────────────────────────────────────────────────── */
+  window.initChartSeg = function() {
+    const labels = [{% for sg in segments %}"{{ sg.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for sg in segments %}{{ sg.pot|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const projs  = [{% for sg in segments %}{{ sg.count|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    new Chart(document.getElementById('chartSeg'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: pots,
+          backgroundColor: C_SEG.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 6,
+        }],
+      },
+      options: baseOpts((ctx) => {
+        const n = projs[ctx.dataIndex];
+        return ' ' + ctx.label + ' : ' + fmtMAD(ctx.raw) + ' (' + n + ' proj.)';
+      }),
+    });
+  };
+
+  /* ─────────────────────────────────────────────────────────────
+     Graphique 4 — Analyse Géographique Top Villes (Potentiel MAD)
+  ───────────────────────────────────────────────────────────── */
+  window.initChartVille = function() {
+    const labels = [{% for v in top_villes %}"{{ v.ville }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for v in top_villes %}{{ v.pot|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const projs  = [{% for v in top_villes %}{{ v.count|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    new Chart(document.getElementById('chartVille'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: pots,
+          backgroundColor: C_VILLE.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 6,
+        }],
+      },
+      options: baseOpts((ctx) => {
+        const n = projs[ctx.dataIndex];
+        return ' ' + ctx.label + ' : ' + fmtMAD(ctx.raw) + ' (' + n + ' proj.)';
+      }),
+    });
+  };
+
+})();
+</script>
 
 {% endblock %}

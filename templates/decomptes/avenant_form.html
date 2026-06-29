@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Ajouter un avenant — {{ projet.reference }}{% endblock %}
+{% block page_title %}Ajouter un avenant – {{ projet.reference }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:decompte_projet' projet.pk %}" class="btn-secondary btn-sm">
+  ← Fiche projet
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <div class="card p-6">
+    <h3 class="font-semibold text-ardoise-800 mb-5 pb-3 border-b border-gray-200">
+      Nouvel avenant – {{ projet.reference }}
+    </h3>
+    <p class="text-sm text-ardoise-500 mb-4">{{ projet.name }} · {{ projet.client_name }}</p>
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+
+      <div>
+        <label class="form-label">Libellé <span class="text-red-500">*</span></label>
+        {{ form.libelle }}
+        {% if form.libelle.errors %}
+        <p class="form-error">{{ form.libelle.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Montant HT (MAD) <span class="text-red-500">*</span></label>
+        {{ form.montant_ht }}
+        <p class="text-xs text-ardoise-400 mt-1">Valeur négative pour un avenant en moins-value.</p>
+        {% if form.montant_ht.errors %}
+        <p class="form-error">{{ form.montant_ht.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Date avenant</label>
+        {{ form.date_avenant }}
+        {% if form.date_avenant.errors %}
+        <p class="form-error">{{ form.date_avenant.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Référence document</label>
+        {{ form.reference_doc }}
+      </div>
+
+      {% if form.non_field_errors %}
+      <div class="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+        {{ form.non_field_errors }}
+      </div>
+      {% endif %}
+
+      <div class="flex justify-between border-t border-gray-200 pt-4">
+        <a href="{% url 'projects:decompte_projet' projet.pk %}" class="btn-secondary btn-sm">Annuler</a>
+        <button type="submit" class="btn-primary">Ajouter l'avenant</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
