@@ -1,0 +1,485 @@
+<title>Bois&Co — Nouvelles fonctionnalités</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  :root {
+    --accent:   #1D3F2F;
+    --gold:     #C8973A;
+    --text:     #1C2B22;
+    --muted:    #5A7268;
+    --surface:  #F7F4EF;
+    --border:   #DDD8CF;
+    --white:    #FFFFFF;
+    --red-soft: #FEF3EE;
+    --red-acc:  #C0442A;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--surface);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Wrapper ── */
+  .wrap {
+    max-width: 640px;
+    margin: 32px auto;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 24px rgba(0,0,0,.10);
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--accent);
+    padding: 36px 40px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(200,151,58,.10);
+    pointer-events: none;
+  }
+  .header-eyebrow {
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(242,232,213,.55);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .header-logo {
+    font-size: 26px;
+    font-weight: 700;
+    color: #F2E8D5;
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: .02em;
+  }
+  .header-logo span {
+    color: var(--gold);
+  }
+  .header-tagline {
+    margin-top: 14px;
+    font-size: 13px;
+    color: rgba(242,232,213,.60);
+    font-style: italic;
+  }
+  .header-badge {
+    display: inline-block;
+    margin-top: 20px;
+    background: var(--gold);
+    color: #1C2B22;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 2px;
+  }
+
+  /* ── Body ── */
+  .body {
+    background: var(--white);
+    padding: 36px 40px;
+  }
+
+  .intro {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.75;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .intro strong {
+    color: var(--text);
+  }
+
+  /* ── Section title ── */
+  .section-title {
+    margin: 32px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-title-text {
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── Feature card ── */
+  .feature {
+    border-left: 3px solid var(--accent);
+    padding: 18px 20px;
+    background: var(--surface);
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 14px;
+  }
+  .feature.gold {
+    border-left-color: var(--gold);
+  }
+  .feature-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .feature-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 15px;
+  }
+  .feature.gold .feature-icon {
+    background: var(--gold);
+  }
+  .feature-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .feature-new {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: #F2E8D5;
+    padding: 2px 7px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .feature.gold .feature-new {
+    background: var(--gold);
+    color: #1C2B22;
+  }
+  .feature-desc {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .feature-list {
+    margin: 8px 0 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .feature-list li {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 2px 0 2px 16px;
+    position: relative;
+  }
+  .feature-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 11px;
+    top: 3px;
+  }
+  .feature.gold .feature-list li::before {
+    color: var(--gold);
+  }
+
+  /* ── Role table ── */
+  .role-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .role-table th {
+    background: var(--accent);
+    color: rgba(242,232,213,.85);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    padding: 9px 14px;
+    text-align: left;
+  }
+  .role-table th:first-child { border-radius: 4px 0 0 0; }
+  .role-table th:last-child  { border-radius: 0 4px 0 0; }
+  .role-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .role-table tr:last-child td { border-bottom: none; }
+  .role-table tr:nth-child(even) td { background: var(--surface); }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: .04em;
+  }
+  .badge-green  { background: #D1FAE5; color: #065F46; }
+  .badge-blue   { background: #DBEAFE; color: #1E40AF; }
+  .badge-amber  { background: #FEF3C7; color: #92400E; }
+  .badge-gray   { background: #F3F4F6; color: #6B7280; }
+
+  /* ── Alert box ── */
+  .alert {
+    background: var(--red-soft);
+    border-left: 3px solid var(--red-acc);
+    padding: 14px 18px;
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+    color: #7C2D12;
+    margin-top: 24px;
+    line-height: 1.6;
+  }
+  .alert strong { color: var(--red-acc); }
+
+  /* ── CTA ── */
+  .cta-wrap {
+    margin: 32px 0 8px;
+    text-align: center;
+  }
+  .cta {
+    display: inline-block;
+    background: var(--accent);
+    color: #F2E8D5;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 14px 36px;
+    border-radius: 3px;
+    text-decoration: none;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    background: var(--accent);
+    padding: 24px 40px;
+    text-align: center;
+  }
+  .footer p {
+    font-size: 11px;
+    color: rgba(242,232,213,.45);
+    line-height: 1.8;
+  }
+  .footer strong {
+    color: rgba(242,232,213,.75);
+  }
+
+  @media (max-width: 600px) {
+    .wrap        { margin: 0; border-radius: 0; }
+    .body        { padding: 24px 20px; }
+    .header      { padding: 24px 20px 20px; }
+    .footer      { padding: 20px; }
+    .role-table  { font-size: 12px; }
+    .role-table th, .role-table td { padding: 8px 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-eyebrow">Plateforme interne · Mise à jour</div>
+    <div class="header-logo">Bois<span>&amp;</span>Co</div>
+    <div class="header-tagline">Système de gestion — Nouvelles fonctionnalités disponibles</div>
+    <div class="header-badge">Juin 2026</div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <p class="intro">
+      Bonjour,<br><br>
+      Plusieurs <strong>nouvelles fonctionnalités</strong> ont été déployées sur votre plateforme Bois&amp;Co.
+      Ce message vous présente ce qui a changé, qui est concerné, et comment en tirer parti dès maintenant.
+      <br><br>
+      Aucune action de votre part n'est requise pour accéder aux nouveautés — elles sont accessibles
+      immédiatement depuis votre espace habituel.
+    </p>
+
+    <!-- NOUVEAU MODULE -->
+    <div class="section-title">
+      <div class="section-title-line"></div>
+      <div class="section-title-text">Nouveau module</div>
+      <div class="section-title-line"></div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <div class="feature-icon">📊</div>
+        <div>
+          <div class="feature-title">
+            Suivi Décomptes<span class="feature-new">Nouveau</span>
+          </div>
+        </div>
+      </div>
+      <p class="feature-desc">
+        Un module complet de <strong>suivi hebdomadaire des décomptes clients</strong> est désormais disponible
+        dans la section <strong>Suivi Financier</strong> du menu latéral. Il fonctionne de façon
+        totalement autonome — aucune saisie en double avec les projets existants.
+      </p>
+      <ul class="feature-list">
+        <li><strong>Dashboard global</strong> — Vue d'ensemble de tous les projets en cours : Marché yc Avenants, Livraison Système, Reste à livrer/attacher, Cumul Règlements, Alerte Acompte.</li>
+        <li><strong>Fiche projet</strong> — KPIs en temps réel, gestion des avenants, historique complet des lignes de décompte (Attachement, RG, RF, Prorata, Amortissement, Acompte, HT, TTC, Règlement, Liv. Système).</li>
+        <li><strong>Saisie hebdomadaire</strong> — Formulaire de saisie des décomptes avec marquage automatique du «&nbsp;dernier décompte actif&nbsp;» par projet.</li>
+        <li><strong>Import CSV</strong> — Migration de l'historique en une seule opération depuis votre fichier Excel existant (format multi-lignes, plusieurs décomptes par projet).</li>
+      </ul>
+    </div>
+
+    <!-- AMÉLIORATIONS -->
+    <div class="section-title">
+      <div class="section-title-line"></div>
+      <div class="section-title-text">Améliorations</div>
+      <div class="section-title-line"></div>
+    </div>
+
+    <div class="feature gold">
+      <div class="feature-header">
+        <div class="feature-icon">🥧</div>
+        <div>
+          <div class="feature-title">
+            Dashboard COMEX — Visualisation graphique<span class="feature-new">Mis à jour</span>
+          </div>
+        </div>
+      </div>
+      <p class="feature-desc">
+        Les quatre sections «&nbsp;Répartition&nbsp;» du tableau COMEX peuvent maintenant basculer
+        entre <strong>vue tableau</strong> et <strong>graphique camembert interactif</strong>,
+        pour faciliter les présentations en réunion.
+      </p>
+      <ul class="feature-list">
+        <li>Répartition par Commercial, par Statut, par Segment, par Ville.</li>
+        <li>Boutons <em>Tableau / Graphique</em> en haut de chaque section.</li>
+        <li>Ligne <strong>TOTAL</strong> ajoutée dans les tableaux Statut, Segment et Analyse Géographique.</li>
+      </ul>
+    </div>
+
+    <div class="feature gold">
+      <div class="feature-header">
+        <div class="feature-icon">📥</div>
+        <div>
+          <div class="feature-title">
+            Import CSV Pipeline<span class="feature-new">Mis à jour</span>
+          </div>
+        </div>
+      </div>
+      <p class="feature-desc">
+        Les Directeurs Commerciaux peuvent désormais importer des opportunités pipeline
+        en masse depuis un fichier CSV, avec validation automatique des commerciaux,
+        des statuts et des probabilités.
+      </p>
+      <ul class="feature-list">
+        <li>Bouton «&nbsp;Importer CSV&nbsp;» disponible sur la page Analyse Pipeline.</li>
+        <li>Rapport détaillé après import : lignes créées / ignorées avec motif.</li>
+      </ul>
+    </div>
+
+    <!-- ACCÈS PAR RÔLE -->
+    <div class="section-title">
+      <div class="section-title-line"></div>
+      <div class="section-title-text">Accès par rôle</div>
+      <div class="section-title-line"></div>
+    </div>
+
+    <table class="role-table">
+      <thead>
+        <tr>
+          <th>Rôle</th>
+          <th>Suivi Décomptes</th>
+          <th>COMEX graphique</th>
+          <th>Import Pipeline</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ADV</strong></td>
+          <td><span class="badge badge-green">Lecture + Saisie</span></td>
+          <td><span class="badge badge-gray">—</span></td>
+          <td><span class="badge badge-gray">—</span></td>
+        </tr>
+        <tr>
+          <td><strong>Finance</strong></td>
+          <td><span class="badge badge-blue">Lecture</span></td>
+          <td><span class="badge badge-gray">—</span></td>
+          <td><span class="badge badge-gray">—</span></td>
+        </tr>
+        <tr>
+          <td><strong>Direction / Management</strong></td>
+          <td><span class="badge badge-blue">Lecture</span></td>
+          <td><span class="badge badge-green">Accès complet</span></td>
+          <td><span class="badge badge-green">Accès complet</span></td>
+        </tr>
+        <tr>
+          <td><strong>Commercial</strong></td>
+          <td><span class="badge badge-gray">—</span></td>
+          <td><span class="badge badge-gray">—</span></td>
+          <td><span class="badge badge-blue">Ses données</span></td>
+        </tr>
+        <tr>
+          <td><strong>Admin</strong></td>
+          <td><span class="badge badge-amber">Accès total</span></td>
+          <td><span class="badge badge-amber">Accès total</span></td>
+          <td><span class="badge badge-amber">Accès total</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- NOTE IMPORT CSV -->
+    <div class="alert">
+      <strong>Pour l'équipe ADV — Migration des données historiques :</strong><br>
+      Si vous souhaitez importer votre historique de décomptes depuis Excel,
+      exportez votre fichier en <strong>CSV avec séparateur point-virgule&nbsp;(;)</strong>
+      puis utilisez la fonction <em>Import CSV</em> dans le menu Suivi Financier.
+      Le système accepte plusieurs lignes de décomptes par projet sur le même fichier.
+      En cas de doute sur le format, contactez l'administrateur avant d'importer.
+    </div>
+
+    <div class="cta-wrap">
+      <a href="#" class="cta">Accéder à la plateforme</a>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>
+      <strong>Bois&amp;Co — Système de gestion interne</strong><br>
+      Ce message est envoyé automatiquement · Ne pas répondre à cet e-mail<br>
+      Pour toute question, contactez votre administrateur système.
+    </p>
+  </div>
+
+</div>
