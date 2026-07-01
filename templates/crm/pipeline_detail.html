@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Fiche opportunité — {{ opp.client }}{% endblock %}
+{% block page_title %}Fiche opportunité{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'crm:analyse_pipeline' %}" class="btn-secondary btn-sm">← Analyse Pipeline</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+
+  {# ── Bandeau résumé ──────────────────────────────────────────────────────── #}
+  <div class="card flex items-center justify-between gap-4 flex-wrap">
+    <div>
+      <p class="text-lg font-bold text-ardoise-900">{{ opp.client }}</p>
+      <p class="text-sm text-ardoise-500">{{ opp.projet }}</p>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      {% if opp.statut == 'Gagné' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-foret-100 text-foret-700">{{ opp.statut }}</span>
+      {% elif opp.statut == 'Perdu' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700">{{ opp.statut }}</span>
+      {% elif opp.statut == 'Négociation' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700">{{ opp.statut }}</span>
+      {% elif opp.statut == 'En cours' %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">{{ opp.statut }}</span>
+      {% else %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-ardoise-100 text-ardoise-600">{{ opp.statut }}</span>
+      {% endif %}
+      {% if opp.priorite == 'HIGH' %}
+        <span class="px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700">HIGH</span>
+      {% elif opp.priorite == 'MEDIUM' %}
+        <span class="px-3 py-1 rounded-full text-sm font-bold bg-amber-100 text-amber-700">MEDIUM</span>
+      {% elif opp.priorite == 'LOW' %}
+        <span class="px-3 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-600">LOW</span>
+      {% endif %}
+      {% if opp.alerte %}
+        <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-50 text-red-600">⚠ {{ opp.alerte }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── 1. Identification ───────────────────────────────────────────────────── #}
+  <div class="card space-y-4">
+    <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+      <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+      Identification
+    </h2>
+    <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Commercial</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.commercial.get_full_name|default:opp.commercial.username }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Segment</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.segment }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Client</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.client }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Projet</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.projet }}</p>
+      </div>
+    </div>
+  </div>
+
+  {# ── 2. Localisation ─────────────────────────────────────────────────────── #}
+  <div class="card space-y-4">
+    <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+      <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+      Localisation
+    </h2>
+    <div class="grid grid-cols-3 gap-x-8 gap-y-4">
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Ville</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.ville|default:"—" }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Région</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.region|default:"—" }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Pays</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.pays|default:"—" }}</p>
+      </div>
+    </div>
+  </div>
+
+  {# ── 3. Qualification commerciale ────────────────────────────────────────── #}
+  <div class="card space-y-4">
+    <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+      <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+      Qualification commerciale
+    </h2>
+    <div class="grid grid-cols-3 gap-x-8 gap-y-4">
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Potentiel (MAD)</p>
+        <p class="text-sm font-bold text-ardoise-900 font-mono">
+          {% if opp.potentiel_mad %}{{ opp.potentiel_mad|floatformat:0|intcomma }}{% else %}—{% endif %}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Probabilité</p>
+        <p class="text-sm font-medium text-ardoise-800">
+          {% if opp.probabilite %}{{ opp.probabilite|floatformat:0 }} %{% else %}—{% endif %}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Pondéré (MAD)</p>
+        <p class="text-sm font-bold text-foret-700 font-mono">
+          {% if opp.pondere %}{{ opp.pondere|floatformat:0|intcomma }}{% else %}—{% endif %}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Risque</p>
+        <p class="text-sm font-medium text-ardoise-800">{{ opp.risque|default:"—" }}</p>
+      </div>
+    </div>
+    {% if opp.commentaire_terrain %}
+    <div>
+      <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Commentaire terrain</p>
+      <p class="text-sm text-ardoise-700 bg-ardoise-50 rounded-lg p-3 whitespace-pre-wrap">{{ opp.commentaire_terrain }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── 4. Suivi & planning ──────────────────────────────────────────────────── #}
+  <div class="card space-y-4">
+    <h2 class="text-base font-semibold text-ardoise-800 flex items-center gap-2">
+      <span class="w-7 h-7 rounded-full bg-foret-500 text-white flex items-center justify-center text-xs font-bold">4</span>
+      Suivi &amp; planning
+    </h2>
+    <div>
+      <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Prochaine action</p>
+      <p class="text-sm font-medium text-ardoise-800">{{ opp.prochaine_action|default:"—" }}</p>
+    </div>
+    <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Date de l'action</p>
+        <p class="text-sm font-medium text-ardoise-800">
+          {% if opp.date_action %}{{ opp.date_action|date:"d/m/Y" }}{% else %}—{% endif %}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Date closing estimée</p>
+        <p class="text-sm font-medium text-ardoise-800">
+          {% if opp.date_closing_est %}{{ opp.date_closing_est|date:"d/m/Y" }}{% else %}—{% endif %}
+        </p>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs text-ardoise-400 uppercase tracking-wide font-medium mb-1">Bucket</p>
+      {% if opp.bucket == 'Dépassé' %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Dépassé</span>
+      {% elif opp.bucket == '0-30j' %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">0-30j</span>
+      {% elif opp.bucket == '30-90j' %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600">30-90j</span>
+      {% elif opp.bucket == '+90j' %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-ardoise-100 text-ardoise-600">+90j</span>
+      {% else %}
+        <span class="text-ardoise-400 text-sm">—</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Métadonnées ─────────────────────────────────────────────────────────── #}
+  <p class="text-right text-xs text-ardoise-400">
+    Dernière mise à jour : {{ opp.derniere_maj|date:"d/m/Y à H:i" }}
+  </p>
+
+</div>
+{% endblock %}

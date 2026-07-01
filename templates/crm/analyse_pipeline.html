@@ -15,7 +15,9 @@
     Importer CSV
   </a>
   {% endif %}
+  {% if is_director %}
   <a href="{% url 'crm:saisie_pipeline' %}" class="btn-primary btn-sm">+ Nouvelle opportunité</a>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -232,6 +234,7 @@
             {# Actions #}
             <td class="px-4 py-3 text-center">
               <div class="flex items-center justify-center gap-2">
+                {% if is_director %}
                 <a href="{% url 'crm:saisie_pipeline_edit' opp.pk %}"
                    class="p-1.5 rounded-lg text-ardoise-400 hover:text-foret-600 hover:bg-foret-50 transition-colors"
                    title="Modifier">
@@ -240,6 +243,18 @@
                           d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
                 </a>
+                {% else %}
+                <a href="{% url 'crm:pipeline_detail' opp.pk %}"
+                   class="p-1.5 rounded-lg text-ardoise-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                   title="Consulter">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </a>
+                {% endif %}
                 {% if is_director %}
                 <form method="post" action="{% url 'crm:saisie_pipeline_delete' opp.pk %}"
                       onsubmit="return confirm('Supprimer « {{ opp.client }} — {{ opp.projet }} » ?')">
@@ -262,7 +277,9 @@
           <tr>
             <td colspan="{% if is_director %}11{% else %}10{% endif %}" class="px-4 py-10 text-center text-ardoise-400">
               <p class="text-sm">Aucune opportunité trouvée.</p>
+              {% if is_director %}
               <a href="{% url 'crm:saisie_pipeline' %}" class="btn-primary btn-sm mt-3 inline-block">+ Créer la première opportunité</a>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

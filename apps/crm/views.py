@@ -1693,6 +1693,12 @@ class ImportPipelineView(CRMAccessMixin, View):
 class SaisiePipelineView(CRMAccessMixin, View):
     template_name = 'crm/saisie_pipeline.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not is_director(request.user):
+            messages.error(request, "La création d'opportunités est réservée au Directeur Commercial.")
+            return redirect('crm:analyse_pipeline')
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request):
         form = OpportunitePipelineForm(user=request.user)
         return render(request, self.template_name, {'form': form, 'is_edit': False})
@@ -1701,8 +1707,6 @@ class SaisiePipelineView(CRMAccessMixin, View):
         form = OpportunitePipelineForm(request.POST, user=request.user)
         if form.is_valid():
             opp = form.save(commit=False)
-            if is_commercial(request.user):
-                opp.commercial = request.user
             opp.save()
             messages.success(request, f'Opportunité « {opp.client} — {opp.projet} » enregistrée.')
             return redirect('crm:saisie_pipeline')
@@ -1713,11 +1717,10 @@ class SaisiePipelineEditView(CRMAccessMixin, View):
     template_name = 'crm/saisie_pipeline.html'
 
     def _get_opp(self, request, pk):
-        opp = get_object_or_404(OpportunitePipeline, pk=pk)
-        if not is_director(request.user) and opp.commercial != request.user:
-            messages.error(request, "Vous ne pouvez modifier que vos propres opportunités.")
+        if not is_director(request.user):
+            messages.error(request, "La modification est réservée au Directeur Commercial.")
             return None
-        return opp
+        return get_object_or_404(OpportunitePipeline, pk=pk)
 
     def get(self, request, pk):
         opp = self._get_opp(request, pk)
@@ -1736,6 +1739,17 @@ class SaisiePipelineEditView(CRMAccessMixin, View):
             messages.success(request, 'Opportunité mise à jour.')
             return redirect('crm:analyse_pipeline')
         return render(request, self.template_name, {'form': form, 'opp': opp, 'is_edit': True})
+
+
+class OpportunitePipelineDetailView(CRMAccessMixin, View):
+    template_name = 'crm/pipeline_detail.html'
+
+    def get(self, request, pk):
+        opp = get_object_or_404(OpportunitePipeline, pk=pk)
+        if is_commercial(request.user) and opp.commercial != request.user:
+            messages.error(request, "Vous ne pouvez consulter que vos propres opportunités.")
+            return redirect('crm:analyse_pipeline')
+        return render(request, self.template_name, {'opp': opp})
 
 
 class SaisiePipelineDeleteView(CRMAccessMixin, View):
