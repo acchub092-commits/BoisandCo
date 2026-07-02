@@ -1,0 +1,584 @@
+<title>Bois&Co — Release Notes · Juillet 2026</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  :root {
+    --forest:   #1D3F2F;
+    --forest2:  #2D5540;
+    --gold:     #C8973A;
+    --gold-lt:  #F5E9D3;
+    --text:     #1C2B22;
+    --muted:    #57706A;
+    --surface:  #F6F3EE;
+    --border:   #DDD8CF;
+    --white:    #FFFFFF;
+    --cream:    #F2E8D5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--surface);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 660px;
+    margin: 32px auto;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(0,0,0,.12);
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--forest);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .header-top {
+    padding: 32px 40px 0;
+    position: relative;
+    z-index: 1;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold) 0%, rgba(200,151,58,.3) 60%, transparent 100%);
+  }
+  .header-deco {
+    position: absolute;
+    right: -20px; top: -30px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,151,58,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: .20em;
+    text-transform: uppercase;
+    color: rgba(242,232,213,.50);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .logo {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--cream);
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: .02em;
+  }
+  .logo span { color: var(--gold); }
+
+  /* Version hero band */
+  .version-band {
+    margin-top: 22px;
+    background: var(--forest2);
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .version-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--gold);
+    color: #1C2B22;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 3px;
+  }
+  .version-meta {
+    font-size: 12px;
+    color: rgba(242,232,213,.45);
+  }
+  .version-meta strong { color: rgba(242,232,213,.70); }
+
+  /* ── BODY ── */
+  .body {
+    background: var(--white);
+    padding: 36px 40px;
+  }
+
+  .intro {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.80;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .intro strong { color: var(--text); }
+
+  /* Section separator */
+  .sep {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 30px 0 18px;
+  }
+  .sep-line { flex: 1; height: 1px; background: var(--border); }
+  .sep-label {
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* Feature block */
+  .feature {
+    border-left: 3px solid var(--forest);
+    background: var(--surface);
+    border-radius: 0 4px 4px 0;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .feature.gold { border-left-color: var(--gold); }
+  .feature.blue { border-left-color: #3B82F6; }
+
+  .feature-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .ficon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--forest);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .feature.gold .ficon { background: var(--gold); }
+  .feature.blue .ficon { background: #3B82F6; }
+
+  .ftitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .badge-new {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    background: var(--forest);
+    color: var(--cream);
+    padding: 2px 7px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .badge-updated {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    background: var(--gold);
+    color: #1C2B22;
+    padding: 2px 7px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .fdesc {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .flist {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .flist li {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 2px 0 2px 18px;
+    position: relative;
+  }
+  .flist li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--forest);
+    font-size: 11px;
+    top: 3px;
+  }
+  .feature.gold .flist li::before { color: var(--gold); }
+  .feature.blue .flist li::before { color: #3B82F6; }
+
+  /* Role table */
+  .rtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .rtable th {
+    background: var(--forest);
+    color: rgba(242,232,213,.80);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    padding: 9px 14px;
+    text-align: left;
+  }
+  .rtable th:first-child { border-radius: 4px 0 0 0; }
+  .rtable th:last-child  { border-radius: 0 4px 0 0; }
+  .rtable td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .rtable tr:last-child td { border-bottom: none; }
+  .rtable tr:nth-child(even) td { background: var(--surface); }
+
+  .bge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; letter-spacing: .04em; }
+  .bge-g  { background: #D1FAE5; color: #065F46; }
+  .bge-b  { background: #DBEAFE; color: #1E40AF; }
+  .bge-a  { background: #FEF3C7; color: #92400E; }
+  .bge-r  { background: #FEE2E2; color: #991B1B; }
+  .bge-x  { background: #F3F4F6; color: #9CA3AF; }
+
+  /* CTA */
+  .cta-wrap { margin: 32px 0 8px; text-align: center; }
+  .cta {
+    display: inline-block;
+    background: var(--forest);
+    color: var(--cream);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 14px 40px;
+    border-radius: 3px;
+    text-decoration: none;
+  }
+
+  /* Changelog strip */
+  .changelog {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-top: 28px;
+  }
+  .changelog-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .cl-item {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 3px 0;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .cl-tag {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .cl-feat  { background: #D1FAE5; color: #065F46; }
+  .cl-fix   { background: #FEE2E2; color: #991B1B; }
+  .cl-imp   { background: #DBEAFE; color: #1E40AF; }
+  .cl-sec   { background: #FEF3C7; color: #92400E; }
+
+  /* Footer */
+  .footer {
+    background: var(--forest);
+    padding: 24px 40px;
+    text-align: center;
+  }
+  .footer p {
+    font-size: 11px;
+    color: rgba(242,232,213,.40);
+    line-height: 1.9;
+  }
+  .footer strong { color: rgba(242,232,213,.70); }
+
+  @media (max-width: 600px) {
+    .wrap, .body, .header-top, .version-band, .footer { padding-left: 20px; padding-right: 20px; }
+    .wrap { margin: 0; border-radius: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <div class="header-deco"></div>
+    <div class="header-top">
+      <div class="eyebrow">Bois&amp;Co — Système de gestion interne · Release Notes</div>
+      <div class="logo">Bois<span>&amp;</span>Co</div>
+    </div>
+    <div class="version-band">
+      <div class="version-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Version Juillet 2026
+      </div>
+      <div class="version-meta">
+        Déploiement : <strong>02 juillet 2026</strong> &nbsp;·&nbsp; 4 modules impactés
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Body ── -->
+  <div class="body">
+
+    <p class="intro">
+      Bonjour,<br><br>
+      Une nouvelle version de la plateforme <strong>Bois&amp;Co</strong> a été déployée.
+      Elle apporte <strong>quatre évolutions majeures</strong> : un circuit de validation des devis
+      avec le client, la refonte des droits d'accès au pipeline commercial, le lancement du module
+      Suivi Décomptes, et l'enrichissement du tableau COMEX avec des graphiques interactifs.
+      <br><br>
+      Toutes les fonctionnalités sont disponibles immédiatement — aucune action de votre part n'est requise.
+    </p>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- 1. VALIDATION DEVIS CLIENT -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div class="sep"><div class="sep-line"></div><div class="sep-label">Nouveau · Workflow Projet</div><div class="sep-line"></div></div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <div class="ficon">✅</div>
+        <div>
+          <div class="ftitle">Étape de validation devis avec le client<span class="badge-new">Nouveau</span></div>
+        </div>
+      </div>
+      <p class="fdesc">
+        Le cycle de vie d'un projet intègre désormais une <strong>étape formelle de validation du devis
+        par le client</strong>. Cette étape s'intercale entre la phase de chiffrage et le démarrage
+        des travaux, avec un suivi d'état visible sur la fiche projet.
+      </p>
+      <ul class="flist">
+        <li>Statuts de validation : <em>En attente client / Validé / Refusé / Demande de révision</em></li>
+        <li>Date de validation et commentaire client enregistrés sur la fiche projet</li>
+        <li>Tableau de bord Direction : vision globale des devis en attente de validation</li>
+        <li>Notification automatique au Directeur Commercial lors d'un refus ou d'une révision</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- 2. PIPELINE COMMERCIAL -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div class="sep"><div class="sep-line"></div><div class="sep-label">Mis à jour · CRM Pipeline</div><div class="sep-line"></div></div>
+
+    <div class="feature gold">
+      <div class="feature-header">
+        <div class="ficon">🔒</div>
+        <div>
+          <div class="ftitle">Droits d'accès pipeline — refonte complète<span class="badge-updated">Mis à jour</span></div>
+        </div>
+      </div>
+      <p class="fdesc">
+        Les permissions sur le module Pipeline Commercial ont été revues pour une séparation
+        claire entre les rôles de <strong>saisie/modification</strong> et de <strong>consultation</strong>.
+      </p>
+      <ul class="flist">
+        <li><strong>Directeur Commercial &amp; Admin :</strong> création, modification, suppression de toute opportunité + import CSV</li>
+        <li><strong>Commercial :</strong> consultation en lecture seule de ses propres opportunités — aucun bouton de modification affiché</li>
+        <li>Nouvelle <strong>fiche de consultation</strong> (vue détail) accessible depuis l'icône œil dans la liste pipeline</li>
+        <li>Blocage serveur : toute tentative d'accès direct aux URLs de modification redirige avec un message d'erreur</li>
+      </ul>
+    </div>
+
+    <div class="feature gold">
+      <div class="feature-header">
+        <div class="ficon">📥</div>
+        <div>
+          <div class="ftitle">Import CSV Pipeline<span class="badge-updated">Mis à jour</span></div>
+        </div>
+      </div>
+      <p class="fdesc">
+        Les Directeurs Commerciaux peuvent importer des opportunités pipeline en masse depuis
+        un fichier CSV exporté d'Excel, avec rapport détaillé des lignes créées / ignorées.
+      </p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- 3. SUIVI DÉCOMPTES -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div class="sep"><div class="sep-line"></div><div class="sep-label">Nouveau · Module Suivi Financier</div><div class="sep-line"></div></div>
+
+    <div class="feature blue">
+      <div class="feature-header">
+        <div class="ficon">📊</div>
+        <div>
+          <div class="ftitle">Module Suivi Décomptes — module autonome complet<span class="badge-new">Nouveau</span></div>
+        </div>
+      </div>
+      <p class="fdesc">
+        Un module entièrement nouveau, disponible dans la section <strong>Suivi Financier</strong> du menu,
+        dédié au suivi hebdomadaire des décomptes clients par projet.
+        Il fonctionne de façon <strong>totalement indépendante</strong> de la base projets.
+      </p>
+      <ul class="flist">
+        <li><strong>Dashboard global :</strong> KPIs en temps réel — Marché yc Avenants, Cumul Livraisons, Reste à livrer/attacher, Cumul Règlements, Alertes Acompte</li>
+        <li><strong>Fiche projet :</strong> historique complet des lignes de décompte (Attachement, RG, RF, Prorata, Acompte HT/TTC, Règlement, Livraison Système) + gestion des avenants</li>
+        <li><strong>Saisie hebdomadaire ADV :</strong> formulaire de saisie avec marquage automatique du dernier décompte actif par projet</li>
+        <li><strong>Import CSV :</strong> migration de l'historique depuis Excel en une seule opération, format multi-lignes (plusieurs décomptes par projet)</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- 4. COMEX -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div class="sep"><div class="sep-line"></div><div class="sep-label">Mis à jour · Dashboard COMEX</div><div class="sep-line"></div></div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <div class="ficon">🥧</div>
+        <div>
+          <div class="ftitle">COMEX — Graphiques interactifs &amp; lignes totaux<span class="badge-updated">Mis à jour</span></div>
+        </div>
+      </div>
+      <p class="fdesc">
+        Les quatre sections «&nbsp;Répartition&nbsp;» du tableau COMEX proposent maintenant un
+        <strong>toggle Tableau / Graphique</strong> pour basculer en camembert interactif,
+        idéal pour les présentations en réunion.
+      </p>
+      <ul class="flist">
+        <li>Graphiques disponibles : Répartition par Commercial, Statut, Segment, Ville</li>
+        <li>Ligne <strong>TOTAL</strong> ajoutée dans les tableaux Statut, Segment et Analyse Géographique</li>
+        <li>Les graphiques s'affichent directement dans la page sans rechargement</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- ACCÈS PAR RÔLE -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div class="sep"><div class="sep-line"></div><div class="sep-label">Récapitulatif accès par rôle</div><div class="sep-line"></div></div>
+
+    <table class="rtable">
+      <thead>
+        <tr>
+          <th>Rôle</th>
+          <th>Validation devis</th>
+          <th>Pipeline</th>
+          <th>Suivi Décomptes</th>
+          <th>COMEX</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Admin</strong></td>
+          <td><span class="bge bge-a">Complet</span></td>
+          <td><span class="bge bge-a">Complet</span></td>
+          <td><span class="bge bge-a">Complet</span></td>
+          <td><span class="bge bge-a">Complet</span></td>
+        </tr>
+        <tr>
+          <td><strong>Directeur / DG</strong></td>
+          <td><span class="bge bge-g">Accès</span></td>
+          <td><span class="bge bge-g">Lecture + Écriture</span></td>
+          <td><span class="bge bge-b">Lecture</span></td>
+          <td><span class="bge bge-g">Accès complet</span></td>
+        </tr>
+        <tr>
+          <td><strong>Dir. Commercial (DC)</strong></td>
+          <td><span class="bge bge-g">Accès</span></td>
+          <td><span class="bge bge-g">Lecture + Écriture</span></td>
+          <td><span class="bge bge-b">Lecture</span></td>
+          <td><span class="bge bge-g">Accès complet</span></td>
+        </tr>
+        <tr>
+          <td><strong>Commercial</strong></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-b">Lecture seule</span></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-x">—</span></td>
+        </tr>
+        <tr>
+          <td><strong>ADV</strong></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-g">Lecture + Saisie</span></td>
+          <td><span class="bge bge-x">—</span></td>
+        </tr>
+        <tr>
+          <td><strong>Finance</strong></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-b">Lecture</span></td>
+          <td><span class="bge bge-x">—</span></td>
+        </tr>
+        <tr>
+          <td><strong>Manager / Méthodes</strong></td>
+          <td><span class="bge bge-g">Accès</span></td>
+          <td><span class="bge bge-x">—</span></td>
+          <td><span class="bge bge-b">Lecture</span></td>
+          <td><span class="bge bge-g">Accès complet</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- CHANGELOG TECHNIQUE -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <div class="changelog">
+      <div class="changelog-title">Changelog technique</div>
+      <div class="cl-item"><span class="cl-tag cl-feat">FEAT</span> Nouveau module Suivi Décomptes — modèles, vues, templates, import CSV</div>
+      <div class="cl-item"><span class="cl-tag cl-feat">FEAT</span> Étape validation devis client dans le workflow projet</div>
+      <div class="cl-item"><span class="cl-tag cl-feat">FEAT</span> Fiche consultation pipeline en lecture seule pour le Commercial</div>
+      <div class="cl-item"><span class="cl-tag cl-imp">IMPROV</span> Import CSV Pipeline — disponible Directeur Commercial uniquement</div>
+      <div class="cl-item"><span class="cl-tag cl-imp">IMPROV</span> COMEX — toggle tableau / graphique camembert sur 4 sections</div>
+      <div class="cl-item"><span class="cl-tag cl-imp">IMPROV</span> COMEX — ligne TOTAL dans les tableaux Statut, Segment et Géographie</div>
+      <div class="cl-item"><span class="cl-tag cl-sec">PERM</span> Pipeline — Commercial restreint en lecture seule (blocage serveur + UI)</div>
+      <div class="cl-item"><span class="cl-tag cl-sec">PERM</span> Saisie/modification pipeline réservée Directeur Commercial + Admin</div>
+    </div>
+
+    <div class="cta-wrap">
+      <a href="#" class="cta">Accéder à la plateforme</a>
+    </div>
+
+  </div>
+
+  <!-- ── Footer ── -->
+  <div class="footer">
+    <p>
+      <strong>Bois&amp;Co — Système de gestion interne</strong><br>
+      Ce message est généré automatiquement · Ne pas répondre à cet e-mail<br>
+      Pour toute question technique, contactez votre administrateur système.
+    </p>
+  </div>
+
+</div>

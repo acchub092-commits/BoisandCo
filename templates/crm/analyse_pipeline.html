@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load humanize crm_filters %}
 
 {% block title %}Analyse Pipeline{% endblock %}
 {% block page_title %}Analyse Pipeline Commercial{% endblock %}
@@ -36,7 +36,7 @@
       </div>
       <div>
         <p class="text-[11px] text-ardoise-500 uppercase tracking-wide font-medium">Pipeline Total</p>
-        <p class="text-lg font-bold text-ardoise-800">{{ total_mad|floatformat:0|intcomma }} MAD</p>
+        <p class="text-lg font-bold text-ardoise-800">{{ total_mad|sep_milliers }} MAD</p>
       </div>
     </div>
 
@@ -49,7 +49,7 @@
       </div>
       <div>
         <p class="text-[11px] text-ardoise-500 uppercase tracking-wide font-medium">Pipeline Pondéré</p>
-        <p class="text-lg font-bold text-ardoise-800">{{ total_pond|floatformat:0|intcomma }} MAD</p>
+        <p class="text-lg font-bold text-ardoise-800">{{ total_pond|sep_milliers }} MAD</p>
       </div>
     </div>
 
@@ -80,6 +80,135 @@
     </div>
 
   </div>
+
+  {# ── Graphiques de répartition ─────────────────────────────────────────── #}
+  {% if opportunites %}
+  <div class="grid grid-cols-1 lg:grid-cols-{% if is_director %}3{% else %}2{% endif %} gap-4">
+
+    {# Répartition par Statut #}
+    <div x-data="{ mode: 'chart', inited: false }"
+         x-init="$nextTick(() => { initPipelineStatut(); inited = true; })"
+         class="card p-0 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-ardoise-800">
+        <span class="text-xs font-semibold uppercase tracking-wider text-ardoise-100">Par Statut</span>
+        <div class="flex gap-1">
+          <button :class="mode==='table' ? 'bg-white/25 text-white' : 'text-ardoise-300 hover:text-white'"
+                  class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                  @click="mode='table'">Tableau</button>
+          <button :class="mode==='chart' ? 'bg-white/25 text-white' : 'text-ardoise-300 hover:text-white'"
+                  class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                  @click="mode='chart'; if(!inited){ $nextTick(() => { initPipelineStatut(); inited=true; }); }">Graphique</button>
+        </div>
+      </div>
+      <div x-show="mode==='table'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-ardoise-50 border-b border-ardoise-100">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Statut</th>
+              <th class="px-3 py-2 text-center text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Proj.</th>
+              <th class="px-3 py-2 text-right text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Potentiel (MAD)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ardoise-50">
+            {% for s in chart_statut %}
+            <tr class="hover:bg-ardoise-50/40">
+              <td class="px-3 py-2 text-sm font-medium text-ardoise-800">{{ s.label }}</td>
+              <td class="px-3 py-2 text-center text-sm text-ardoise-600">{{ s.count }}</td>
+              <td class="px-3 py-2 text-right font-mono text-sm text-ardoise-800">{{ s.pot|sep_milliers }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div x-show="mode==='chart'" class="p-4" style="height:220px;">
+        <canvas id="chartPipelineStatut"></canvas>
+      </div>
+    </div>
+
+    {# Répartition par Segment #}
+    <div x-data="{ mode: 'chart', inited: false }"
+         x-init="$nextTick(() => { initPipelineSegment(); inited = true; })"
+         class="card p-0 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-ardoise-800">
+        <span class="text-xs font-semibold uppercase tracking-wider text-ardoise-100">Par Segment</span>
+        <div class="flex gap-1">
+          <button :class="mode==='table' ? 'bg-white/25 text-white' : 'text-ardoise-300 hover:text-white'"
+                  class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                  @click="mode='table'">Tableau</button>
+          <button :class="mode==='chart' ? 'bg-white/25 text-white' : 'text-ardoise-300 hover:text-white'"
+                  class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                  @click="mode='chart'; if(!inited){ $nextTick(() => { initPipelineSegment(); inited=true; }); }">Graphique</button>
+        </div>
+      </div>
+      <div x-show="mode==='table'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-ardoise-50 border-b border-ardoise-100">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Segment</th>
+              <th class="px-3 py-2 text-center text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Proj.</th>
+              <th class="px-3 py-2 text-right text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Potentiel (MAD)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ardoise-50">
+            {% for sg in chart_segment %}
+            <tr class="hover:bg-ardoise-50/40">
+              <td class="px-3 py-2 text-sm font-medium text-ardoise-800">{{ sg.label }}</td>
+              <td class="px-3 py-2 text-center text-sm text-ardoise-600">{{ sg.count }}</td>
+              <td class="px-3 py-2 text-right font-mono text-sm text-ardoise-800">{{ sg.pot|sep_milliers }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div x-show="mode==='chart'" class="p-4" style="height:220px;">
+        <canvas id="chartPipelineSegment"></canvas>
+      </div>
+    </div>
+
+    {# Répartition par Commercial (directeur uniquement) #}
+    {% if is_director %}
+    <div x-data="{ mode: 'chart', inited: false }"
+         x-init="$nextTick(() => { initPipelineComm(); inited = true; })"
+         class="card p-0 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-ardoise-800">
+        <span class="text-xs font-semibold uppercase tracking-wider text-ardoise-100">Par Commercial</span>
+        <div class="flex gap-1">
+          <button :class="mode==='table' ? 'bg-white/25 text-white' : 'text-ardoise-300 hover:text-white'"
+                  class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                  @click="mode='table'">Tableau</button>
+          <button :class="mode==='chart' ? 'bg-white/25 text-white' : 'text-ardoise-300 hover:text-white'"
+                  class="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+                  @click="mode='chart'; if(!inited){ $nextTick(() => { initPipelineComm(); inited=true; }); }">Graphique</button>
+        </div>
+      </div>
+      <div x-show="mode==='table'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-ardoise-50 border-b border-ardoise-100">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Commercial</th>
+              <th class="px-3 py-2 text-center text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Proj.</th>
+              <th class="px-3 py-2 text-right text-xs font-semibold text-ardoise-500 uppercase tracking-wide">Potentiel (MAD)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ardoise-50">
+            {% for c in chart_comm %}
+            <tr class="hover:bg-ardoise-50/40">
+              <td class="px-3 py-2 text-sm font-medium text-ardoise-800">{{ c.label }}</td>
+              <td class="px-3 py-2 text-center text-sm text-ardoise-600">{{ c.count }}</td>
+              <td class="px-3 py-2 text-right font-mono text-sm text-ardoise-800">{{ c.pot|sep_milliers }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div x-show="mode==='chart'" class="p-4" style="height:220px;">
+        <canvas id="chartPipelineComm"></canvas>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
 
   {# ── Filtres ─────────────────────────────────────────────────────────────── #}
   <div class="card">
@@ -166,7 +295,7 @@
 
             {# Potentiel #}
             <td class="px-4 py-3 text-right font-mono text-sm text-ardoise-800">
-              {% if opp.potentiel_mad %}{{ opp.potentiel_mad|floatformat:0|intcomma }}{% else %}<span class="text-ardoise-300">—</span>{% endif %}
+              {% if opp.potentiel_mad %}{{ opp.potentiel_mad|sep_milliers }}{% else %}<span class="text-ardoise-300">—</span>{% endif %}
             </td>
 
             {# Probabilité #}
@@ -176,7 +305,7 @@
 
             {# Pondéré #}
             <td class="px-4 py-3 text-right font-mono text-sm text-ardoise-800">
-              {% if opp.pondere %}{{ opp.pondere|floatformat:0|intcomma }}{% else %}<span class="text-ardoise-300">—</span>{% endif %}
+              {% if opp.pondere %}{{ opp.pondere|sep_milliers }}{% else %}<span class="text-ardoise-300">—</span>{% endif %}
             </td>
 
             {# Statut #}
@@ -289,4 +418,71 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if opportunites %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const PALETTE_STATUT = {
+    'Prospection': '#94a3b8',
+    'En cours':    '#3b82f6',
+    'Négociation': '#06b6d4',
+    'Gagné':       '#16a34a',
+    'Perdu':       '#dc2626',
+  };
+  const PALETTE_SEG  = ['#163228','#2d7a4f','#0891b2','#7c3aed','#b45309','#0f766e'];
+  const PALETTE_COMM = ['#163228','#1e4535','#2d7a4f','#4a9d6f','#0891b2','#7c3aed','#b45309'];
+
+  const baseOpts = (tooltipCb) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '52%',
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 11, padding: 10, font: { size: 11 }, color: '#3d4857' } },
+      tooltip: { callbacks: { label: tooltipCb } },
+    },
+  });
+
+  const fmt = (v) => new Intl.NumberFormat('fr-MA').format(v) + ' MAD';
+
+  window.initPipelineStatut = function () {
+    const labels = [{% for s in chart_statut %}"{{ s.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for s in chart_statut %}{{ s.pot }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const counts = [{% for s in chart_statut %}{{ s.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const colors = labels.map(l => PALETTE_STATUT[l] || '#94a3b8');
+    new Chart(document.getElementById('chartPipelineStatut'), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: pots, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
+      options: baseOpts(ctx => ' ' + ctx.label + ' : ' + fmt(ctx.raw) + ' (' + counts[ctx.dataIndex] + ' proj.)'),
+    });
+  };
+
+  window.initPipelineSegment = function () {
+    const labels = [{% for sg in chart_segment %}"{{ sg.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for sg in chart_segment %}{{ sg.pot }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const counts = [{% for sg in chart_segment %}{{ sg.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    new Chart(document.getElementById('chartPipelineSegment'), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: pots, backgroundColor: PALETTE_SEG.slice(0, labels.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
+      options: baseOpts(ctx => ' ' + ctx.label + ' : ' + fmt(ctx.raw) + ' (' + counts[ctx.dataIndex] + ' proj.)'),
+    });
+  };
+
+  {% if is_director %}
+  window.initPipelineComm = function () {
+    const labels = [{% for c in chart_comm %}"{{ c.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const pots   = [{% for c in chart_comm %}{{ c.pot }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const counts = [{% for c in chart_comm %}{{ c.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    new Chart(document.getElementById('chartPipelineComm'), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: pots, backgroundColor: PALETTE_COMM.slice(0, labels.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
+      options: baseOpts(ctx => ' ' + ctx.label + ' : ' + fmt(ctx.raw) + ' (' + counts[ctx.dataIndex] + ' proj.)'),
+    });
+  };
+  {% endif %}
+})();
+</script>
+{% endif %}
 {% endblock %}

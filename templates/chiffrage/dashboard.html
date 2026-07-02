@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}Chiffrage{% endblock %}
 {% block page_title %}Chiffrage{% endblock %}
 
@@ -81,6 +82,61 @@
         <p class="text-xl font-bold {% if stats.retard %}text-red-600{% else %}text-ardoise-900{% endif %} leading-tight">{{ stats.retard }}</p>
         <p class="text-xs {% if stats.retard %}text-red-500{% else %}text-ardoise-400{% endif %}">En retard</p>
       </div>
+    </div>
+  </div>
+
+  {# ── Réponses clients ─────────────────────────────────────────── #}
+  <div class="card py-4 px-5">
+    <p class="text-[11px] font-semibold uppercase tracking-widest text-ardoise-400 mb-3 flex items-center gap-2">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+      </svg>
+      Réponses clients
+    </p>
+    <div class="grid grid-cols-3 gap-3">
+
+      {# Accepté #}
+      <a href="?statut=ACCEPTE" class="group flex items-center gap-3 rounded-xl border border-foret-100 bg-foret-50 px-4 py-3 hover:border-foret-300 hover:bg-foret-100 transition-colors">
+        <div class="w-10 h-10 rounded-full bg-foret-100 group-hover:bg-foret-200 flex items-center justify-center flex-shrink-0 transition-colors">
+          <svg class="w-5 h-5 text-foret-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-foret-700 leading-tight">{{ stats.accepte }}</p>
+          <p class="text-xs text-foret-600 font-medium">Accepté par le client</p>
+          <p class="text-[11px] font-mono text-foret-600 mt-0.5">{{ stats.accepte_mad|sep_milliers }} MAD</p>
+        </div>
+      </a>
+
+      {# Refusé #}
+      <a href="?statut=REFUSE_CLI" class="group flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 hover:border-red-300 hover:bg-red-100 transition-colors">
+        <div class="w-10 h-10 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center flex-shrink-0 transition-colors">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-red-600 leading-tight">{{ stats.refuse_cli }}</p>
+          <p class="text-xs text-red-600 font-medium">Refusé par le client</p>
+          <p class="text-[11px] font-mono text-red-500 mt-0.5">{{ stats.refuse_cli_mad|sep_milliers }} MAD</p>
+        </div>
+      </a>
+
+      {# Rejeté #}
+      <a href="?statut=REJETEE" class="group flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 hover:border-amber-300 hover:bg-amber-100 transition-colors">
+        <div class="w-10 h-10 rounded-full bg-amber-100 group-hover:bg-amber-200 flex items-center justify-center flex-shrink-0 transition-colors">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-amber-700 leading-tight">{{ stats.rejetee }}</p>
+          <p class="text-xs text-amber-700 font-medium">Rejeté — à corriger</p>
+          <p class="text-[11px] font-mono text-amber-600 mt-0.5">{{ stats.rejetee_mad|sep_milliers }} MAD</p>
+        </div>
+      </a>
+
     </div>
   </div>
 

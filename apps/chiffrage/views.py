@@ -13,7 +13,7 @@ from django.views.generic import View, ListView
 import mimetypes
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseForbidden, JsonResponse, FileResponse, Http404
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
 from django.utils import timezone
 
 from .models import (
@@ -126,6 +126,14 @@ class DashboardView(ChiffrageRequiredMixin, View):
                     'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE'
                 ]) if d.delai_souhaite and d.delai_souhaite < today
             ),
+            # Réponses clients — compteurs
+            'accepte':    all_qs.filter(statut='ACCEPTE').count(),
+            'refuse_cli': all_qs.filter(statut='REFUSE_CLI').count(),
+            'rejetee':    all_qs.filter(statut='REJETEE').count(),
+            # Réponses clients — montants HT
+            'accepte_mad':    all_qs.filter(statut='ACCEPTE').aggregate(t=Sum('montant_ht'))['t'] or 0,
+            'refuse_cli_mad': all_qs.filter(statut='REFUSE_CLI').aggregate(t=Sum('montant_ht'))['t'] or 0,
+            'rejetee_mad':    all_qs.filter(statut='REJETEE').aggregate(t=Sum('montant_ht'))['t'] or 0,
         }
 
         # Filtre retard (post-queryset car propriété Python)
@@ -1035,14 +1043,6 @@ class FichierDownloadView(ChiffrageRequiredMixin, View):
     def get(self, request, pk, fichier_pk):
         demande = get_object_or_404(DemandeChiffrage, pk=pk)
         fichier = get_object_or_404(FichierChiffrage, pk=fichier_pk, demande=demande, is_devis=False)
-
-        is_commercial = request.user.role == 'COMMERCIAL' and not request.user.is_superuser
-        if is_commercial and demande.commercial != request.user:
-            django_messages.error(request, "Vous n'avez pas accès aux documents de ce dossier.")
-            return redirect('chiffrage:detail', pk=pk)
-        if is_commercial and fichier.is_internal:
-            django_messages.error(request, "Ce document est réservé à l'usage interne.")
-            return redirect('chiffrage:detail', pk=pk)
 
         try:
             content_type, _ = mimetypes.guess_type(fichier.fichier.name)

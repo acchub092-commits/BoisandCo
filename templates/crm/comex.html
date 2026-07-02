@@ -201,7 +201,7 @@
         <div class="view-toggle no-print">
           <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
           <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
-                  @click="mode='chart'; if(!inited){ initChartComm(); inited=true; }">📊 Graphique</button>
+                  @click="mode='chart'; if(!inited){ $nextTick(() => { initChartComm(); inited=true; }); }">📊 Graphique</button>
         </div>
       </div>
     </div>
@@ -272,7 +272,7 @@
       <div class="view-toggle no-print">
         <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
         <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
-                @click="mode='chart'; if(!inited){ initChartStat(); inited=true; }">📊 Graphique</button>
+                @click="mode='chart'; if(!inited){ $nextTick(() => { initChartStat(); inited=true; }); }">📊 Graphique</button>
       </div>
     </div>
 
@@ -343,7 +343,7 @@
       <div class="view-toggle no-print">
         <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
         <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
-                @click="mode='chart'; if(!inited){ initChartSeg(); inited=true; }">📊 Graphique</button>
+                @click="mode='chart'; if(!inited){ $nextTick(() => { initChartSeg(); inited=true; }); }">📊 Graphique</button>
       </div>
     </div>
 
@@ -408,7 +408,7 @@
       <div class="view-toggle no-print">
         <button class="view-toggle-btn" :class="mode==='table' && 'active'" @click="mode='table'">📋 Tableau</button>
         <button class="view-toggle-btn" :class="mode==='chart' && 'active'"
-                @click="mode='chart'; if(!inited){ initChartVille(); inited=true; }">📊 Graphique</button>
+                @click="mode='chart'; if(!inited){ $nextTick(() => { initChartVille(); inited=true; }); }">📊 Graphique</button>
       </div>
     </div>
 

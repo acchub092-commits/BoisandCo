@@ -1791,17 +1791,41 @@ class AnalysePipelineView(CRMAccessMixin, View):
 
         commerciaux = User.objects.filter(role__in=('COMMERCIAL', 'MANAGER'), is_active_employee=True).order_by('last_name')
 
+        # Agrégats pour les graphiques
+        from collections import defaultdict
+        _by_statut  = defaultdict(lambda: {'count': 0, 'pot': 0.0})
+        _by_segment = defaultdict(lambda: {'count': 0, 'pot': 0.0})
+        _by_comm    = defaultdict(lambda: {'count': 0, 'pot': 0.0, 'name': ''})
+        for o in opportunites:
+            _by_statut[o.statut]['count']  += 1
+            _by_statut[o.statut]['pot']    += float(o.potentiel_mad or 0)
+            _by_segment[o.segment]['count'] += 1
+            _by_segment[o.segment]['pot']   += float(o.potentiel_mad or 0)
+            _by_comm[o.commercial_id]['count'] += 1
+            _by_comm[o.commercial_id]['pot']   += float(o.potentiel_mad or 0)
+            _by_comm[o.commercial_id]['name']   = o.commercial.get_full_name() or o.commercial.username
+
+        chart_statut  = [{'label': k, 'count': v['count'], 'pot': int(v['pot'])} for k, v in _by_statut.items()]
+        chart_segment = [{'label': k, 'count': v['count'], 'pot': int(v['pot'])} for k, v in _by_segment.items()]
+        chart_comm    = sorted(
+            [{'label': v['name'], 'count': v['count'], 'pot': int(v['pot'])} for v in _by_comm.values()],
+            key=lambda x: -x['pot']
+        )
+
         return render(request, self.template_name, {
-            'opportunites': opportunites,
-            'total_mad':    total_mad,
-            'total_pond':   total_pond,
-            'nb_actifs':    nb_actifs,
-            'nb_alertes':   nb_alertes,
-            'commerciaux':  commerciaux,
-            'statuts':      OpportunitePipeline.Statut.choices,
-            'segments':     OpportunitePipeline.Segment.choices,
-            'f_commercial': f_commercial,
-            'f_statut':     f_statut,
-            'f_segment':    f_segment,
-            'is_director':  is_director(request.user),
+            'opportunites':  opportunites,
+            'total_mad':     total_mad,
+            'total_pond':    total_pond,
+            'nb_actifs':     nb_actifs,
+            'nb_alertes':    nb_alertes,
+            'commerciaux':   commerciaux,
+            'statuts':       OpportunitePipeline.Statut.choices,
+            'segments':      OpportunitePipeline.Segment.choices,
+            'f_commercial':  f_commercial,
+            'f_statut':      f_statut,
+            'f_segment':     f_segment,
+            'is_director':   is_director(request.user),
+            'chart_statut':  chart_statut,
+            'chart_segment': chart_segment,
+            'chart_comm':    chart_comm,
         })
