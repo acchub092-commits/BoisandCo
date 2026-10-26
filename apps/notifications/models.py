@@ -102,6 +102,12 @@ class Notification(models.Model):
                 return reverse('documents:list')
             elif model == 'demandechiffrage':
                 return reverse('chiffrage:detail', args=[obj.pk])
+            elif model == 'posepiececomptage':
+                return reverse('projects:pose_gestion_pointage_composant', args=[obj.project_id])
+            elif model == 'posedemandemodification':
+                return reverse('projects:pose_gestion_demandes_modification')
+            elif model == 'posedemandepaiement':
+                return reverse('projects:pose_gestion_demande_paiement_detail', args=[obj.pk])
         except (NoReverseMatch, AttributeError):
             pass
         return None
@@ -109,3 +115,26 @@ class Notification(models.Model):
     @classmethod
     def unread_count(cls, user):
         return cls.objects.filter(recipient=user, is_read=False).count()
+
+
+class PushSubscription(models.Model):
+    """Abonnement Web Push d'un navigateur/appareil — la PWA installée s'enregistre ici
+    pour recevoir les notifications en push (type WhatsApp), relayées à chaque
+    `Notification` créée pour cet utilisateur (voir `apps.notifications.push`)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='push_subscriptions', verbose_name='Utilisateur',
+    )
+    endpoint = models.URLField(max_length=500, unique=True, verbose_name='Endpoint')
+    p256dh = models.CharField(max_length=200, verbose_name='Clé p256dh')
+    auth = models.CharField(max_length=100, verbose_name='Clé auth')
+    user_agent = models.CharField(max_length=255, blank=True, verbose_name='Appareil')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Abonnement push'
+        verbose_name_plural = 'Abonnements push'
+
+    def __str__(self):
+        return f'{self.user} — {self.endpoint[:50]}…'

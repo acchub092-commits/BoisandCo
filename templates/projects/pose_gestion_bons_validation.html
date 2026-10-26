@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Validation des bons de règlement{% endblock %}
+{% block page_title %}Bons de règlement en attente de validation{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4">
+
+  <div class="card">
+    <form method="get" class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="form-label">Projet</label>
+        <select name="project" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous les projets</option>
+          {% for p in projets %}
+          <option value="{{ p.pk }}" {% if selected_project == p.pk|stringformat:'s' %}selected{% endif %}>
+            {{ p.reference }} — {{ p.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if selected_project %}
+      <a href="{% url 'projects:pose_gestion_bons_validation' %}" class="btn-secondary btn-sm">Réinitialiser</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <p class="text-sm text-ardoise-400">{{ bons|length }} bon(s) approuvé(s) par le chef de projet, en attente de validation DG.</p>
+
+  {% for bon in bons %}
+  <div class="card flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-xs text-ardoise-400">{{ bon.project.reference }} — {{ bon.project.name }}</p>
+      <p class="font-semibold text-ardoise-800">{{ bon.poseur.nom }} — S{{ bon.semaine }}/{{ bon.annee }}</p>
+      <p class="text-xs text-ardoise-400">
+        Approuvé par {{ bon.approuve_par_chef.get_full_name|default:"—" }} le {{ bon.approuve_chef_le|date:"d/m/Y H:i" }}
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'projects:pose_gestion_bon_edit' bon.project.pk bon.pk %}"
+         target="_blank" class="btn-secondary btn-sm">Prévisualiser</a>
+      <form method="post" action="{% url 'projects:pose_gestion_bon_valider' bon.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="querystring" value="project={{ selected_project }}">
+        <button type="submit" class="btn-primary btn-sm">Valider ce bon</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-sm text-ardoise-400">Aucun bon en attente de validation.</p>
+  {% endfor %}
+
+</div>
+{% endblock %}

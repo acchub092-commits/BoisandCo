@@ -34,6 +34,7 @@ THIRD_PARTY_APPS = [
     'allauth.socialaccount',
     # API
     'rest_framework',
+    'rest_framework.authtoken',
     # HTMX
     'django_htmx',
     # Tailwind
@@ -93,6 +94,9 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'boisandco.context_processors.app_version',
+                'boisandco.context_processors.pose_validation_count',
+                'boisandco.context_processors.pose_bon_validation_count',
+                'boisandco.context_processors.pose_test_profile',
             ],
             'libraries': {
                 'crm_filters': 'apps.crm.templatetags.crm_filters',
@@ -150,6 +154,7 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_LOGOUT_ON_GET = True              # déconnexion directe sans page de confirmation
 ACCOUNT_FORMS = {}
+ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
 LOGIN_REDIRECT_URL = '/projets/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
@@ -162,6 +167,7 @@ TIME_ZONE = 'Europe/Paris'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+USE_THOUSAND_SEPARATOR = True
 
 # ---------------------------------------------------------------------------
 # Fichiers statiques & média
@@ -181,6 +187,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------------------------------------------------------------------------
+# Notifications push (Web Push / VAPID) — PWA mobile
+# ---------------------------------------------------------------------------
+VAPID_PUBLIC_KEY = config('VAPID_PUBLIC_KEY', default='')
+VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='')
+VAPID_CLAIM_EMAIL = config('VAPID_CLAIM_EMAIL', default='mailto:notifications@boisandco.ma')
+
+# ---------------------------------------------------------------------------
 # Tailwind CSS
 # ---------------------------------------------------------------------------
 TAILWIND_APP_NAME = 'theme'
@@ -197,6 +210,7 @@ NPM_BIN_PATH = config('NPM_BIN_PATH', default='npm')
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -215,7 +229,8 @@ REST_FRAMEWORK = {
 INTERNAL_IPS = ['127.0.0.1']
 
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
+    # Désactivé par défaut (gênait la navigation) — repasser à `DEBUG` pour le réactiver.
+    'SHOW_TOOLBAR_CALLBACK': lambda request: False,
 }
 
 # ---------------------------------------------------------------------------

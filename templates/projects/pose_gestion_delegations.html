@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} — Délégations{% endblock %}
+{% block page_title %}{{ project.reference }} — Délégations{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_projet' project.pk %}" class="btn-secondary btn-sm">← Tableau</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3">
+    Déléguer ce projet à un conducteur de travaux lui ouvre la saisie des pointages (BROUILLON) sur ce projet.
+  </div>
+
+  <div class="card">
+    <h2 class="text-sm font-semibold text-ardoise-800 mb-3">Déléguer à un conducteur</h2>
+    <form method="post" class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <div class="flex-1 min-w-[200px]">
+        <label class="form-label">Conducteur de travaux</label>
+        <select name="conducteur_id" class="form-input" required>
+          <option value="">Choisir…</option>
+          {% for c in conducteurs %}
+          <option value="{{ c.pk }}">{{ c.get_full_name|default:c.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Début (optionnel)</label>
+        <input type="date" name="date_debut" class="form-input">
+      </div>
+      <div>
+        <label class="form-label">Fin (optionnel)</label>
+        <input type="date" name="date_fin" class="form-input">
+      </div>
+      <button type="submit" class="btn-primary btn-sm">+ Déléguer</button>
+    </form>
+  </div>
+
+  <div class="card p-0 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-3 py-2">Conducteur</th>
+          <th class="text-left px-3 py-2">Délégué par</th>
+          <th class="text-left px-3 py-2">Période</th>
+          <th class="text-left px-3 py-2">Statut</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100">
+        {% for d in delegations %}
+        <tr>
+          <td class="px-3 py-2 font-semibold text-ardoise-800">{{ d.conducteur_delegue.get_full_name|default:d.conducteur_delegue.username }}</td>
+          <td class="px-3 py-2 text-ardoise-500">{{ d.chef_delegant.get_full_name|default:d.chef_delegant.username }}</td>
+          <td class="px-3 py-2 text-ardoise-500">
+            {{ d.date_debut|date:"d/m/Y"|default:"—" }} → {{ d.date_fin|date:"d/m/Y"|default:"—" }}
+          </td>
+          <td class="px-3 py-2">
+            {% if d.actif %}
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-foret-100 text-foret-700">Active</span>
+            {% else %}
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-ardoise-100 text-ardoise-500">Révoquée</span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-2">
+            {% if d.actif %}
+            <form method="post" action="{% url 'projects:pose_gestion_delegation_revoquer' project.pk d.pk %}"
+                  onsubmit="return confirm('Révoquer cette délégation ?');">
+              {% csrf_token %}
+              <button type="submit" class="text-xs text-red-600 hover:underline">Révoquer</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="px-3 py-6 text-center text-ardoise-400">Aucune délégation pour ce projet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

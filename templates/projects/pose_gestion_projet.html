@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% load static l10n %}
+
+{% block title %}{{ project.name }} — Gestion de la pose{% endblock %}
+{% block page_title %}{{ project.reference }} — Préparation{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_delegations' project.pk %}" class="btn-secondary btn-sm flex items-center gap-1.5">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/>
+  </svg>
+  Délégations
+</a>
+<a href="{% url 'projects:pose_gestion_articles_export' project.pk %}" class="btn-secondary btn-sm flex items-center gap-1.5">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+  </svg>
+  Exporter (.xlsx)
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto space-y-6">
+
+  <div class="card p-0 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-3 py-2">Référence</th>
+          <th class="text-left px-3 py-2">Client</th>
+          <th class="text-left px-3 py-2">Région</th>
+          <th class="text-left px-3 py-2">Chef de projet</th>
+          <th class="text-left px-3 py-2">Commercial</th>
+          <th class="text-left px-3 py-2">Date de début</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="px-3 py-2 font-semibold text-ardoise-800">{{ project.reference }}</td>
+          <td class="px-3 py-2">{{ project.client_name }}</td>
+          <td class="px-3 py-2">{{ meta.region|default:"—" }}</td>
+          <td class="px-3 py-2">{{ project.chef_de_projet.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2">{{ meta.commercial.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2">{{ project.start_date|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Avancement de la pose</p>
+      <p class="text-3xl font-bold text-ardoise-800 mt-1">{{ kpis.avancement_global }} %</p>
+      <div class="progress-bar mt-3"><div class="progress-fill" style="width: {{ kpis.avancement_global|unlocalize }}%"></div></div>
+      <p class="text-xs text-ardoise-400 mt-2">
+        {{ kpis.montant_realise_total }} MAD réalisés / {{ kpis.montant_prevu_total }} MAD prévus
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Budget engagé de la pose</p>
+      <p class="text-3xl font-bold text-ardoise-800 mt-1">{{ kpis.total_prix_pose }}</p>
+      <p class="text-xs text-ardoise-400 mt-1">Budget estimé : {{ kpis.total_budget_pose }} MAD</p>
+      {% if kpis.total_frais_logistique > 0 %}
+      <p class="text-xs text-ardoise-400">dont logistique : {{ kpis.total_frais_logistique }} MAD</p>
+      {% endif %}
+      {% if kpis.depassement > 0 %}
+      <span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+        Dépassement {{ kpis.depassement }} MAD
+      </span>
+      {% else %}
+      <span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-foret-100 text-foret-700">
+        Dans le budget
+      </span>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Validation DG des prix</p>
+      <p class="text-3xl font-bold text-ardoise-800 mt-1">{{ kpis.nb_valides }}<span class="text-base font-normal text-ardoise-400">/{{ kpis.nb_articles }}</span></p>
+      <div class="flex items-center gap-2 mt-3 text-xs">
+        <span class="px-2 py-0.5 rounded-full bg-foret-100 text-foret-700 font-semibold">{{ kpis.nb_valides }} validé(s)</span>
+        <span class="px-2 py-0.5 rounded-full bg-ardoise-100 text-ardoise-500 font-semibold">{{ kpis.nb_en_attente }} en attente</span>
+        {% if kpis.nb_refuses %}
+        <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">{{ kpis.nb_refuses }} refusé(s)</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">À compléter</p>
+      <p class="text-3xl font-bold {% if kpis.nb_incomplets %}text-amber-600{% else %}text-foret-600{% endif %} mt-1">
+        {{ kpis.nb_incomplets }}
+      </p>
+      <p class="text-xs text-ardoise-400 mt-1">
+        {% if kpis.nb_incomplets %}
+        article(s) sans prix de pose ou sans poseur affecté
+        {% else %}
+        tous les articles sont prêts à être soumis
+        {% endif %}
+      </p>
+    </div>
+
+  </div>
+
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3">
+    Saisissez le <strong>prix de pose</strong> des articles (un ou plusieurs à la fois), puis affectez les poseurs.
+    Cliquez sur <strong>« Enregistrer tout »</strong> pour tout soumettre en une seule fois — les prix saisis partent en validation chez la DG.
+  </div>
+
+  {% if peut_gerer_poseurs %}
+  <div class="card">
+    <h2 class="text-sm font-semibold text-ardoise-800 mb-3">Ajouter un poseur</h2>
+    <form method="post" action="{% url 'projects:pose_gestion_poseur_create' %}" class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'projects:pose_gestion_projet' project.pk %}">
+      <div>
+        <label class="form-label">Nom</label>
+        <input type="text" name="nom" class="form-input" required>
+      </div>
+      <div>
+        <label class="form-label">CIN</label>
+        <input type="text" name="cin" class="form-input" required>
+      </div>
+      <button type="submit" class="btn-secondary btn-sm flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z"/>
+        </svg>
+        Ajouter
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'projects:pose_gestion_articles_bulk_update' project.pk %}">
+    {% csrf_token %}
+
+    <div class="flex justify-end mb-3">
+      <button type="submit" class="btn-primary flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8"/>
+        </svg>
+        Enregistrer tout et soumettre à validation
+      </button>
+    </div>
+
+  <div class="card p-0 overflow-x-auto bg-white" x-data="{ fullscreen: false }"
+       :class="fullscreen && 'max-h-screen overflow-y-auto'"
+       @fullscreenchange.window="fullscreen = (document.fullscreenElement === $root)">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-ardoise-100 bg-ardoise-50">
+      <p class="text-xs text-ardoise-400">Glissez le bord droit d'une colonne pour la redimensionner, ou agrandissez le tableau pour tout voir sans ajuster.</p>
+      <button type="button" class="btn-secondary btn-sm flex items-center gap-1.5"
+              @click="fullscreen ? document.exitFullscreen() : $root.requestFullscreen()">
+        <svg x-show="!fullscreen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/>
+        </svg>
+        <svg x-show="fullscreen" x-cloak class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5m0 0l5.25 5.25"/>
+        </svg>
+        <span x-text="fullscreen ? 'Réduire' : 'Agrandir'"></span>
+      </button>
+    </div>
+    <table class="w-full text-sm whitespace-nowrap" data-table-enhance>
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-3 py-2" data-sort="text">Codification</th>
+          <th class="text-left px-3 py-2" data-sort="text">Désignation des articles</th>
+          <th class="text-left px-3 py-2" data-sort="text">Unité</th>
+          <th class="text-right px-3 py-2" data-sort="number">Qté</th>
+          <th class="text-right px-3 py-2" data-sort="number">Prix unit. HT</th>
+          <th class="text-right px-3 py-2" data-sort="number">Prix total HT</th>
+          <th class="text-left px-3 py-2" data-no-resize>Poseur(s) affecté(s)</th>
+          <th class="text-right px-3 py-2" data-sort="number">Budget pose (estim.)</th>
+          <th class="text-left px-3 py-2" data-sort="number">Prix de pose /article</th>
+          <th class="text-left px-3 py-2" data-sort="number">Frais logistique pose /article</th>
+          <th class="text-left px-3 py-2" data-sort="text">Validation</th>
+          <th class="px-3 py-2" data-no-resize></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100">
+        {% for article in articles %}
+        <tr x-data="{
+              selected: [{% if article.poseurs_ids_override is not None %}{% for pid in article.poseurs_ids_override %}'{{ pid }}',{% endfor %}{% else %}{% for p in article.poseurs.all %}'{{ p.pk }}',{% endfor %}{% endif %}],
+              poseurs: [{% for p in poseurs %}{id:'{{ p.pk }}', nom:'{{ p.nom|escapejs }}'},{% endfor %}],
+              picking: false,
+            }">
+          <td class="px-3 py-2 font-mono text-xs text-ardoise-500">{{ article.code }}</td>
+          <td class="px-3 py-2 whitespace-normal min-w-[220px]">{{ article.designation }}</td>
+          <td class="px-3 py-2">{{ article.unite }}</td>
+          <td class="px-3 py-2 text-right">{{ article.quantite }}</td>
+          <td class="px-3 py-2 text-right">{{ article.prix_unitaire_ht }}</td>
+          <td class="px-3 py-2 text-right">{{ article.prix_total_ht }}</td>
+
+          <td class="px-3 py-2 whitespace-normal min-w-[200px]">
+            {% if article.verrouille %}
+            <div class="flex flex-wrap gap-1 items-center">
+              {% for p in article.poseurs.all %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-ardoise-100 text-ardoise-500">
+                {{ p.nom }}
+                <input type="hidden" name="poseurs_{{ article.pk }}" value="{{ p.pk }}">
+              </span>
+              {% endfor %}
+              <span class="text-xs text-ardoise-400" title="Article payé — poseurs figés">🔒</span>
+            </div>
+            {% else %}
+            <div class="flex flex-wrap gap-1 items-center relative">
+              <template x-for="pid in selected" :key="pid">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-foret-100 text-foret-700">
+                  <span x-text="(poseurs.find(p => p.id === pid) || {}).nom"></span>
+                  <button type="button" @click="selected = selected.filter(x => x !== pid)" class="hover:text-red-600">×</button>
+                  <input type="hidden" name="poseurs_{{ article.pk }}" :value="pid">
+                </span>
+              </template>
+              <button type="button" @click="picking = !picking"
+                      class="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-dashed border-ardoise-300 text-ardoise-400 hover:border-foret-400 hover:text-foret-600">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/>
+                </svg>
+                Affecter
+              </button>
+              <div x-show="picking" @click.outside="picking = false" x-cloak
+                   class="absolute z-10 top-full mt-1 bg-white border border-ardoise-200 rounded-lg shadow-lg py-1 min-w-[140px]">
+                <template x-for="p in poseurs.filter(p => !selected.includes(p.id))" :key="p.id">
+                  <button type="button" @click="selected.push(p.id); picking = false"
+                          class="block w-full text-left px-3 py-1.5 text-xs hover:bg-ardoise-50" x-text="p.nom"></button>
+                </template>
+                <p x-show="poseurs.filter(p => !selected.includes(p.id)).length === 0" class="px-3 py-1.5 text-xs text-ardoise-400">
+                  Tous affectés
+                </p>
+              </div>
+            </div>
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2 text-right text-ardoise-400">{{ article.budget_de_pose }}</td>
+
+          <td class="px-3 py-2" data-value="{{ article.prix_de_pose|default:'0' }}">
+            {% if article.verrouille %}
+            <span class="text-ardoise-500" title="Article payé — prix de pose figé">{{ article.prix_de_pose }} 🔒</span>
+            {% else %}
+            <input type="number" step="0.01" min="0.01" name="prix_de_pose_{{ article.pk }}"
+                   value="{% if article.prix_de_pose_input is not None %}{{ article.prix_de_pose_input }}{% else %}{{ article.prix_de_pose|unlocalize|default:'' }}{% endif %}"
+                   placeholder="—" class="form-input w-28 js-spreadsheet-nav">
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2" data-value="{{ article.frais_logistique_pose|default:'0' }}">
+            {% if article.verrouille %}
+            <span class="text-ardoise-500" title="Article payé — frais de logistique figés">{{ article.frais_logistique_pose|default:'—' }} 🔒</span>
+            {% else %}
+            <input type="number" step="0.01" min="0" name="frais_logistique_pose_{{ article.pk }}"
+                   value="{% if article.frais_logistique_input is not None %}{{ article.frais_logistique_input }}{% else %}{{ article.frais_logistique_pose|unlocalize|default:'' }}{% endif %}"
+                   placeholder="—" class="form-input w-28 js-spreadsheet-nav">
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2 whitespace-normal min-w-[140px]" data-value="{{ article.get_statut_validation_display }}">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold
+              {% if article.statut_validation == 'VALIDE' %}bg-foret-100 text-foret-700
+              {% elif article.statut_validation == 'REFUSE' %}bg-red-100 text-red-700
+              {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+              {{ article.get_statut_validation_display }}
+            </span>
+            {% if article.statut_validation == 'REFUSE' and article.motif_refus %}
+            <p class="text-xs text-red-500 mt-0.5">{{ article.motif_refus }}</p>
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2">
+            <div class="flex items-center gap-1.5">
+              <a href="{% url 'projects:pose_gestion_decomposition' project.pk article.pk %}" class="btn-secondary btn-sm px-2" title="Décomposition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4l8 4-8 4-8-4 8-4zm-8 8l8 4 8-4M4 16l8 4 8-4"/>
+                </svg>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="12" class="px-3 py-6 text-center text-ardoise-400">Aucun article importé pour ce projet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/table-enhance.js' %}"></script>
+<script src="{% static 'js/spreadsheet-nav.js' %}"></script>
+{% endblock %}

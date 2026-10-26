@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ demande.numero }} — Demande de paiement{% endblock %}
+{% block page_title %}Demande de paiement {{ demande.numero }}{% endblock %}
+
+{% block topbar_actions %}
+{% if demande.statut == 'VALIDEE' %}
+<a href="{% url 'projects:pose_gestion_demande_paiement_edition' demande.pk %}" target="_blank" class="btn-primary btn-sm">Édition papier (signature)</a>
+{% endif %}
+<a href="{% url 'projects:pose_gestion_demandes_paiement' %}" class="btn-secondary btn-sm">← Demandes de paiement</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="card">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">N° de la demande</p>
+        <p class="text-lg font-bold text-ardoise-900 mt-0.5">{{ demande.numero }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Demandeur</p>
+        <p class="text-sm font-semibold text-ardoise-800 mt-1">{{ demande.demandeur.get_full_name|default:demande.demandeur.username }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Date de la demande</p>
+        <p class="text-sm font-semibold text-ardoise-800 mt-1">{{ demande.date_creation|date:"d/m/Y H:i" }}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Statut</p>
+        <span class="inline-block mt-1 px-2.5 py-1 rounded-full text-xs font-semibold
+          {% if demande.statut == 'BROUILLON' %}bg-ardoise-100 text-ardoise-600
+          {% elif demande.statut == 'EN_ATTENTE' %}bg-amber-100 text-amber-700
+          {% elif demande.statut == 'VALIDEE' %}bg-foret-100 text-foret-700
+          {% else %}bg-red-100 text-red-700{% endif %}">
+          {{ demande.get_statut_display }}
+        </span>
+      </div>
+    </div>
+    {% if demande.statut == 'REFUSEE' and demande.motif_refus %}
+    <p class="text-sm text-red-600 mt-3"><strong>Motif du retour :</strong> {{ demande.motif_refus }}</p>
+    {% endif %}
+    {% if demande.date_validation %}
+    <p class="text-xs text-ardoise-400 mt-3">
+      Traitée par {{ demande.valide_par.get_full_name|default:demande.valide_par.username }} le {{ demande.date_validation|date:"d/m/Y H:i" }}
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="card p-0 overflow-hidden">
+    <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50 flex items-center justify-between">
+      <p class="font-semibold text-ardoise-800 text-sm">Lignes de la demande</p>
+      <p class="text-lg font-bold text-ardoise-800">{{ demande.montant_total }} <span class="text-sm font-normal text-ardoise-400">MAD</span></p>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-4 py-2">Poseur</th>
+          <th class="text-left px-4 py-2">Projet</th>
+          <th class="text-left px-4 py-2">Article / Composant</th>
+          <th class="text-right px-4 py-2">Montant</th>
+          {% if modifiable %}<th class="px-4 py-2"></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100">
+        {% for ligne in lignes %}
+        <tr>
+          <td class="px-4 py-2 font-semibold text-ardoise-800">{{ ligne.poseur.nom }}</td>
+          <td class="px-4 py-2">
+            <span class="text-xs text-ardoise-400">{{ ligne.fiche.decomposition.article.project.reference }}</span>
+            <span class="block">{{ ligne.fiche.decomposition.article.project.name }}</span>
+          </td>
+          <td class="px-4 py-2 text-xs text-ardoise-500">
+            {{ ligne.fiche.decomposition.article.code }} — {{ ligne.fiche.decomposition.libelle_composant }}
+          </td>
+          <td class="px-4 py-2 text-right font-semibold text-ardoise-800">{{ ligne.montant }} MAD</td>
+          {% if modifiable %}
+          <td class="px-4 py-2 text-right">
+            <form method="post" action="{% url 'projects:pose_gestion_demande_paiement_ligne_supprimer' demande.pk ligne.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-secondary btn-sm text-red-600">Retirer</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="px-4 py-6 text-center text-ardoise-400">Aucune ligne pour l'instant — ajoutez des relevés non payés ci-dessous.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if modifiable %}
+    <div class="px-4 py-3 border-t border-ardoise-100 flex justify-end">
+      <form method="post" action="{% url 'projects:pose_gestion_demande_paiement_soumettre' demande.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary" {% if not lignes %}disabled{% endif %}>
+          Soumettre à la DG pour validation
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if modifiable %}
+  <div class="space-y-3">
+    <h3 class="text-sm font-semibold text-ardoise-800">Ajouter des lignes — relevés non payés par poseur</h3>
+    {% for r in recap_ajout %}
+    <div class="card p-0 overflow-hidden" x-data="{ open: false, selection: [] }">
+      <button type="button" @click="open = !open"
+              class="w-full flex items-center justify-between px-4 py-3 hover:bg-ardoise-50 transition-colors">
+        <span class="font-semibold text-ardoise-800 text-sm">{{ r.poseur.nom }}</span>
+        <div class="flex items-center gap-3">
+          <span class="text-amber-700 font-semibold text-sm">{{ r.total }} MAD disponibles</span>
+          <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+      </button>
+      <div x-show="open" x-cloak class="border-t border-ardoise-100">
+        <form method="post" action="{% url 'projects:pose_gestion_demande_paiement_ajouter_lignes' demande.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="poseur_id" value="{{ r.poseur.pk }}">
+          <table class="w-full text-sm">
+            <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+              <tr>
+                <th class="px-3 py-2 text-left">
+                  <input type="checkbox" @change="selection = $event.target.checked ? [{% for l in r.lignes %}'{{ l.fiche.pk }}',{% endfor %}] : []">
+                </th>
+                <th class="text-left px-3 py-2">Projet</th>
+                <th class="text-left px-3 py-2">Article / Composant</th>
+                <th class="text-right px-3 py-2">Quantité</th>
+                <th class="text-right px-3 py-2">Montant</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-ardoise-100">
+              {% for l in r.lignes %}
+              <tr>
+                <td class="px-3 py-2"><input type="checkbox" name="fiche_ids" value="{{ l.fiche.pk }}" x-model="selection"></td>
+                <td class="px-3 py-2">
+                  <span class="text-xs text-ardoise-400">{{ l.project.reference }}</span>
+                  <span class="block">{{ l.project.name }}</span>
+                </td>
+                <td class="px-3 py-2 text-xs text-ardoise-500">{{ l.article.code }} — {{ l.decomposition.libelle_composant }}</td>
+                <td class="px-3 py-2 text-right">{{ l.quantite }} {{ l.article.unite }}</td>
+                <td class="px-3 py-2 text-right font-semibold text-ardoise-800">{{ l.montant }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="px-4 py-3 flex justify-end">
+            <button type="submit" class="btn-primary btn-sm" :disabled="selection.length === 0"
+                    :class="selection.length === 0 && 'opacity-50 cursor-not-allowed'">
+              Ajouter la sélection à la demande
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-ardoise-400">Aucun relevé non payé disponible — tout est déjà payé ou déjà engagé dans une autre demande.</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

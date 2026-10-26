@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize crm_filters %}
+{% load humanize crm_filters l10n %}
 
 {% block title %}Analyse Pipeline{% endblock %}
 {% block page_title %}Analyse Pipeline Commercial{% endblock %}
@@ -447,6 +447,7 @@
 
   const fmt = (v) => new Intl.NumberFormat('fr-MA').format(v) + ' MAD';
 
+  {% localize off %}
   window.initPipelineStatut = function () {
     const labels = [{% for s in chart_statut %}"{{ s.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
     const pots   = [{% for s in chart_statut %}{{ s.pot }}{% if not forloop.last %},{% endif %}{% endfor %}];
@@ -482,6 +483,7 @@
     });
   };
   {% endif %}
+  {% endlocalize %}
 })();
 </script>
 {% endif %}

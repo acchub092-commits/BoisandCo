@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Pièces de comptage à valider{% endblock %}
+{% block page_title %}Pièces de comptage — à valider (tous projets){% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4" x-data="{ selection: [] }">
+
+  {% if pieces %}
+  <form id="bulk-valider-piece-form" method="post"
+        action="{% url 'projects:pose_gestion_pieces_comptage_valider_masse' %}"
+        class="flex items-center justify-between gap-3">
+    {% csrf_token %}
+    <label class="flex items-center gap-2 text-sm text-ardoise-600">
+      <input type="checkbox"
+             @change="selection = $event.target.checked ? [{% for piece in pieces %}{% if piece.peut_valider_ici %}'{{ piece.pk }}',{% endif %}{% endfor %}] : []">
+      Tout sélectionner ({{ pieces|length }} pièce(s) en attente)
+    </label>
+    <button type="submit" class="btn-primary btn-sm" :disabled="selection.length === 0"
+            :class="selection.length === 0 && 'opacity-50 cursor-not-allowed'">
+      Valider la sélection
+    </button>
+  </form>
+  {% else %}
+  <p class="text-sm text-ardoise-400">Aucune pièce de comptage en attente — tout est validé.</p>
+  {% endif %}
+
+  {% for piece in pieces %}
+  <div class="card p-0 overflow-hidden" x-data="{ open: false }">
+    <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-start gap-3">
+        {% if piece.peut_valider_ici %}
+        <input type="checkbox" form="bulk-valider-piece-form" name="piece_ids" value="{{ piece.pk }}" x-model="selection" class="mt-1.5">
+        {% endif %}
+        <div>
+          <p class="font-semibold text-ardoise-800">
+            {{ piece.numero }} — <span class="text-ardoise-500 font-normal">{{ piece.project.reference }} · {{ piece.project.name }}</span>
+          </p>
+          <p class="text-xs text-ardoise-400">
+            Saisie par {{ piece.saisi_par.get_full_name|default:piece.saisi_par.username }}
+            le {{ piece.date_creation|date:"d/m/Y H:i" }} — {{ piece.nb_lignes }} ligne(s)
+          </p>
+          {% if not piece.peut_valider_ici %}
+          <p class="text-xs text-amber-700 italic mt-0.5">Doit être validée par une autre personne (RG-25).</p>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{% url 'projects:pose_gestion_pointage_composant' piece.project.pk %}" class="btn-secondary btn-sm">Voir le projet</a>
+    </div>
+
+    {% if piece.peut_valider_ici %}
+    <div class="px-4 py-3 border-t border-ardoise-100 flex flex-wrap items-center justify-end gap-2">
+      <button type="button" @click="$refs.modal_refus_{{ piece.pk }}.showModal()" class="btn-secondary btn-sm text-red-600">Rejeter</button>
+      <form method="post" action="{% url 'projects:pose_gestion_piece_comptage_valider' piece.project.pk piece.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary btn-sm">Valider cette pièce</button>
+      </form>
+    </div>
+
+    <dialog x-ref="modal_refus_{{ piece.pk }}" class="rounded-xl p-0 backdrop:bg-black/30">
+      <form method="post" action="{% url 'projects:pose_gestion_piece_comptage_refuser' piece.project.pk piece.pk %}"
+            class="p-5 w-80 space-y-3 text-left">
+        {% csrf_token %}
+        <input type="hidden" name="type_refus" value="REJET">
+        <p class="font-semibold text-ardoise-800 text-sm">Rejeter {{ piece.numero }}</p>
+        <p class="text-xs text-ardoise-400">Les quantités saisies seront annulées et le projet débloqué.</p>
+        <div>
+          <label class="form-label">Motif (optionnel)</label>
+          <textarea name="motif" rows="2" class="form-input"></textarea>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" @click="$refs.modal_refus_{{ piece.pk }}.close()" class="btn-secondary btn-sm">Annuler</button>
+          <button type="submit" class="btn-primary btn-sm bg-red-600 hover:bg-red-700">Confirmer le rejet</button>
+        </div>
+      </form>
+    </dialog>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}

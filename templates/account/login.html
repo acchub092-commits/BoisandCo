@@ -10,18 +10,19 @@
 
   <div class="w-full max-w-sm">
 
-    {# Logo au-dessus de la carte #}
-    <div class="flex justify-center mb-6">
-      <img src="{% static 'images/logo-white.jpg' %}" alt="Bois&amp;Co"
-           class="h-32 w-auto object-contain rounded-xl">
+    {# Logo au-dessus de la carte — nouvelle identité visuelle #}
+    <div class="flex flex-col items-center mb-6">
+      <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co — Matières vivantes, intérieurs durables"
+           class="h-20 w-auto object-contain">
+      <p class="mt-1 text-xs font-bold uppercase text-ardoise-400" style="letter-spacing: 0.2em;">HOPE</p>
     </div>
 
     {# Carte formulaire #}
     <div class="bg-white rounded-2xl overflow-hidden"
-         style="box-shadow: 0 4px 32px rgba(22,50,40,0.12);">
+         style="box-shadow: 0 4px 32px rgba(21,39,50,0.12);">
 
       <div class="px-8 pt-7 pb-8 space-y-5">
-      <div class="-mx-8 px-8 py-4 text-center" style="background-color: #163228;">
+      <div class="-mx-8 px-8 py-4 text-center" style="background-color: #152732;">
         <h1 class="text-lg font-bold tracking-wide" style="color: #f2e8d5;">Connexion</h1>
         <p class="text-xs mt-0.5" style="color: rgba(242,232,213,0.55);">Accédez à votre espace de gestion</p>
       </div>
@@ -48,7 +49,7 @@
                  class="block w-full rounded-lg border border-ardoise-200 text-sm px-3.5 py-2.5 outline-none transition-all"
                  style="color: #2e353f;"
                  placeholder="vous@boisandco.fr"
-                 onfocus="this.style.borderColor='#163228'; this.style.boxShadow='0 0 0 3px rgba(22,50,40,0.08)'"
+                 onfocus="this.style.borderColor='#152732'; this.style.boxShadow='0 0 0 3px rgba(21,39,50,0.08)'"
                  onblur="this.style.borderColor=''; this.style.boxShadow=''">
         </div>
 
@@ -60,7 +61,7 @@
             </label>
             <a href="{% url 'account_reset_password' %}"
                class="text-xs font-medium transition-colors"
-               style="color: #163228;">
+               style="color: #152732;">
               Mot de passe oublié ?
             </a>
           </div>
@@ -70,7 +71,7 @@
                    autocomplete="current-password" required
                    class="block w-full rounded-lg border border-ardoise-200 text-sm px-3.5 py-2.5 pr-11 outline-none transition-all"
                    style="color: #2e353f;"
-                   onfocus="this.style.borderColor='#163228'; this.style.boxShadow='0 0 0 3px rgba(22,50,40,0.08)'"
+                   onfocus="this.style.borderColor='#152732'; this.style.boxShadow='0 0 0 3px rgba(21,39,50,0.08)'"
                    onblur="this.style.borderColor=''; this.style.boxShadow=''">
             <button type="button" @click="show = !show"
                     class="absolute inset-y-0 right-0 flex items-center px-3 text-ardoise-400 hover:text-ardoise-600 transition-colors">
@@ -91,7 +92,7 @@
         <label class="flex items-center gap-2.5 cursor-pointer select-none">
           <input type="checkbox" name="remember"
                  class="w-4 h-4 rounded border-ardoise-300"
-                 style="accent-color: #163228;">
+                 style="accent-color: #152732;">
           <span class="text-sm text-ardoise-500">Se souvenir de moi</span>
         </label>
 
@@ -100,9 +101,9 @@
                 class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl
                        font-semibold text-sm transition-all duration-150
                        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-foret-400"
-                style="background-color: #163228; color: #f2e8d5;"
-                onmouseover="this.style.backgroundColor='#1e4435'"
-                onmouseout="this.style.backgroundColor='#163228'">
+                style="background-color: #152732; color: #f2e8d5;"
+                onmouseover="this.style.backgroundColor='#1e3848'"
+                onmouseout="this.style.backgroundColor='#152732'">
           Se connecter
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
@@ -114,7 +115,7 @@
     </div>
 
     <p class="text-center text-xs text-ardoise-400 mt-5">
-      Bois&amp;Co &copy; {% now "Y" %}
+      HOPE &middot; Bois&amp;Co &copy; {% now "Y" %}
     </p>
 
   </div>

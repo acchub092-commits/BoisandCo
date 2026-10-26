@@ -1,0 +1,266 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Reçu de paiement {{ recu.numero }}</title>
+  <style>
+    :root {
+      --foret: #70b41d;
+      --foret-dark: #4f7d14;
+      --marine: #152732;
+      --ink: #2c1f10;
+      --muted: #7a7267;
+      --hairline: #e3ded3;
+      --paper: #fdfcfa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px; line-height: 1.35;
+      color: var(--ink);
+      background: #f4f2ee;
+      max-width: 860px;
+      margin: 20px auto;
+      padding: 0;
+    }
+    .sheet {
+      background: var(--paper);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      padding: 28px 36px 24px;
+    }
+
+    /* En-tête */
+    .letterhead {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 24px; padding-bottom: 10px; margin-bottom: 14px;
+      border-bottom: 2px solid var(--foret);
+    }
+    .letterhead img { height: 34px; }
+    .doc-title { text-align: right; }
+    .doc-title .kicker {
+      font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px;
+    }
+    .doc-title h1 { font-size: 1.05rem; margin: 0; color: var(--marine); }
+    .doc-title .numero {
+      display: inline-block; margin-top: 4px; padding: 2px 10px;
+      background: var(--marine); color: #fff; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em;
+    }
+
+    /* Bloc infos */
+    .infos {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 0;
+      border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .infos .cell {
+      padding: 6px 14px; border-bottom: 1px solid var(--hairline);
+    }
+    .infos .cell:nth-child(odd) { border-right: 1px solid var(--hairline); }
+    .infos .cell:nth-last-child(-n+2) { border-bottom: none; }
+    .infos .label {
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--muted); margin: 0;
+    }
+    .infos .value { font-size: 0.8rem; font-weight: 600; color: var(--ink); margin: 0; }
+
+    /* Tableau des lignes */
+    table.lignes { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+    table.lignes thead th {
+      font-size: 0.6rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; color: #fff;
+      background: var(--marine); padding: 5px 10px; text-align: left;
+    }
+    table.lignes thead th.num { text-align: right; }
+    .poseur-group-header td {
+      background: #f1f6e9; font-weight: 700; font-size: 0.74rem; color: var(--foret-dark);
+      padding: 3px 10px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
+    }
+    table.lignes tbody td { padding: 3px 10px; font-size: 0.76rem; border-bottom: 1px solid var(--hairline); }
+    table.lignes tbody tr.ligne:nth-child(even) { background: #faf9f6; }
+    table.lignes td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.lignes tr.sous-total td {
+      font-weight: 700; font-size: 0.72rem; color: var(--muted);
+      border-bottom: 2px solid var(--hairline); padding-top: 3px; padding-bottom: 5px;
+    }
+    table.lignes tr.grand-total td {
+      font-weight: 800; font-size: 0.9rem;
+      color: var(--marine); background: #f1f6e9; padding: 8px 10px;
+      border-top: 2px solid var(--foret); border-bottom: none; white-space: nowrap;
+    }
+
+    .depot-note {
+      font-size: 0.7rem; color: var(--muted);
+      background: #fbf8f1; border: 1px dashed #e0d3a8; border-radius: 6px;
+      padding: 7px 12px; margin: 14px 0 6px;
+    }
+
+    /* Signatures */
+    .signatures {
+      display: flex; flex-wrap: wrap; gap: 14px; margin-top: 1.6em;
+    }
+    .signature-box {
+      flex: 1; min-width: 200px; border: 1px solid var(--hairline); border-radius: 6px;
+      padding: 10px 12px; min-height: 56px; position: relative;
+    }
+    .signature-box .who {
+      font-size: 0.72rem; font-weight: 700; color: var(--ink); margin: 0;
+    }
+    .signature-box .role {
+      font-size: 0.64rem; color: var(--muted); margin: 0 0 16px;
+    }
+    .signature-box .line {
+      border-top: 1px solid var(--ink);
+      font-size: 0.62rem; color: var(--muted); padding-top: 3px; margin: 0;
+    }
+
+    .footer-block {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--hairline);
+    }
+    .footer-block .qr { width: 52px; height: 52px; flex-shrink: 0; }
+    .footer-note {
+      font-size: 0.62rem; color: var(--muted); text-align: center; margin: 1px 0;
+    }
+
+    .no-print { margin-top: 24px; text-align: center; }
+    .btn {
+      padding: 9px 20px; border-radius: 6px; border: none; font-size: 0.85rem;
+      font-family: 'Segoe UI', sans-serif; cursor: pointer; margin: 0 6px;
+    }
+    .btn-primary { background: var(--foret-dark); color: white; }
+    .btn-secondary { background: #e5e0d8; color: var(--ink); }
+
+    @media print {
+      body { background: none; max-width: none; margin: 0; }
+      .sheet { border: none; box-shadow: none; padding: 0 10mm; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+
+    <div class="letterhead">
+      <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co">
+      <div class="doc-title">
+        <p class="kicker">Trésorerie — Reçu de règlement</p>
+        <h1>Reçu de paiement</h1>
+        <span class="numero">{{ recu.numero }}</span>
+      </div>
+    </div>
+
+    <div class="infos">
+      <div class="cell">
+        <p class="label">N° de reçu</p>
+        <p class="value">{{ recu.numero }}</p>
+      </div>
+      <div class="cell">
+        <p class="label">Date du reçu</p>
+        <p class="value">{{ recu.date_recu|date:"d/m/Y" }}</p>
+      </div>
+      <div class="cell">
+        <p class="label">Remis par (Trésorerie)</p>
+        <p class="value">{{ recu.remis_par.get_full_name|default:recu.remis_par.username }}</p>
+      </div>
+      <div class="cell">
+        <p class="label">Émis le</p>
+        <p class="value">{{ recu.created_at|date:"d/m/Y à H:i" }}</p>
+      </div>
+    </div>
+
+    <table class="lignes">
+      <thead>
+        <tr>
+          <th>Projet</th>
+          <th>Article / Composant</th>
+          <th class="num">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for groupe in groupes %}
+        <tr class="poseur-group-header"><td colspan="3">Remis à : {{ groupe.poseur.nom }} — N° CIN : {{ groupe.poseur.cin }}</td></tr>
+        {% for ligne in groupe.lignes %}
+        <tr class="ligne">
+          <td>{{ ligne.fiche.decomposition.article.project.reference }} — {{ ligne.fiche.decomposition.article.project.name }}</td>
+          <td>{{ ligne.fiche.decomposition.article.code }} — {{ ligne.fiche.decomposition.libelle_composant }}</td>
+          <td class="num">{{ ligne.montant }} MAD</td>
+        </tr>
+        {% endfor %}
+        <tr class="sous-total">
+          <td colspan="2">Sous-total — {{ groupe.poseur.nom }}</td>
+          <td class="num">{{ groupe.sous_total }} MAD</td>
+        </tr>
+        {% endfor %}
+        <tr class="grand-total">
+          <td colspan="2">Total réglé</td>
+          <td class="num">{{ recu.montant_total }} MAD</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="depot-note">
+      Ce reçu matérialise le règlement effectif des montants ci-dessus — à signer par le Responsable de
+      la pose ou le(s) chef(s) de projet concerné(s). <strong>À éditer en deux exemplaires</strong> : un
+      remis au bénéficiaire, un conservé par le Financier comme pièce justificative.
+    </p>
+
+    <div class="signatures">
+      {% for chef in chefs_concernes %}
+      <div class="signature-box">
+        <p class="who">{{ chef.get_full_name|default:chef.username }}</p>
+        <p class="role">{% if chef.role == 'DG_POSE' %}Responsable de la pose{% else %}Chef de projet{% endif %}</p>
+        <p class="line">Signature</p>
+      </div>
+      {% empty %}
+      <div class="signature-box">
+        <p class="role">Responsable de la pose / Chef de projet</p>
+        <p class="line">Signature</p>
+      </div>
+      {% endfor %}
+      <div class="signature-box">
+        <p class="who">{{ recu.remis_par.get_full_name|default:recu.remis_par.username }}</p>
+        <p class="role">Service Finance — Trésorerie (remis par)</p>
+        <p class="line">Cachet et signature</p>
+      </div>
+    </div>
+
+    <div class="footer-block">
+      <img class="qr" src="{{ qr_code_data_uri }}" alt="QR code — {{ recu.numero }}">
+      <div>
+        <p class="footer-note">Bois&amp;Co — HOPE, Gestion de la pose · Document généré automatiquement le {% now "d/m/Y à H:i" %} par {{ request.user.get_full_name|default:request.user.username }}</p>
+        <p class="footer-note">Document {{ recu.numero }} · Nombre d'impressions : <span id="nb-impressions">{{ recu.nb_impressions }}</span></p>
+      </div>
+    </div>
+
+    <div class="no-print">
+      <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
+      <button class="btn btn-secondary" onclick="window.close()">Fermer</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      function getCookie(name) {
+        var match = document.cookie.match('(^|;\\s*)' + name + '=([^;]*)');
+        return match ? decodeURIComponent(match[2]) : '';
+      }
+      var registered = false;
+      window.addEventListener('beforeprint', function () {
+        if (registered) return;
+        registered = true;
+        fetch("{% url 'projects:pose_gestion_recu_paiement_enregistrer_impression' recu.pk %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        }).then(function () {
+          var el = document.getElementById('nb-impressions');
+          if (el) el.textContent = String(parseInt(el.textContent, 10) + 1);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

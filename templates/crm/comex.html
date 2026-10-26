@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static crm_filters %}
+{% load static crm_filters l10n %}
 
 {% block title %}Tableau performance commerciale{% endblock %}
 {% block page_title %}Tableau performance commerciale{% endblock %}
@@ -756,6 +756,7 @@
   /* ─────────────────────────────────────────────────────────────
      Graphique 1 — Répartition par Commercial (Potentiel MAD)
   ───────────────────────────────────────────────────────────── */
+  {% localize off %}
   window.initChartComm = function() {
     const labels = [{% for c in commerciaux %}"{{ c.name }}"{% if not forloop.last %},{% endif %}{% endfor %}];
     const pots   = [{% for c in commerciaux %}{{ c.pot|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
@@ -861,6 +862,7 @@
       }),
     });
   };
+  {% endlocalize %}
 
 })();
 </script>

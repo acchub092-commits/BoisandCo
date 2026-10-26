@@ -17,8 +17,12 @@ urlpatterns = [
     path('suivi/', include('apps.client_portal.urls', namespace='client_portal')),
     path('crm/', include('apps.crm.urls', namespace='crm')),
     path('api/v1/crm/', include('apps.crm.api_urls')),
+    path('api/v1/auth/', include('apps.users.api_urls')),
+    path('api/v1/chiffrage/', include('apps.chiffrage.api_urls')),
+    path('api/v1/notifications/', include('apps.notifications.api_urls')),
     path('', include('apps.workflows.urls', namespace='workflows')),
     path('chiffrage/', include('apps.chiffrage.urls', namespace='chiffrage')),
+    path('m/chiffrage/', include('apps.chiffrage.mobile_urls', namespace='chiffrage_mobile')),
 ]
 
 if settings.DEBUG:

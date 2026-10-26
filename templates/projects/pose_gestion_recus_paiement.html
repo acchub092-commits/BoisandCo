@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Reçus de paiement{% endblock %}
+{% block page_title %}Reçus de paiement — Trésorerie{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4" x-data="{ selection: [] }">
+
+  <div class="inline-flex flex-wrap gap-1 p-1 rounded-xl bg-ardoise-100">
+    <a href="?onglet=a_regler"
+       class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if onglet == 'a_regler' %}bg-white text-foret-700 shadow-sm{% else %}text-ardoise-500 hover:text-ardoise-700{% endif %}">
+      À régler <span class="text-xs opacity-70">({{ nb_a_regler }})</span>
+    </a>
+    <a href="?onglet=historique"
+       class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if onglet == 'historique' %}bg-white text-foret-700 shadow-sm{% else %}text-ardoise-500 hover:text-ardoise-700{% endif %}">
+      Historique <span class="text-xs opacity-70">({{ nb_historique }})</span>
+    </a>
+  </div>
+
+  {% if onglet == 'a_regler' %}
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3">
+    Sélectionnez les lignes réglées lors de cette remise — un même reçu peut couvrir plusieurs poseurs
+    et plusieurs demandes à la fois. La quantité payée des pointages concernés n'est incrémentée qu'à
+    l'émission du reçu.
+  </div>
+
+  {% if groupes %}
+  <form method="post" action="{% url 'projects:pose_gestion_recu_paiement_creer' %}" id="creer-recu-form" class="space-y-4">
+    {% csrf_token %}
+
+    {% for groupe in groupes %}
+    <div class="card p-0 overflow-hidden">
+      <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50 flex flex-wrap items-center justify-between gap-3">
+        <label class="flex items-center gap-2 font-semibold text-ardoise-800">
+          <input type="checkbox"
+                 @change="const ids = [{% for l in groupe.lignes %}'{{ l.pk }}',{% endfor %}]; selection = $event.target.checked ? [...new Set([...selection, ...ids])] : selection.filter(x => !ids.includes(x))">
+          {{ groupe.poseur.nom }} — N° CIN : {{ groupe.poseur.cin }}
+        </label>
+        <span class="text-sm font-semibold text-ardoise-600">{{ groupe.total }} MAD</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+          <tr>
+            <th class="px-4 py-1.5"></th>
+            <th class="text-left px-3 py-1.5">Demande</th>
+            <th class="text-left px-3 py-1.5">Projet</th>
+            <th class="text-left px-3 py-1.5">Composant</th>
+            <th class="text-right px-3 py-1.5">Montant</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ardoise-100">
+          {% for ligne in groupe.lignes %}
+          <tr>
+            <td class="px-4 py-1.5"><input type="checkbox" name="ligne_ids" value="{{ ligne.pk }}" x-model="selection"></td>
+            <td class="px-3 py-1.5 text-ardoise-500">{{ ligne.demande.numero }}</td>
+            <td class="px-3 py-1.5 text-ardoise-600">{{ ligne.fiche.decomposition.article.project.reference }}</td>
+            <td class="px-3 py-1.5 text-ardoise-800">{{ ligne.fiche.decomposition.libelle_composant }}</td>
+            <td class="px-3 py-1.5 text-right text-ardoise-600">{{ ligne.montant }} MAD</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+
+    <div class="card flex items-center justify-between gap-3 py-3">
+      <span class="text-sm text-ardoise-500"><span x-text="selection.length"></span> ligne(s) sélectionnée(s)</span>
+      <button type="submit" class="btn-primary btn-sm flex items-center gap-1.5" :disabled="selection.length === 0"
+              :class="selection.length === 0 && 'opacity-50 cursor-not-allowed'">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Émettre le reçu pour la sélection
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <div class="card text-center py-10">
+    <svg class="w-10 h-10 mx-auto mb-2 text-ardoise-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <p class="text-sm text-ardoise-400">Aucune ligne validée en attente de règlement — tout est à jour.</p>
+  </div>
+  {% endif %}
+
+  {% else %}
+
+  <form method="get" class="card flex flex-wrap items-end gap-3">
+    <input type="hidden" name="onglet" value="{{ onglet }}">
+    <div>
+      <label class="form-label">N° du reçu</label>
+      <input type="text" name="numero" value="{{ numero_query }}" placeholder="Ex : REC-000001" class="form-input">
+    </div>
+    <div>
+      <label class="form-label">Du</label>
+      <input type="date" name="date_debut" value="{{ date_debut }}" class="form-input">
+    </div>
+    <div>
+      <label class="form-label">Au</label>
+      <input type="date" name="date_fin" value="{{ date_fin }}" class="form-input">
+    </div>
+    <button type="submit" class="btn-secondary btn-sm flex items-center gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      Filtrer
+    </button>
+    {% if numero_query or date_debut or date_fin %}
+    <a href="?onglet={{ onglet }}" class="btn-secondary btn-sm">Réinitialiser</a>
+    {% endif %}
+  </form>
+
+  {% for recu in recus %}
+  <div class="card p-0 overflow-hidden border-l-4 border-l-foret-500">
+    <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="font-semibold text-ardoise-800">{{ recu.numero }}</p>
+        <p class="text-xs text-ardoise-400 mt-1">
+          Remis le {{ recu.date_recu|date:"d/m/Y" }} par {{ recu.remis_par.get_full_name|default:recu.remis_par.username }}
+        </p>
+        <p class="text-xs text-ardoise-400">
+          Émis par {{ recu.cree_par.get_full_name|default:recu.cree_par.username }} le {{ recu.created_at|date:"d/m/Y H:i" }}
+        </p>
+      </div>
+      <div class="text-right">
+        <p class="text-2xl font-bold text-ardoise-800">{{ recu.montant_total }} <span class="text-sm font-normal text-ardoise-400">MAD</span></p>
+        <div class="flex gap-2 mt-1 justify-end">
+          <a href="{% url 'projects:pose_gestion_recu_paiement_detail' recu.pk %}" class="btn-secondary btn-sm">Voir</a>
+          <a href="{% url 'projects:pose_gestion_recu_paiement_edition' recu.pk %}" target="_blank" class="btn-secondary btn-sm">Imprimer</a>
+        </div>
+      </div>
+    </div>
+    <div class="px-4 py-3">
+      <p class="text-xs text-ardoise-400 mb-1">Poseurs réglés :</p>
+      <div class="flex flex-wrap gap-1.5">
+        {% for p in recu.poseurs_concernes %}
+        <span class="px-2 py-0.5 rounded-full text-xs bg-foret-100 text-foret-700">{{ p.nom }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card text-center py-10">
+    <p class="text-sm text-ardoise-400">Aucun reçu ne correspond à ces critères.</p>
+  </div>
+  {% endfor %}
+
+  {% endif %}
+
+</div>
+{% endblock %}

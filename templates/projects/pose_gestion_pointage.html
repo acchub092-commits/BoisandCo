@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ project.name }} — Pointage{% endblock %}
+{% block page_title %}{{ project.reference }} — Pointage journalier{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_reglement' project.pk %}" class="btn-secondary btn-sm">Paiements →</a>
+<a href="{% url 'projects:pose_gestion_projet' project.pk %}" class="btn-secondary btn-sm">← Tableau projet</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+  <div class="card space-y-2">
+    <div class="flex justify-between text-sm">
+      <span class="text-ardoise-500">Avancement du projet (pose)</span>
+      <span class="text-xs text-ardoise-400">quantités terminées ÷ quantité totale</span>
+      <span class="font-bold text-foret-600">{{ avancement_projet }} %</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width: {{ avancement_projet|unlocalize }}%"></div></div>
+  </div>
+
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3">
+    Saisissez la <strong>quantité posée</strong> et son avancement. Un lot reste <strong>en cours</strong> et est
+    conservé jusqu'à 100 % : vous augmentez son % au fil des jours, et seul le <strong>complément</strong> est payé
+    à chaque mise à jour.
+  </div>
+
+  {% if nb_non_pointables %}
+  <div class="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">
+    {{ nb_non_pointables }} article{{ nb_non_pointables|pluralize }} ne sont pas pointables : prix de pose pas encore
+    validé par la DG.
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form method="get" class="flex items-end gap-3">
+      <div>
+        <label class="form-label">Date du pointage</label>
+        <input type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="form-input" onchange="this.form.submit()">
+      </div>
+    </form>
+  </div>
+
+  <div class="card p-0 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-3 py-2">Codif. / Poseur</th>
+          <th class="text-left px-3 py-2">Lot (qté posée)</th>
+          <th class="text-left px-3 py-2">Avancement</th>
+          <th class="text-left px-3 py-2">Action</th>
+          <th class="text-left px-3 py-2">Montant à verser</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100">
+        {% for groupe in groupes %}
+        <tr class="bg-ardoise-50/60">
+          <td colspan="5" class="px-3 py-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="font-semibold text-ardoise-800">{{ groupe.article.code }}</span>
+                <span class="text-ardoise-600">— {{ groupe.article.designation }}</span>
+              </div>
+              <span class="text-xs text-ardoise-400">{{ groupe.lignes|length }} poseur(s)</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <div class="progress-bar flex-1 max-w-xs"><div class="progress-fill" style="width: {{ groupe.article.avancement_percent|unlocalize }}%"></div></div>
+              <span class="text-xs text-ardoise-500">{{ groupe.article.avancement_percent }} % ({{ groupe.article.quantite_terminee }}/{{ groupe.article.quantite }})</span>
+            </div>
+          </td>
+        </tr>
+
+        {% for ligne in groupe.lignes %}
+        {% if ligne.lot %}
+        <tr x-data="{ ancien: {{ ligne.lot.pourcentage }}, qte: {{ ligne.lot.quantite }}, prix: {{ groupe.article.prix_de_pose|default:0 }}, pct: {{ ligne.paliers.0|default:ligne.lot.pourcentage }} }">
+          <td class="px-3 py-2 pl-6 font-medium text-ardoise-700">{{ ligne.poseur.nom }}</td>
+          <td class="px-3 py-2">
+            <p>{{ ligne.lot.quantite }} {{ groupe.article.unite }}</p>
+            <span class="text-xs px-1.5 py-0.5 rounded bg-ardoise-100 text-ardoise-500">en cours</span>
+          </td>
+          <td class="px-3 py-2">
+            <span class="text-ardoise-500">{{ ligne.lot.pourcentage }} % →</span>
+            <select name="pourcentage" x-model.number="pct" form="pointer-{{ ligne.lot.pk }}" class="form-input w-24">
+              {% for p in ligne.paliers %}<option value="{{ p }}">{{ p }} %</option>{% endfor %}
+            </select>
+          </td>
+          <td class="px-3 py-2">
+            <button type="submit" form="pointer-{{ ligne.lot.pk }}" class="btn-primary btn-sm">Mettre à jour</button>
+          </td>
+          <td class="px-3 py-2">
+            <p class="font-bold text-foret-600" x-text="((qte * (pct - ancien) / 100) * prix).toFixed(2) + ' MAD'"></p>
+            <p class="text-xs text-ardoise-400">déjà payé : {{ ligne.lot.quantite_effective }} {{ groupe.article.unite }}</p>
+          </td>
+        </tr>
+
+        {% else %}
+        <tr x-data="{ qte: 0, prix: {{ groupe.article.prix_de_pose|default:0 }}, pct: {{ ligne.paliers.0 }} }">
+          <td class="px-3 py-2 pl-6 font-medium text-ardoise-700">{{ ligne.poseur.nom }}</td>
+          <td class="px-3 py-2">
+            <input type="number" step="0.01" min="0" name="quantite" x-model.number="qte"
+                   form="creer-{{ groupe.article.pk }}-{{ ligne.poseur.pk }}"
+                   placeholder="qté posée" class="form-input w-24">
+          </td>
+          <td class="px-3 py-2">
+            <select name="pourcentage_initial" x-model.number="pct"
+                    form="creer-{{ groupe.article.pk }}-{{ ligne.poseur.pk }}" class="form-input w-24">
+              {% for p in ligne.paliers %}<option value="{{ p }}">{{ p }} %</option>{% endfor %}
+            </select>
+          </td>
+          <td class="px-3 py-2">
+            <button type="submit" form="creer-{{ groupe.article.pk }}-{{ ligne.poseur.pk }}" class="btn-primary btn-sm">Enregistrer</button>
+          </td>
+          <td class="px-3 py-2">
+            <p class="font-bold text-foret-600" x-text="((qte * pct / 100) * prix).toFixed(2) + ' MAD'"></p>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        {% empty %}
+        <tr><td colspan="5" class="px-3 py-6 text-center text-ardoise-400">Aucun article pointable pour ce projet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Un <form> vide par ligne, référencé par attribut form="..." depuis les cellules du tableau ci-dessus. #}
+  {% for groupe in groupes %}
+    {% for ligne in groupe.lignes %}
+      {% if ligne.lot %}
+      <form id="pointer-{{ ligne.lot.pk }}" method="post"
+            action="{% url 'projects:pose_gestion_lot_pointer' project.pk ligne.lot.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+      </form>
+      {% else %}
+      <form id="creer-{{ groupe.article.pk }}-{{ ligne.poseur.pk }}" method="post"
+            action="{% url 'projects:pose_gestion_lot_create' project.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+        <input type="hidden" name="article_id" value="{{ groupe.article.pk }}">
+        <input type="hidden" name="poseur_id" value="{{ ligne.poseur.pk }}">
+      </form>
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+</div>
+{% endblock %}

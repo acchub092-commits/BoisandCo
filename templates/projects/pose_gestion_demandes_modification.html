@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Demandes de modification{% endblock %}
+{% block page_title %}Demandes de modification &amp; dérogations{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-4" x-data="{ selection: [] }">
+
+  {% if demandes %}
+  <form id="bulk-approve-form" method="post" action="{% url 'projects:pose_gestion_demandes_modification_valider_masse' %}"
+        class="flex items-center justify-between gap-3">
+    {% csrf_token %}
+    <label class="flex items-center gap-2 text-sm text-ardoise-600">
+      <input type="checkbox" @change="selection = $event.target.checked ? [{% for demande in demandes %}{% if demande.peut_traiter_ici %}'{{ demande.pk }}',{% endif %}{% endfor %}] : []">
+      Tout sélectionner ({{ demandes|length }} demande(s) en attente)
+    </label>
+    <button type="submit" class="btn-primary btn-sm" :disabled="selection.length === 0"
+            :class="selection.length === 0 && 'opacity-50 cursor-not-allowed'">
+      Approuver la sélection
+    </button>
+  </form>
+  {% else %}
+  <p class="text-sm text-ardoise-400">{{ demandes|length }} demande(s) en attente.</p>
+  {% endif %}
+
+  {% for demande in demandes %}
+  <div class="card space-y-3" x-data="{}">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="flex items-start gap-3">
+        {% if demande.peut_traiter_ici %}
+        <input type="checkbox" form="bulk-approve-form" name="demande_ids" value="{{ demande.pk }}" x-model="selection" class="mt-1">
+        {% endif %}
+        <div>
+        <span class="px-2 py-0.5 rounded-full text-xs font-semibold
+          {% if demande.type_demande == 'DEROGATION_DG' %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+          {{ demande.get_type_demande_display }}
+        </span>
+        <p class="mt-1 text-xs text-ardoise-400">
+          {{ demande.fiche.decomposition.article.project.reference }} — {{ demande.fiche.decomposition.article.code }}
+        </p>
+        <p class="font-semibold text-ardoise-800">{{ demande.fiche.decomposition.libelle_composant }}</p>
+        <p class="text-xs text-ardoise-400">
+          Quantité actuelle : {{ demande.fiche.quantite_posee }}
+          {% if demande.nouvelle_quantite %} → proposée : {{ demande.nouvelle_quantite }}{% endif %}
+        </p>
+        <p class="text-xs text-ardoise-400">
+          Demandé par {{ demande.demandeur.get_full_name|default:demande.demandeur.username }}
+          le {{ demande.created_at|date:"d/m/Y H:i" }}
+        </p>
+        <p class="text-sm text-ardoise-700 mt-1">« {{ demande.motif }} »</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 pt-2 border-t border-ardoise-100">
+      {% if demande.peut_traiter_ici %}
+      <form method="post" action="{% url 'projects:pose_gestion_demande_approuver' demande.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-primary btn-sm">Approuver</button>
+      </form>
+      <button type="button" @click="$refs.refus_{{ demande.pk }}.showModal()" class="btn-secondary btn-sm">Refuser</button>
+      {% else %}
+      <p class="text-xs text-amber-700 italic">
+        {% if demande.type_demande == 'VALIDATION_DIRECTEUR' %}Réservée à l'Administrateur.{% else %}Réservée à la supervision (Directeur/DG Pose/Admin).{% endif %}
+      </p>
+      {% endif %}
+      <dialog x-ref="refus_{{ demande.pk }}" class="rounded-xl p-0 backdrop:bg-black/30">
+        <form method="post" action="{% url 'projects:pose_gestion_demande_refuser' demande.pk %}" class="p-5 w-80 space-y-3">
+          {% csrf_token %}
+          <p class="font-semibold text-ardoise-800 text-sm">Refuser cette demande</p>
+          <div>
+            <label class="form-label">Motif du refus <span class="text-red-500">*</span></label>
+            <textarea name="motif_refus" rows="2" class="form-input" required></textarea>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" @click="$refs.refus_{{ demande.pk }}.close()" class="btn-secondary btn-sm">Annuler</button>
+            <button type="submit" class="btn-primary btn-sm">Confirmer le refus</button>
+          </div>
+        </form>
+      </dialog>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-sm text-ardoise-400">Aucune demande en attente.</p>
+  {% endfor %}
+
+</div>
+{% endblock %}

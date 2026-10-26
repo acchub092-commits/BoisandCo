@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Validation prix de pose{% endblock %}
+{% block page_title %}Validation des prix de pose{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-4" x-data="{ selection: [] }">
+
+  <div class="card">
+    <form method="get" class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="form-label">Projet</label>
+        <select name="project" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous les projets</option>
+          {% for p in projets %}
+          <option value="{{ p.pk }}" {% if selected_project == p.pk|stringformat:'s' %}selected{% endif %}>
+            {{ p.reference }} — {{ p.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Chef de projet</label>
+        <select name="chef" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous les chefs de projet</option>
+          {% for c in chefs %}
+          <option value="{{ c.pk }}" {% if selected_chef == c.pk|stringformat:'s' %}selected{% endif %}>
+            {{ c.get_full_name|default:c.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if selected_project or selected_chef %}
+      <a href="{% url 'projects:pose_gestion_validation' %}" class="btn-secondary btn-sm">Réinitialiser</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <p class="text-sm text-ardoise-400">
+    {{ articles|length }} article(s) en attente de validation.
+  </p>
+
+  {% if articles %}
+  <form id="bulk-valider-prix-form" method="post"
+        action="{% url 'projects:pose_gestion_validation_valider_masse' %}"
+        class="card flex items-center justify-between gap-3 py-3">
+    {% csrf_token %}
+    <input type="hidden" name="querystring" value="project={{ selected_project }}&chef={{ selected_chef }}">
+    <label class="flex items-center gap-2 text-sm text-ardoise-600">
+      <input type="checkbox"
+             @change="selection = $event.target.checked ? [{% for article in articles %}'{{ article.pk }}',{% endfor %}] : []">
+      Tout sélectionner ({{ articles|length }} article(s), tous projets confondus)
+    </label>
+    <button type="submit" class="btn-primary btn-sm flex items-center gap-1.5" :disabled="selection.length === 0"
+            :class="selection.length === 0 && 'opacity-50 cursor-not-allowed'">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75l6 6 9-13.5"/>
+      </svg>
+      Valider la sélection
+    </button>
+  </form>
+  {% endif %}
+
+  {% for groupe in groupes %}
+  <div class="space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+      <div>
+        <p class="font-semibold text-ardoise-800">{{ groupe.project.reference }} — {{ groupe.project.name }}</p>
+        <p class="text-xs text-ardoise-400">Chef de projet : {{ groupe.project.chef_de_projet.get_full_name|default:"—" }}</p>
+      </div>
+      <form method="post" action="{% url 'projects:pose_gestion_validation_valider_masse' %}">
+        {% csrf_token %}
+        <input type="hidden" name="querystring" value="project={{ selected_project }}&chef={{ selected_chef }}">
+        {% for article in groupe.articles %}
+        <input type="hidden" name="article_ids" value="{{ article.pk }}">
+        {% endfor %}
+        <button type="submit" class="btn-secondary btn-sm flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75l6 6 9-13.5"/>
+          </svg>
+          Valider tout ce projet ({{ groupe.articles|length }})
+        </button>
+      </form>
+    </div>
+
+    {% for article in groupe.articles %}
+    <div class="card space-y-3" x-data="{ refusing: false, revising: false }">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <input type="checkbox" form="bulk-valider-prix-form" name="article_ids" value="{{ article.pk }}" x-model="selection" class="mt-1.5">
+          <div>
+            <p class="font-semibold text-ardoise-800">{{ article.code }} — {{ article.designation }}</p>
+            <p class="text-xs text-ardoise-400">
+              {{ article.quantite }} {{ article.unite }} · Budget de pose {{ article.budget_de_pose }} ·
+              <span class="font-semibold text-ardoise-700">Prix de pose proposé : {{ article.prix_de_pose }}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <form method="post" action="{% url 'projects:pose_gestion_validation_decision' article.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="valider">
+          <input type="hidden" name="querystring" value="project={{ selected_project }}&chef={{ selected_chef }}">
+          <button type="submit" class="btn-primary btn-sm">Valider</button>
+        </form>
+
+        <button type="button" @click="revising = !revising; refusing = false" class="btn-secondary btn-sm">Réviser le prix</button>
+        <button type="button" @click="refusing = !refusing; revising = false" class="btn-secondary btn-sm">Refuser</button>
+      </div>
+
+      <form x-show="revising" x-cloak method="post"
+            action="{% url 'projects:pose_gestion_validation_decision' article.pk %}"
+            class="flex flex-wrap items-end gap-3 pt-2 border-t border-ardoise-100">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reviser">
+        <input type="hidden" name="querystring" value="project={{ selected_project }}&chef={{ selected_chef }}">
+        <div>
+          <label class="form-label">Nouveau prix de pose <span class="text-red-500">*</span></label>
+          <input type="number" step="0.01" min="0.01" name="nouveau_prix" required class="form-input w-40"
+                 placeholder="{{ article.prix_de_pose }}">
+        </div>
+        <button type="submit" class="btn-primary btn-sm">Valider avec ce prix révisé</button>
+      </form>
+
+      <form x-show="refusing" x-cloak method="post"
+            action="{% url 'projects:pose_gestion_validation_decision' article.pk %}"
+            class="flex flex-wrap items-end gap-3 pt-2 border-t border-ardoise-100">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="refuser">
+        <input type="hidden" name="querystring" value="project={{ selected_project }}&chef={{ selected_chef }}">
+        <div class="flex-1 min-w-[240px]">
+          <label class="form-label">Motif de refus <span class="text-red-500">*</span></label>
+          <input type="text" name="motif_refus" required class="form-input" placeholder="Ex : prix de pose trop élevé par rapport au budget">
+        </div>
+        <button type="submit" class="btn-secondary btn-sm">Confirmer le refus</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <p class="text-sm text-ardoise-400">Aucun prix de pose en attente de validation.</p>
+  {% endfor %}
+
+</div>
+{% endblock %}

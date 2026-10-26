@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ project.name }} — Relevé poseurs{% endblock %}
+{% block page_title %}{{ project.reference }} — Relevé par poseur{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_pointage_composant' project.pk %}" class="btn-secondary btn-sm">← Pointage</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto space-y-6">
+
+  <div class="flex flex-wrap items-center gap-3">
+    <h2 class="text-3xl font-bold text-ardoise-900 leading-tight">{{ project.name }}</h2>
+    <span class="px-3 py-1 rounded-full bg-foret-100 text-foret-700 font-semibold text-sm">{{ project.reference }}</span>
+  </div>
+
+  <div class="card p-0 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-3 py-2">Référence</th>
+          <th class="text-left px-3 py-2">Client</th>
+          <th class="text-left px-3 py-2">Région</th>
+          <th class="text-left px-3 py-2">Chef de projet</th>
+          <th class="text-left px-3 py-2">Commercial</th>
+          <th class="text-left px-3 py-2">Date de début</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="px-3 py-2 font-semibold text-ardoise-800">{{ project.reference }}</td>
+          <td class="px-3 py-2">{{ project.client_name }}</td>
+          <td class="px-3 py-2">{{ meta.region|default:"—" }}</td>
+          <td class="px-3 py-2">{{ project.chef_de_projet.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2">{{ meta.commercial.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2">{{ project.start_date|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% if not masquer_valeurs %}
+  <div class="grid grid-cols-3 gap-4">
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Reste à payer</p>
+      <p class="text-3xl font-bold {% if total_a_payer > 0 %}text-amber-600{% else %}text-foret-600{% endif %} mt-1">
+        {{ total_a_payer }} <span class="text-base font-normal text-ardoise-400">MAD</span>
+      </p>
+    </div>
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Déjà payé</p>
+      <p class="text-3xl font-bold text-foret-600 mt-1">{{ total_paye }} <span class="text-base font-normal text-ardoise-400">MAD</span></p>
+    </div>
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Total pointé (validé)</p>
+      <p class="text-3xl font-bold text-ardoise-800 mt-1">{{ total_general }} <span class="text-base font-normal text-ardoise-400">MAD</span></p>
+      {% if total_general > 0 %}
+      <div class="progress-bar mt-3">
+        <div class="progress-fill" style="width: {% widthratio total_paye total_general 100 %}%"></div>
+      </div>
+      <p class="text-xs text-ardoise-400 mt-2">{% widthratio total_paye total_general 100 %} % réglé</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% for r in releves %}
+  <div class="card p-0 overflow-hidden" x-data="{ historique: false }">
+    <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50 flex flex-wrap items-center justify-between gap-3">
+      <p class="font-semibold text-ardoise-800">{{ r.poseur.nom }}</p>
+      {% if not masquer_valeurs %}
+      <div class="flex items-center gap-6 text-sm">
+        <div class="text-right min-w-[120px]">
+          <p class="text-xs text-ardoise-400">Déjà payé</p>
+          <p class="font-semibold text-foret-700">{{ r.total_paye }} MAD</p>
+        </div>
+        <div class="text-right min-w-[120px]">
+          <p class="text-xs text-ardoise-400">Reste à payer</p>
+          <p class="font-semibold {% if r.total_a_payer > 0 %}text-amber-700{% else %}text-ardoise-500{% endif %}">{{ r.total_a_payer }} MAD</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if r.a_payer %}
+    <form method="post" action="{% url 'projects:pose_gestion_releve_poseur_marquer_paye' project.pk %}"
+          x-data="{ selection: [] }">
+      {% csrf_token %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+            <tr>
+              <th class="px-3 py-2 text-left">
+                <input type="checkbox"
+                       @change="selection = $event.target.checked ? [{% for l in r.a_payer %}'{{ l.fiche.pk }}',{% endfor %}] : []">
+              </th>
+              <th class="text-left px-3 py-2">Article</th>
+              <th class="text-left px-3 py-2">Composant</th>
+              <th class="text-right px-3 py-2">Quantité validée</th>
+              {% if not masquer_valeurs %}<th class="text-right px-3 py-2">Montant</th>{% endif %}
+              <th class="text-left px-3 py-2">Validé le</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ardoise-100">
+            {% for l in r.a_payer %}
+            <tr>
+              <td class="px-3 py-2">
+                <input type="checkbox" name="fiche_ids" value="{{ l.fiche.pk }}" x-model="selection">
+              </td>
+              <td class="px-3 py-2 whitespace-normal min-w-[180px]">
+                <span class="text-xs text-ardoise-500">{{ l.article.code }}</span>
+                <span class="block text-ardoise-800">{{ l.article.designation }}</span>
+              </td>
+              <td class="px-3 py-2">{{ l.decomposition.libelle_composant }}</td>
+              <td class="px-3 py-2 text-right">{{ l.quantite }} {{ l.article.unite }}</td>
+              {% if not masquer_valeurs %}<td class="px-3 py-2 text-right font-semibold text-ardoise-800">{{ l.montant }}</td>{% endif %}
+              <td class="px-3 py-2 text-xs text-ardoise-400">{{ l.fiche.date_validation|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if peut_marquer_paye_ici %}
+      <div class="px-4 py-3 flex justify-end">
+        <button type="submit" class="btn-primary btn-sm" :disabled="selection.length === 0"
+                :class="selection.length === 0 && 'opacity-50 cursor-not-allowed'">
+          Marquer la sélection payée
+        </button>
+      </div>
+      {% endif %}
+    </form>
+    {% else %}
+    <p class="px-4 py-3 text-sm text-ardoise-400">Rien à payer pour ce poseur — tout est réglé.</p>
+    {% endif %}
+
+    {% if r.deja_paye %}
+    <div class="border-t border-ardoise-100">
+      <button type="button" @click="historique = !historique"
+              class="w-full flex items-center justify-between px-4 py-2.5 text-sm text-ardoise-500 hover:bg-ardoise-50 transition-colors">
+        <span>Historique des paiements ({{ r.deja_paye|length }})</span>
+        <svg class="w-4 h-4 transition-transform" :class="historique && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+      <div x-show="historique" x-cloak class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead class="bg-ardoise-50 text-ardoise-400 uppercase">
+            <tr>
+              <th class="text-left px-3 py-1.5">Article</th>
+              <th class="text-left px-3 py-1.5">Composant</th>
+              <th class="text-right px-3 py-1.5">Quantité</th>
+              {% if not masquer_valeurs %}<th class="text-right px-3 py-1.5">Montant</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ardoise-100">
+            {% for l in r.deja_paye %}
+            <tr>
+              <td class="px-3 py-1.5 whitespace-normal min-w-[160px]">
+                <span class="text-ardoise-500">{{ l.article.code }}</span>
+                <span class="block text-ardoise-700">{{ l.article.designation }}</span>
+              </td>
+              <td class="px-3 py-1.5">{{ l.decomposition.libelle_composant }}</td>
+              <td class="px-3 py-1.5 text-right">{{ l.quantite }} {{ l.article.unite }}</td>
+              {% if not masquer_valeurs %}<td class="px-3 py-1.5 text-right font-semibold text-foret-700">{{ l.montant }}</td>{% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <p class="text-sm text-ardoise-400">Aucun pointage validé pour l'instant sur ce projet — rien à payer.</p>
+  {% endfor %}
+
+</div>
+{% endblock %}

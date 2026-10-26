@@ -24,18 +24,31 @@ module.exports = {
           800: '#6e3e18',
           900: '#5a3418',
         },
-        // Vert forêt — recalibré selon le logo (plus profond, plus riche)
+        // Vert forêt — échantillonné pixel par pixel sur le vrai logo (vert #71BB16)
         foret: {
-          50:  '#f0f7f2',
-          100: '#d4eadb',
-          200: '#a8d5b6',
-          300: '#6fb98c',
-          400: '#3d9c65',
-          500: '#22804c',   // vert principal — boutons, accents
-          600: '#1a6840',   // hover
-          700: '#145133',   // foncé
-          800: '#0e3b25',   // très foncé
-          900: '#163228',   // vert logo — sidebar background
+          50:  '#f6fced',
+          100: '#e7f8d3',
+          200: '#d0f1a7',
+          300: '#b3e873',
+          400: '#92de35',
+          500: '#70b41d',   // vert exact du logo — boutons, badges actifs
+          600: '#5a9118',   // hover
+          700: '#477213',   // foncé
+          800: '#35560e',   // très foncé
+          900: '#253b0a',
+        },
+        // Marine — bleu-nuit exact de l'encre du logo (fonds foncés : sidebar, connexion, avatar)
+        marine: {
+          50:  '#f1f6f9',
+          100: '#dbe8f0',
+          200: '#b8d1e0',
+          300: '#86b0cb',
+          400: '#4d8bb2',
+          500: '#376481',
+          600: '#2b4e64',
+          700: '#223d4f',
+          800: '#1c3240',   // hover des fonds foncés
+          900: '#152732',   // marine exact du logo — fond sidebar, en-tête connexion
         },
         // Crème — couleur texte du logo
         creme: {

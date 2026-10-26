@@ -57,21 +57,25 @@
 
   /* Navigation sidebar — fond sombre (vert logo) */
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-           transition-colors duration-150;
-    color: rgba(242, 232, 213, 0.65);   /* crème atténué */
+    @apply flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium
+           transition-all duration-150 relative;
+    color: #4a5869;   /* ardoise-600 */
+    border-left: 2.5px solid transparent;
   }
   .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.09);
-    color: rgba(242, 232, 213, 1);      /* crème plein */
+    background-color: rgba(21, 39, 50, 0.05);
+    color: #152732;      /* marine-900 */
+    transform: translateX(2px);
   }
   .nav-link-active {
-    background-color: rgba(242, 232, 213, 0.15) !important;
-    color: #f2e8d5 !important;          /* crème logo */
+    background: linear-gradient(90deg, rgba(112, 180, 29, 0.14), rgba(112, 180, 29, 0.02)) !important;
+    color: #477213 !important;          /* foret-700 */
     font-weight: 600;
+    border-left: 2.5px solid #70b41d;
   }
   .nav-link-active:hover {
-    background-color: rgba(242, 232, 213, 0.2) !important;
+    background: linear-gradient(90deg, rgba(112, 180, 29, 0.2), rgba(112, 180, 29, 0.04)) !important;
+    transform: none;
   }
 
   /* Barre de progression tâche */

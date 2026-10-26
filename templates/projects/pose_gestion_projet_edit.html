@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier {{ project.name }}{% endblock %}
+{% block page_title %}{{ project.reference }} — Modifier le projet{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_pipeline' %}" class="btn-secondary btn-sm">← Pipeline pose</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+  <form method="post" id="edit-projet-form">
+    {% csrf_token %}
+  </form>
+
+  <div class="card space-y-5">
+    <h2 class="text-base font-semibold text-ardoise-800">Identité du projet</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label class="form-label">Intitulé du projet <span class="text-red-500">*</span></label>
+        <input type="text" name="name" value="{{ post.name|default:'' }}" form="edit-projet-form"
+               class="form-input text-base {% if errors.name %}border-red-400{% endif %}">
+        {% if errors.name %}<p class="form-error">{{ errors.name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Client <span class="text-red-500">*</span></label>
+        <input type="text" name="client_name" value="{{ post.client_name|default:'' }}" form="edit-projet-form"
+               class="form-input {% if errors.client_name %}border-red-400{% endif %}">
+        {% if errors.client_name %}<p class="form-error">{{ errors.client_name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Région <span class="text-red-500">*</span></label>
+        <input type="text" name="region" value="{{ post.region|default:'' }}" form="edit-projet-form"
+               class="form-input {% if errors.region %}border-red-400{% endif %}">
+        {% if errors.region %}<p class="form-error">{{ errors.region }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Chef de projet <span class="text-red-500">*</span></label>
+        <select name="chef_de_projet" form="edit-projet-form" class="form-input {% if errors.chef_de_projet %}border-red-400{% endif %}">
+          <option value="">— Sélectionner —</option>
+          {% for u in chefs %}
+          <option value="{{ u.pk }}" {% if post.chef_de_projet == u.pk|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.chef_de_projet %}<p class="form-error">{{ errors.chef_de_projet }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Commercial <span class="text-red-500">*</span></label>
+        <select name="commercial" form="edit-projet-form" class="form-input {% if errors.commercial %}border-red-400{% endif %}">
+          <option value="">— Sélectionner —</option>
+          {% for u in commerciaux %}
+          <option value="{{ u.pk }}" {% if post.commercial == u.pk|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.commercial %}<p class="form-error">{{ errors.commercial }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Date de début <span class="text-red-500">*</span></label>
+        <input type="date" name="start_date" value="{{ post.start_date|default:'' }}" form="edit-projet-form"
+               class="form-input {% if errors.start_date %}border-red-400{% endif %}">
+        {% if errors.start_date %}<p class="form-error">{{ errors.start_date }}</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card space-y-5">
+    <h2 class="text-base font-semibold text-ardoise-800">Coordinateurs de la pose <span class="text-sm font-normal text-ardoise-400">(optionnel)</span></h2>
+    <p class="text-sm text-ardoise-500 -mt-2">
+      Le ou les coordinateurs cochés peuvent saisir le pointage sur ce projet pour le compte du
+      chef de projet — décochez pour retirer une délégation.
+    </p>
+
+    {% if coordinateurs %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {% for u in coordinateurs %}
+      <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-ardoise-200 hover:border-foret-300 cursor-pointer">
+        <input type="checkbox" name="coordinateurs" value="{{ u.pk }}" form="edit-projet-form"
+               {% if u.pk|stringformat:'s' in selected_coordinateurs %}checked{% endif %}>
+        <span class="text-sm text-ardoise-700">{{ u.get_full_name|default:u.username }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-ardoise-400">Aucun coordinateur de la pose actif pour l'instant.</p>
+    {% endif %}
+  </div>
+
+  <div class="flex justify-between gap-3">
+    <form method="post" action="{% url 'projects:pose_gestion_projet_delete' project.pk %}"
+          onsubmit="return confirm('Supprimer définitivement le projet « {{ project.name|escapejs }} » et toutes ses données de pose (articles, lots, pointages, paiements) ? Cette action est irréversible.');">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary text-red-600 hover:bg-red-50">Supprimer le projet</button>
+    </form>
+
+    <div class="flex gap-3">
+      <a href="{% url 'projects:pose_gestion_pipeline' %}" class="btn-secondary">Annuler</a>
+      <button type="submit" form="edit-projet-form" class="btn-primary">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

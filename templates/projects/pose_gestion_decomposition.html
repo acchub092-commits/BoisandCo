@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ article.code }} — Décomposition{% endblock %}
+{% block page_title %}{{ article.code }} — Décomposition en composants{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_projet' project.pk %}" class="btn-secondary btn-sm">← Tableau</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="card">
+    <p class="text-xs text-ardoise-400">{{ project.reference }} — {{ project.name }}</p>
+    <p class="font-semibold text-ardoise-800">{{ article.code }} — {{ article.designation }}</p>
+    <p class="text-xs text-ardoise-400 mt-1">Prix de pose : {{ article.prix_de_pose|default:"—" }} · Quantité prévue : {{ article.quantite }} {{ article.unite }}</p>
+  </div>
+
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3">
+    Chaque composant représente un poids (% du prix). La somme des poids des composants
+    <strong>actifs</strong> doit valoir <strong>100 %</strong> pour que l'article soit pointable
+    par composant (RG-04).
+  </div>
+
+  <div class="card" x-data="{ poids: [{% for d in decompositions %}{% if d.actif %}{{ d.poids_pourcent|unlocalize }},{% endif %}{% endfor %}] }">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-ardoise-800">Composants</h2>
+      <span class="px-3 py-1 rounded-full text-xs font-semibold"
+            :class="poids.reduce((a,b) => a+b, 0).toFixed(1) == '100.0' ? 'bg-foret-100 text-foret-700' : 'bg-amber-100 text-amber-700'">
+        <span x-text="'Σ = ' + poids.reduce((a,b) => a+b, 0).toFixed(1) + ' %'"></span>
+        <span x-text="poids.reduce((a,b) => a+b, 0).toFixed(1) == '100.0' ? '✅' : '⚠️'"></span>
+      </span>
+    </div>
+
+    <div class="space-y-2">
+      {% for d in decompositions %}
+      <form method="post" action="{% url 'projects:pose_gestion_decomposition_update' project.pk d.pk %}"
+            class="flex flex-wrap items-end gap-3 p-3 rounded-lg {% if not d.actif %}bg-ardoise-50 opacity-60{% else %}bg-white border border-ardoise-100{% endif %}">
+        {% csrf_token %}
+        <div class="flex-1 min-w-[200px]">
+          <label class="form-label">Libellé</label>
+          <input type="text" name="libelle_composant" value="{{ d.libelle_composant }}" class="form-input" required>
+        </div>
+        <div class="w-28">
+          <label class="form-label">Poids (%)</label>
+          <input type="number" step="0.01" min="0.01" max="100" name="poids_prix"
+                 value="{{ d.poids_pourcent|unlocalize }}"
+                 x-on:input="poids[{{ forloop.counter0 }}] = parseFloat($event.target.value) || 0"
+                 class="form-input" required>
+        </div>
+        <div class="w-20">
+          <label class="form-label">Ordre</label>
+          <input type="number" name="ordre" value="{{ d.ordre }}" class="form-input">
+        </div>
+        <label class="flex items-center gap-2 pb-2.5">
+          <input type="checkbox" name="actif" {% if d.actif %}checked{% endif %} class="w-4 h-4 rounded border-ardoise-300">
+          <span class="text-sm text-ardoise-600">Actif</span>
+        </label>
+        <button type="submit" class="btn-secondary btn-sm">Enregistrer</button>
+      </form>
+      <form method="post" action="{% url 'projects:pose_gestion_decomposition_delete' project.pk d.pk %}"
+            onsubmit="return confirm('Supprimer/archiver ce composant ?');" class="-mt-2 pl-3">
+        {% csrf_token %}
+        <button type="submit" class="text-xs text-red-600 hover:underline">Supprimer</button>
+      </form>
+      {% empty %}
+      <p class="text-sm text-ardoise-400">Aucun composant pour cet article — ajoutez-en un ci-dessous, ou importez un bordereau avec des lignes DECOMPOSITION.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="text-sm font-semibold text-ardoise-800 mb-1">Ajouter un composant</h2>
+    {% if poids_disponible_pourcent <= 0 %}
+    <p class="text-sm text-amber-600 mb-3">
+      La décomposition est déjà à 100 % — désactivez ou allégez un composant existant avant d'en ajouter un nouveau (RG-04).
+    </p>
+    <div class="flex flex-wrap items-end gap-3 opacity-50 pointer-events-none">
+      <div class="flex-1 min-w-[200px]">
+        <label class="form-label">Libellé</label>
+        <input type="text" class="form-input" placeholder="Ex : Fourniture, Pose…" disabled>
+      </div>
+      <div class="w-32">
+        <label class="form-label">Poids (%)</label>
+        <input type="number" class="form-input" placeholder="Ex : 40" disabled>
+      </div>
+      <button type="button" class="btn-primary btn-sm" disabled>+ Ajouter un composant</button>
+    </div>
+    {% else %}
+    <p class="text-xs text-ardoise-400 mb-3">Il reste {{ poids_disponible_pourcent }} % disponible.</p>
+    <form method="post" action="{% url 'projects:pose_gestion_decomposition_create' project.pk article.pk %}"
+          class="flex flex-wrap items-end gap-3">
+      {% csrf_token %}
+      <div class="flex-1 min-w-[200px]">
+        <label class="form-label">Libellé</label>
+        <input type="text" name="libelle_composant" class="form-input" placeholder="Ex : Fourniture, Pose…" required>
+      </div>
+      <div class="w-32">
+        <label class="form-label">Poids (%)</label>
+        <input type="number" step="0.01" min="0.01" max="{{ poids_disponible_pourcent|unlocalize }}" name="poids_prix"
+               class="form-input" placeholder="Ex : 40" required>
+      </div>
+      <button type="submit" class="btn-primary btn-sm">+ Ajouter un composant</button>
+    </form>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

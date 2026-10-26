@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau projet de pose{% endblock %}
+{% block page_title %}Gestion de la pose — Nouveau projet{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:list' %}" class="btn-secondary btn-sm">← Retour</a>
+{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="max-w-4xl mx-auto space-y-6">
+  {% csrf_token %}
+
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Identité du projet</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label class="form-label">Intitulé du projet <span class="text-red-500">*</span></label>
+        <input type="text" name="name" value="{{ post.name|default:'' }}"
+               placeholder="Ex : Villa Anfa — Pose parquet"
+               class="form-input text-base {% if errors.name %}border-red-400{% endif %}">
+        {% if errors.name %}<p class="form-error">{{ errors.name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Client <span class="text-red-500">*</span></label>
+        <input type="text" name="client_name" value="{{ post.client_name|default:'' }}"
+               class="form-input {% if errors.client_name %}border-red-400{% endif %}">
+        {% if errors.client_name %}<p class="form-error">{{ errors.client_name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Région <span class="text-red-500">*</span></label>
+        <input type="text" name="region" value="{{ post.region|default:'' }}"
+               placeholder="Ex : Casablanca-Settat"
+               class="form-input {% if errors.region %}border-red-400{% endif %}">
+        {% if errors.region %}<p class="form-error">{{ errors.region }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Chef de projet <span class="text-red-500">*</span></label>
+        <select name="chef_de_projet" class="form-input {% if errors.chef_de_projet %}border-red-400{% endif %}">
+          <option value="">— Sélectionner —</option>
+          {% for u in chefs %}
+          <option value="{{ u.pk }}" {% if post.chef_de_projet == u.pk|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.chef_de_projet %}<p class="form-error">{{ errors.chef_de_projet }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Commercial <span class="text-red-500">*</span></label>
+        <select name="commercial" class="form-input {% if errors.commercial %}border-red-400{% endif %}">
+          <option value="">— Sélectionner —</option>
+          {% for u in commerciaux %}
+          <option value="{{ u.pk }}" {% if post.commercial == u.pk|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.commercial %}<p class="form-error">{{ errors.commercial }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="form-label">Date de début <span class="text-red-500">*</span></label>
+        <input type="date" name="start_date" value="{{ post.start_date|default:'' }}"
+               class="form-input {% if errors.start_date %}border-red-400{% endif %}">
+        {% if errors.start_date %}<p class="form-error">{{ errors.start_date }}</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Bordereau de pose</h2>
+    </div>
+
+    <div>
+      <label class="form-label">Fichier .xlsx <span class="text-red-500">*</span></label>
+      <input type="file" name="bordereau" accept=".xlsx"
+             class="form-input {% if errors.bordereau %}border-red-400{% endif %}">
+      <p class="text-xs text-ardoise-400 mt-1">
+        Colonnes attendues : CODE, DESIGNATION DES ARTICLES, UNITE, QTE, Prix Unitaire HT, Prix total HT, Budget de pose.
+        Les articles seront créés automatiquement à partir de la première feuille du fichier.
+      </p>
+      {% if errors.bordereau %}<p class="form-error">{{ errors.bordereau }}</p>{% endif %}
+    </div>
+
+    <div class="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 space-y-2">
+      <p class="text-sm text-blue-800">
+        <strong>Décomposition en composants (optionnel)</strong> — pour décomposer un article en
+        composants pondérés (% du prix), ajoutez sous sa ligne une ou plusieurs lignes avec
+        <strong>CODE et DESIGNATION DES ARTICLES vides</strong>, et renseignez seulement deux
+        colonnes supplémentaires : <strong>DECOMPOSITION</strong> (libellé du composant) et
+        <strong>DECOMPOSITION PRIX %</strong> (poids — ex. <code>50</code> ou <code>0.5</code> pour 50 %).
+        La somme des poids d'un même article doit faire 100 % (un avertissement s'affiche sinon,
+        modifiable ensuite depuis l'écran « Décomposition » de l'article).
+      </p>
+      <div class="overflow-x-auto">
+        <table class="text-xs border border-blue-200 rounded-lg overflow-hidden">
+          <thead class="bg-blue-100 text-blue-800">
+            <tr>
+              <th class="px-2 py-1 border-r border-blue-200">CODE</th>
+              <th class="px-2 py-1 border-r border-blue-200">DESIGNATION DES ARTICLES</th>
+              <th class="px-2 py-1 border-r border-blue-200">…</th>
+              <th class="px-2 py-1 border-r border-blue-200">DECOMPOSITION</th>
+              <th class="px-2 py-1">DECOMPOSITION PRIX %</th>
+            </tr>
+          </thead>
+          <tbody class="text-ardoise-700">
+            <tr class="border-t border-blue-200">
+              <td class="px-2 py-1 border-r border-blue-100 font-mono">A-1</td>
+              <td class="px-2 py-1 border-r border-blue-100">Porte T1</td>
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">…</td>
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">—</td>
+              <td class="px-2 py-1 text-ardoise-300">—</td>
+            </tr>
+            <tr class="border-t border-blue-100 bg-blue-50/60">
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">(vide)</td>
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">(vide)</td>
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">…</td>
+              <td class="px-2 py-1 border-r border-blue-100">Fourniture</td>
+              <td class="px-2 py-1">60</td>
+            </tr>
+            <tr class="border-t border-blue-100 bg-blue-50/60">
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">(vide)</td>
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">(vide)</td>
+              <td class="px-2 py-1 border-r border-blue-100 text-ardoise-300">…</td>
+              <td class="px-2 py-1 border-r border-blue-100">Pose</td>
+              <td class="px-2 py-1">40</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card space-y-5">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 rounded-full bg-foret-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+      <h2 class="text-base font-semibold text-ardoise-800">Coordinateurs de la pose <span class="text-sm font-normal text-ardoise-400">(optionnel)</span></h2>
+    </div>
+    <p class="text-sm text-ardoise-500 -mt-2">
+      Le ou les coordinateurs sélectionnés pourront saisir le pointage sur ce projet pour le compte
+      du chef de projet — modifiable ensuite depuis « Délégations ».
+    </p>
+
+    {% if coordinateurs %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {% for u in coordinateurs %}
+      <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-ardoise-200 hover:border-foret-300 cursor-pointer">
+        <input type="checkbox" name="coordinateurs" value="{{ u.pk }}"
+               {% if u.pk|stringformat:'s' in selected_coordinateurs %}checked{% endif %}>
+        <span class="text-sm text-ardoise-700">{{ u.get_full_name|default:u.username }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-ardoise-400">Aucun coordinateur de la pose actif pour l'instant.</p>
+    {% endif %}
+  </div>
+
+  <div class="flex justify-end gap-3">
+    <a href="{% url 'projects:list' %}" class="btn-secondary">Annuler</a>
+    <button type="submit" class="btn-primary">Créer le projet et importer</button>
+  </div>
+</form>
+{% endblock %}

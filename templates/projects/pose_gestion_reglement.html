@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ project.name }} — Règlement{% endblock %}
+{% block page_title %}{{ project.reference }} — Règlement hebdomadaire{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_pointage' project.pk %}" class="btn-secondary btn-sm">← Pointage</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3">
+    <strong>Paiement partiel possible</strong> : saisissez le montant versé, le reste à payer se met à jour
+    automatiquement. « Solder » règle tout le reste d'un coup.
+  </div>
+
+  <div class="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">
+    <strong>Bon de règlement (émargement)</strong> : soumettez le bon pour approbation, puis la DG doit le valider
+    avant qu'il devienne éditable et imprimable pour signature du poseur.
+  </div>
+
+  <div class="card flex flex-wrap items-end justify-between gap-4">
+    <form method="get" class="flex items-end gap-3">
+      <div>
+        <label class="form-label">Semaine</label>
+        <select name="periode" class="form-input" onchange="this.form.submit()">
+          {% for s, a in semaines_disponibles %}
+          <option value="{{ s }}-{{ a }}" {% if s == semaine and a == annee %}selected{% endif %}>
+            Semaine {{ s }} · {{ a }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <noscript><button type="submit" class="btn-secondary btn-sm">Afficher</button></noscript>
+    </form>
+
+    <a href="{% url 'projects:pose_gestion_reglement_export' project.pk %}?semaine={{ semaine }}&annee={{ annee }}"
+       class="btn-secondary btn-sm">Exporter (.csv)</a>
+
+    <form method="post" action="{% url 'projects:pose_gestion_solder_projet' project.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="semaine" value="{{ semaine }}">
+      <input type="hidden" name="annee" value="{{ annee }}">
+      <button type="submit" class="btn-primary btn-sm">Tout solder</button>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="card">
+      <p class="text-xs text-ardoise-400">Total à payer — ce projet</p>
+      <p class="text-2xl font-bold text-ardoise-800">{{ total_du }} MAD</p>
+      <p class="text-xs text-ardoise-400">Semaine {{ semaine }} · {{ annee }}</p>
+    </div>
+    <div class="card">
+      <p class="text-xs text-ardoise-400">Déjà versé</p>
+      <p class="text-2xl font-bold text-foret-600">{{ total_verse }} MAD</p>
+    </div>
+    <div class="card">
+      <p class="text-xs text-ardoise-400">Reste à payer</p>
+      <p class="text-2xl font-bold {% if total_reste > 0 %}text-amber-600{% else %}text-ardoise-800{% endif %}">{{ total_reste }} MAD</p>
+    </div>
+  </div>
+
+  <div class="space-y-3">
+    {% for ligne in lignes %}
+    <div class="card flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="font-semibold text-ardoise-800">{{ ligne.poseur.nom }}</p>
+        <p class="text-xs text-ardoise-400">
+          Dû {{ ligne.du }} · Versé {{ ligne.verse }} ·
+          <span class="font-semibold text-ardoise-700">Reste {{ ligne.reste }}</span>
+        </p>
+        {% if ligne.verse > 0 and ligne.verse_confirme_tresorerie < ligne.verse %}
+        <p class="text-xs text-amber-600">
+          {{ ligne.verse_confirme_tresorerie }} / {{ ligne.verse }} confirmé par la Trésorerie
+          <span class="text-ardoise-400">(après validation DG du bon)</span>
+        </p>
+        {% endif %}
+      </div>
+
+      <span class="px-2 py-1 rounded-full text-xs font-semibold
+        {% if ligne.statut == 'Soldé' %}bg-foret-100 text-foret-700
+        {% elif ligne.statut == 'Partiel' %}bg-amber-100 text-amber-700
+        {% else %}bg-ardoise-100 text-ardoise-500{% endif %}">
+        {{ ligne.statut }}
+      </span>
+
+      {% if ligne.reste > 0 %}
+      <div class="flex items-end gap-2">
+        <form method="post" action="{% url 'projects:pose_gestion_paiement_create' project.pk %}" class="flex items-end gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="semaine" value="{{ semaine }}">
+          <input type="hidden" name="annee" value="{{ annee }}">
+          <input type="hidden" name="poseur_id" value="{{ ligne.poseur.pk }}">
+          <input type="number" step="0.01" min="0" max="{{ ligne.reste|unlocalize }}" name="montant"
+                 placeholder="Montant" class="form-input w-32">
+          <button type="submit" class="btn-secondary btn-sm">Verser</button>
+        </form>
+
+        <form method="post" action="{% url 'projects:pose_gestion_solder_poseur' project.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="semaine" value="{{ semaine }}">
+          <input type="hidden" name="annee" value="{{ annee }}">
+          <input type="hidden" name="poseur_id" value="{{ ligne.poseur.pk }}">
+          <button type="submit" class="btn-primary btn-sm">Solder</button>
+        </form>
+      </div>
+      {% endif %}
+
+      <div class="w-full flex items-center justify-between gap-3 pt-2 border-t border-ardoise-100">
+        <span class="text-xs text-ardoise-400">Bon de règlement :</span>
+
+        {% if ligne.verse <= 0 %}
+        <span class="text-xs text-ardoise-400">— (aucun versement encore enregistré)</span>
+
+        {% elif not ligne.bon or ligne.bon.statut == 'EN_ATTENTE' %}
+        <form method="post" action="{% url 'projects:pose_gestion_bon_approuver' project.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="semaine" value="{{ semaine }}">
+          <input type="hidden" name="annee" value="{{ annee }}">
+          <input type="hidden" name="poseur_id" value="{{ ligne.poseur.pk }}">
+          <button type="submit" class="btn-secondary btn-sm">Soumettre le bon pour approbation</button>
+        </form>
+
+        {% elif ligne.bon.statut == 'APPROUVE_CHEF' %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+          En attente de validation DG
+        </span>
+
+        {% elif ligne.bon.statut == 'VALIDE_DG' %}
+        <a href="{% url 'projects:pose_gestion_bon_edit' project.pk ligne.bon.pk %}"
+           target="_blank" class="btn-primary btn-sm">Éditer le bon (validé)</a>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-ardoise-400">Aucun pointage enregistré pour cette semaine.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

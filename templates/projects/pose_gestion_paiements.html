@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Paiements{% endblock %}
+{% block page_title %}Paiements — Trésorerie{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="card">
+    <form method="get" class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="form-label">Projet</label>
+        <select name="project" class="form-input" onchange="this.form.submit()">
+          <option value="">Tous les projets</option>
+          {% for p in projets %}
+          <option value="{{ p.pk }}" {% if selected_project == p.pk|stringformat:'s' %}selected{% endif %}>
+            {{ p.reference }} — {{ p.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-1 min-w-[200px]">
+        <label class="form-label">Recherche (projet, référence, client)</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Ex : Villa Anfa, BC-2026-004…" class="form-input">
+      </div>
+      <button type="submit" class="btn-secondary btn-sm">Filtrer</button>
+      {% if selected_project or q %}
+      <a href="{% url 'projects:pose_gestion_paiements' %}" class="btn-secondary btn-sm">Réinitialiser</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold text-ardoise-700">
+      Versements espèce en attente d'approbation
+      <span class="text-ardoise-400 font-normal">({{ paiements_attente|length }})</span>
+    </h2>
+
+    {% for paiement in paiements_attente %}
+    <div class="card flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-xs text-ardoise-400">{{ paiement.project.reference }} — {{ paiement.project.name }}</p>
+        <p class="font-semibold text-ardoise-800">
+          {{ paiement.poseur.nom }} — S{{ paiement.semaine }}/{{ paiement.annee }} : {{ paiement.montant_verse }} DH
+        </p>
+        <p class="text-xs text-ardoise-400">
+          Enregistré par {{ paiement.created_by.get_full_name|default:"—" }} le {{ paiement.date|date:"d/m/Y" }}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <form method="post" action="{% url 'projects:pose_gestion_paiement_rejeter' paiement.pk %}"
+              onsubmit="return confirm('Rejeter ce versement ?');">
+          {% csrf_token %}
+          <input type="hidden" name="project" value="{{ selected_project }}">
+          <input type="hidden" name="q" value="{{ q }}">
+  <button type="submit" class="btn-secondary btn-sm">Rejeter</button>
+        </form>
+        <form method="post" action="{% url 'projects:pose_gestion_paiement_approuver' paiement.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="project" value="{{ selected_project }}">
+          <input type="hidden" name="q" value="{{ q }}">
+  <button type="submit" class="btn-primary btn-sm">Approuver</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-ardoise-400">Aucun versement en attente.</p>
+    {% endfor %}
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-sm font-semibold text-ardoise-700">
+      Bons de règlement validés par la DG
+      <span class="text-ardoise-400 font-normal">({{ bons|length }})</span>
+    </h2>
+
+    {% for bon in bons %}
+    <div class="card flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-xs text-ardoise-400">{{ bon.project.reference }} — {{ bon.project.name }}</p>
+        <p class="font-semibold text-ardoise-800">{{ bon.poseur.nom }} — S{{ bon.semaine }}/{{ bon.annee }}</p>
+        <p class="text-xs text-ardoise-400">
+          Validé par {{ bon.valide_par_dg.get_full_name|default:"—" }} le {{ bon.valide_dg_le|date:"d/m/Y H:i" }}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'projects:pose_gestion_bon_edit' bon.project.pk bon.pk %}"
+           target="_blank" class="btn-secondary btn-sm">Voir / imprimer</a>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-ardoise-400">Aucun bon validé pour le moment.</p>
+    {% endfor %}
+  </section>
+
+</div>
+{% endblock %}

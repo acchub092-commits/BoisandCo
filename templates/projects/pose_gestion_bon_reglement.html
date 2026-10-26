@@ -1,0 +1,96 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bon de règlement — {{ bon.poseur.nom }} — S{{ bon.semaine }}/{{ bon.annee }}</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; color: #2c1f10; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    .letterhead { display: flex; align-items: center; justify-content: space-between; gap: 20px;
+                  border-bottom: 3px solid #70b41d; padding-bottom: 12px; margin-bottom: 1.5em; }
+    .letterhead img { height: 52px; }
+    .letterhead .doc-title { text-align: right; }
+    h1 { font-size: 1.1rem; margin: 0; }
+    .sub { color: #6b6257; font-size: 0.85rem; margin-bottom: 1.5em; }
+    table { width: 100%; border-collapse: collapse; margin: 1.5em 0; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e0dcd3; font-size: 0.95rem; }
+    th { color: #6b6257; font-size: 0.75rem; text-transform: uppercase; }
+    .totaux td { font-weight: bold; }
+    .signatures { display: flex; justify-content: space-between; gap: 40px; margin-top: 4em; }
+    .signature-box { flex: 1; }
+    .signature-line { border-top: 1px solid #2c1f10; margin-top: 3em; padding-top: 6px; font-size: 0.8rem; color: #6b6257; }
+    .approbation { margin-top: 2em; font-size: 0.8rem; color: #6b6257; }
+    .no-print { margin-top: 2em; }
+    .banner-apercu {
+      background: #fef3c7; border: 1px solid #fcd34d; color: #92400e;
+      padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.5em;
+    }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 0.85rem; cursor: pointer; margin-right: 8px; }
+    .btn-primary { background: #2f6b4f; color: white; }
+    .btn-secondary { background: #e5e0d8; color: #2c1f10; }
+    @media print { .no-print { display: none; } body { margin: 0; } }
+  </style>
+</head>
+<body>
+  {% if apercu %}
+  <div class="banner-apercu no-print">
+    <strong>Aperçu</strong> — ce bon est en attente de validation DG et n'est pas encore définitif.
+  </div>
+  {% endif %}
+
+  <div class="letterhead">
+    <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co">
+    <div class="doc-title">
+      <h1>Bon de règlement — Pose{% if apercu %} (APERÇU){% endif %}</h1>
+      <p class="sub" style="margin-bottom:0;">Émargement poseur</p>
+    </div>
+  </div>
+  <p class="sub">Projet {{ project.reference }} — {{ project.name }} · {{ project.client_name }}</p>
+
+  <table>
+    <tr><th>Poseur</th><td>{{ bon.poseur.nom }}</td></tr>
+    <tr><th>CIN</th><td>{{ bon.poseur.cin }}</td></tr>
+    <tr><th>Semaine</th><td>S{{ bon.semaine }} / {{ bon.annee }}</td></tr>
+  </table>
+
+  <table>
+    <thead>
+      <tr><th>Montant dû</th><th>Montant versé</th><th>Reste à payer</th></tr>
+    </thead>
+    <tbody>
+      <tr class="totaux">
+        <td>{{ ligne.du|default:"—" }} MAD</td>
+        <td>{{ ligne.verse|default:"—" }} MAD</td>
+        <td>{{ ligne.reste|default:"—" }} MAD</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="approbation">
+    Approuvé par le chef de projet : {{ bon.approuve_par_chef.get_full_name|default:"—" }} le {{ bon.approuve_chef_le|date:"d/m/Y H:i"|default:"—" }}<br>
+    Validé par la DG : {{ bon.valide_par_dg.get_full_name|default:"—" }} le {{ bon.valide_dg_le|date:"d/m/Y H:i"|default:"—" }}
+  </p>
+
+  <div class="signatures">
+    <div class="signature-box">
+      <div class="signature-line">Signature du poseur (émargement — bon pour reçu)</div>
+    </div>
+    <div class="signature-box">
+      <div class="signature-line">Signature du chef de projet</div>
+    </div>
+  </div>
+
+  <div class="no-print">
+    <button class="btn btn-secondary" onclick="window.print()">Imprimer</button>
+    <button class="btn btn-secondary" onclick="window.close()">Fermer</button>
+
+    {% if apercu and peut_valider and bon.statut == 'APPROUVE_CHEF' %}
+    <form method="post" action="{% url 'projects:pose_gestion_bon_valider' bon.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="return_to" value="{% url 'projects:pose_gestion_bon_edit' project.pk bon.pk %}">
+      <button type="submit" class="btn btn-primary">Valider ce bon</button>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

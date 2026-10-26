@@ -1,6 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+# Rôles confinés au module « Gestion de la pose » : aucun accès utile au module Projets
+# classique (RG nouvelle) — utilisé par le sidebar (IS_POSE_TEST_PROFILE), la redirection
+# post-connexion et la garde d'accès de ProjectListView.
+ROLES_POSE_ONLY = ('DG_POSE', 'CHEF_PROJET_POSE', 'TRESO_POSE', 'CONDUCTEUR_POSE')
+
 
 class User(AbstractUser):
     """
@@ -22,6 +27,10 @@ class User(AbstractUser):
         POSEUR        = 'POSEUR',        'Poseur'
         FINANCE       = 'FINANCE',       'Finance'
         SAV           = 'SAV',           'SAV'
+        DG_POSE           = 'DG_POSE',           'Responsable de la pose'
+        CHEF_PROJET_POSE  = 'CHEF_PROJET_POSE',  'Chef de projet de la pose'
+        TRESO_POSE        = 'TRESO_POSE',        'Trésorerie Pose (test)'
+        CONDUCTEUR_POSE   = 'CONDUCTEUR_POSE',   'Coordinateur de la pose'
 
     role = models.CharField(
         max_length=20,

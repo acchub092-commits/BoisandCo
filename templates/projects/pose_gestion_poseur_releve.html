@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}{{ poseur.nom }} — Relevé de paiement{% endblock %}
+{% block page_title %}Relevé de paiement — {{ poseur.nom }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_poseurs_list' %}" class="btn-secondary btn-sm">← Mes poseurs</a>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="flex flex-wrap items-center gap-3">
+    <h2 class="text-3xl font-bold text-ardoise-900 leading-tight">{{ poseur.nom }}</h2>
+    <span class="px-3 py-1 rounded-full bg-ardoise-100 text-ardoise-600 font-semibold text-sm">CIN {{ poseur.cin }}</span>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Reste à payer (tous projets)</p>
+      <p class="text-3xl font-bold {% if total_a_payer > 0 %}text-amber-600{% else %}text-foret-600{% endif %} mt-1">
+        {{ total_a_payer }} <span class="text-base font-normal text-ardoise-400">MAD</span>
+      </p>
+    </div>
+    <div class="card">
+      <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Déjà payé (tous projets)</p>
+      <p class="text-3xl font-bold text-foret-600 mt-1">{{ total_paye }} <span class="text-base font-normal text-ardoise-400">MAD</span></p>
+    </div>
+  </div>
+
+  {% if demande_en_attente %}
+  <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+    Une partie du reste à payer de ce poseur est déjà incluse dans la demande
+    <strong>{{ demande_en_attente.numero }}</strong>, en attente de validation par la DG.
+  </div>
+  {% elif peut_creer_demande_ici and total_a_payer > 0 %}
+  <div class="rounded-lg bg-blue-50 border border-blue-100 text-blue-800 text-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <span>Pour inclure ce reste à payer dans une demande de paiement, rendez-vous sur la demande en cours de préparation.</span>
+    <a href="{% url 'projects:pose_gestion_demande_paiement_brouillon' %}" class="btn-primary btn-sm">Demande de paiement en cours</a>
+  </div>
+  {% endif %}
+
+  <div class="card p-0 overflow-hidden">
+    <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50">
+      <p class="font-semibold text-ardoise-800 text-sm">Détail par projet</p>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-4 py-2">Projet</th>
+          <th class="text-right px-4 py-2">À payer</th>
+          <th class="text-right px-4 py-2">Déjà payé</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100">
+        {% for p in par_projet %}
+        <tr>
+          <td class="px-4 py-2">
+            <span class="text-xs text-ardoise-400">{{ p.project.reference }}</span>
+            <span class="block font-semibold text-ardoise-800">{{ p.project.name }}</span>
+          </td>
+          <td class="px-4 py-2 text-right {% if p.a_payer > 0 %}text-amber-700 font-semibold{% else %}text-ardoise-400{% endif %}">{{ p.a_payer }} MAD</td>
+          <td class="px-4 py-2 text-right text-foret-700">{{ p.paye }} MAD</td>
+          <td class="px-4 py-2 text-right">
+            <a href="{% url 'projects:pose_gestion_releve_poseur' p.project.pk %}" class="btn-secondary btn-sm">Voir le relevé du projet</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="px-4 py-6 text-center text-ardoise-400">Aucun projet pour ce poseur.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-0 overflow-hidden">
+    <div class="px-4 py-3 border-b border-ardoise-100 bg-ardoise-50">
+      <p class="font-semibold text-ardoise-800 text-sm">Historique des demandes de paiement</p>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-4 py-2">Demande</th>
+          <th class="text-right px-4 py-2">Montant</th>
+          <th class="text-left px-4 py-2">Statut</th>
+          <th class="text-left px-4 py-2">Créée le</th>
+          <th class="text-left px-4 py-2">Traitée le</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-ardoise-100">
+        {% for d in historique_demandes %}
+        <tr>
+          <td class="px-4 py-2 font-semibold text-ardoise-800">{{ d.numero }}</td>
+          <td class="px-4 py-2 text-right">{{ d.montant_total }} MAD</td>
+          <td class="px-4 py-2">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold
+              {% if d.statut == 'VALIDEE' %}bg-foret-100 text-foret-700{% else %}bg-red-100 text-red-700{% endif %}">
+              {{ d.get_statut_display }}
+            </span>
+          </td>
+          <td class="px-4 py-2 text-xs text-ardoise-400">{{ d.date_creation|date:"d/m/Y H:i" }} — {{ d.demandeur.get_full_name|default:d.demandeur.username }}</td>
+          <td class="px-4 py-2 text-xs text-ardoise-400">
+            {% if d.date_validation %}{{ d.date_validation|date:"d/m/Y H:i" }} — {{ d.valide_par.get_full_name|default:d.valide_par.username }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="px-4 py-6 text-center text-ardoise-400">Aucune demande de paiement traitée pour ce poseur.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

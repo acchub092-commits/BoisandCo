@@ -15,6 +15,9 @@ django-allauth==64.2.1
 # ── API REST ────────────────────────────────────────────────
 djangorestframework==3.15.2
 
+# ── Notifications push (PWA mobile) ─────────────────────────
+pywebpush==2.5.0
+
 # ── Interface CSS ───────────────────────────────────────────
 django-tailwind==3.8.0
 
@@ -29,6 +32,10 @@ whitenoise==6.7.0
 
 # ── Médias / images ─────────────────────────────────────────
 Pillow==10.4.0
+qrcode==8.2
+
+# ── Import bordereaux Excel (module Gestion de la pose) ─────
+openpyxl==3.1.5
 
 # ── Configuration via .env ──────────────────────────────────
 python-decouple==3.8

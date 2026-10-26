@@ -1217,3 +1217,15 @@ class DecompteLigne(models.Model):
                 projet=self.projet, is_dernier_decompte=True,
             ).exclude(pk=self.pk).update(is_dernier_decompte=False)
         super().save(*args, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Gestion de la pose (module additif — voir models_pose.py)
+# ---------------------------------------------------------------------------
+from .models_pose import (  # noqa: E402,F401
+    Poseur, Article, Affectation, PoseProjetMeta, Lot, Pointage, Paiement, BonReglement,
+    PoseArticleDecomposition, PosePointageComposant, PosePointageAudit,
+    PoseDemandeModification, PoseDelegation, PosePieceComptage, PosePieceComptageLigne,
+    PosePieceComptageMedia,
+    PoseDemandePaiement, PoseDemandePaiementLigne, PoseRecuPaiement,
+)

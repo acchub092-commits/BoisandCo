@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+{% load static l10n %}
+
+{% block title %}{{ project.name }} — Pointage par composant{% endblock %}
+{% block page_title %}{{ project.reference }} — Pointage par composant{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'projects:pose_gestion_releve_poseur' project.pk %}" class="btn-secondary btn-sm">Relevé poseurs</a>
+{% if user.role != 'CONDUCTEUR_POSE' %}
+<a href="{% url 'projects:pose_gestion_projet' project.pk %}" class="btn-secondary btn-sm">← Tableau</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto space-y-4"
+     x-data="{ lightbox: { open: false, url: '', type: 'PHOTO' } }"
+     @open-lightbox.window="lightbox = { open: true, url: $event.detail.url, type: $event.detail.type }"
+     @keydown.escape.window="lightbox.open = false">
+
+  <div class="flex flex-wrap items-center gap-3">
+    <h2 class="text-3xl font-bold text-ardoise-900 leading-tight">{{ project.name }}</h2>
+    <span class="px-3 py-1 rounded-full bg-foret-100 text-foret-700 font-semibold text-sm">{{ project.reference }}</span>
+  </div>
+
+  <div class="card p-0 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+        <tr>
+          <th class="text-left px-3 py-2">Référence</th>
+          <th class="text-left px-3 py-2">Client</th>
+          <th class="text-left px-3 py-2">Région</th>
+          <th class="text-left px-3 py-2">Chef de projet</th>
+          <th class="text-left px-3 py-2">Commercial</th>
+          <th class="text-left px-3 py-2">Date de début</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="px-3 py-2 font-semibold text-ardoise-800">{{ project.reference }}</td>
+          <td class="px-3 py-2">{{ project.client_name }}</td>
+          <td class="px-3 py-2">{{ meta.region|default:"—" }}</td>
+          <td class="px-3 py-2">{{ project.chef_de_projet.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2">{{ meta.commercial.get_full_name|default:"—" }}</td>
+          <td class="px-3 py-2">{{ project.start_date|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="card">
+      <div class="flex items-center gap-3">
+        <span class="flex-shrink-0 w-9 h-9 rounded-full bg-foret-50 text-foret-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+        </span>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Avancement de la pose</p>
+      </div>
+      <p class="text-3xl font-bold text-ardoise-800 mt-3">{{ kpis.avancement_global }} %</p>
+      <div class="progress-bar mt-3"><div class="progress-fill" style="width: {{ kpis.avancement_global|unlocalize }}%"></div></div>
+      {% if not masquer_valeurs %}
+      <p class="text-xs text-ardoise-400 mt-2">
+        {{ kpis.montant_realise_total }} MAD réalisés / {{ kpis.montant_prevu_total }} MAD prévus
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3">
+        <span class="flex-shrink-0 w-9 h-9 rounded-full bg-marine-50 text-marine-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Composants pointés</p>
+      </div>
+      <p class="text-3xl font-bold text-ardoise-800 mt-3">
+        {{ kpis.nb_composants_complets }}<span class="text-base font-normal text-ardoise-400">/{{ kpis.nb_composants_total }}</span>
+      </p>
+      <div class="progress-bar mt-3">
+        <div class="progress-fill" style="width: {% if kpis.nb_composants_total %}{% widthratio kpis.nb_composants_complets kpis.nb_composants_total 100 %}{% else %}0{% endif %}%"></div>
+      </div>
+      <p class="text-xs text-ardoise-400 mt-2">composants à 100 % de la quantité prévue</p>
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3">
+        <span class="flex-shrink-0 w-9 h-9 rounded-full {% if piece_en_attente %}bg-amber-50 text-amber-600{% else %}bg-foret-50 text-foret-600{% endif %} flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </span>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Pièces de comptage</p>
+      </div>
+      <p class="text-3xl font-bold text-ardoise-800 mt-3">{{ kpis.nb_pieces_validees }}</p>
+      {% if piece_en_attente %}
+      <span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+        {{ piece_en_attente.numero }} en attente de validation
+      </span>
+      {% else %}
+      <span class="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-foret-100 text-foret-700">
+        Aucune en attente — saisie libre
+      </span>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="flex items-center gap-3">
+        <span class="flex-shrink-0 w-9 h-9 rounded-full bg-ardoise-100 text-ardoise-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4"/>
+          </svg>
+        </span>
+        <p class="text-xs font-semibold text-ardoise-400 uppercase tracking-wide">Poseurs mobilisés</p>
+      </div>
+      <p class="text-3xl font-bold text-ardoise-800 mt-3">{{ kpis.nb_poseurs }}</p>
+      <p class="text-xs text-ardoise-400 mt-2">poseur(s) affecté(s) sur ce projet</p>
+    </div>
+
+  </div>
+
+  {% if piece_en_attente %}
+  <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 space-y-3" x-data="{}">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="font-semibold text-amber-800">
+          Pièce de comptage {{ piece_en_attente.numero }} en attente de validation
+        </p>
+        <p class="text-xs text-amber-700">
+          Saisie par {{ piece_en_attente.saisi_par.get_full_name|default:piece_en_attente.saisi_par.username }}
+          le {{ piece_en_attente.date_creation|date:"d/m/Y H:i" }} —
+          aucune nouvelle saisie possible sur ce projet tant qu'elle n'est pas validée.
+        </p>
+      </div>
+      {% if peut_valider_piece_ici %}
+      <div class="flex items-center gap-2">
+        <button type="button" @click="$refs.modal_revision_piece.showModal()" class="btn-secondary btn-sm">
+          Demander révision
+        </button>
+        <button type="button" @click="$refs.modal_rejet_piece.showModal()" class="btn-secondary btn-sm text-red-600">
+          Rejeter
+        </button>
+        <form method="post" action="{% url 'projects:pose_gestion_piece_comptage_valider' project.pk piece_en_attente.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn-primary btn-sm">Valider cette pièce</button>
+        </form>
+      </div>
+
+      <dialog x-ref="modal_rejet_piece" class="rounded-xl p-0 backdrop:bg-black/30">
+        <form method="post" action="{% url 'projects:pose_gestion_piece_comptage_refuser' project.pk piece_en_attente.pk %}"
+              class="p-5 w-80 space-y-3 text-left">
+          {% csrf_token %}
+          <input type="hidden" name="type_refus" value="REJET">
+          <p class="font-semibold text-ardoise-800 text-sm">Rejeter la pièce {{ piece_en_attente.numero }}</p>
+          <p class="text-xs text-ardoise-400">
+            Rejet définitif — les quantités saisies dans cette pièce seront annulées et le projet débloqué.
+          </p>
+          <div>
+            <label class="form-label">Motif (optionnel)</label>
+            <textarea name="motif" rows="2" class="form-input"></textarea>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" @click="$refs.modal_rejet_piece.close()" class="btn-secondary btn-sm">Annuler</button>
+            <button type="submit" class="btn-primary btn-sm bg-red-600 hover:bg-red-700">Confirmer le rejet</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog x-ref="modal_revision_piece" class="rounded-xl p-0 backdrop:bg-black/30">
+        <form method="post" action="{% url 'projects:pose_gestion_piece_comptage_refuser' project.pk piece_en_attente.pk %}"
+              class="p-5 w-80 space-y-3 text-left">
+          {% csrf_token %}
+          <input type="hidden" name="type_refus" value="REVISION">
+          <p class="font-semibold text-ardoise-800 text-sm">Demander une révision — {{ piece_en_attente.numero }}</p>
+          <p class="text-xs text-ardoise-400">
+            Les quantités saisies seront annulées ; le chef de projet devra corriger et resoumettre.
+          </p>
+          <div>
+            <label class="form-label">Motif <span class="text-red-500">*</span></label>
+            <select name="motif_categorie" class="form-input" required>
+              <option value="">— Choisir —</option>
+              <option value="ERREUR_DE_FRAPPE">Erreur de frappe</option>
+              <option value="ANOMALIE_POINTAGE">Anomalie de pointage</option>
+              <option value="AUTRE">Autre</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Détail (optionnel)</label>
+            <textarea name="motif" rows="2" class="form-input"></textarea>
+          </div>
+          <div class="flex justify-end gap-2">
+            <button type="button" @click="$refs.modal_revision_piece.close()" class="btn-secondary btn-sm">Annuler</button>
+            <button type="submit" class="btn-primary btn-sm">Envoyer la demande de révision</button>
+          </div>
+        </form>
+      </dialog>
+      {% else %}
+      <span class="text-xs text-amber-700 italic">Doit être traitée par une autre personne (chef de projet ou DG).</span>
+      {% endif %}
+    </div>
+    <div class="border-t border-amber-200 pt-2">
+      <table class="w-full text-xs">
+        <thead class="text-amber-700">
+          <tr>
+            <th class="text-left py-1">Article</th>
+            <th class="text-left py-1">Composant</th>
+            <th class="text-right py-1">Quantité saisie</th>
+            <th class="text-left py-1">Médias</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ligne in piece_en_attente.lignes.all %}
+          <tr class="border-t border-amber-100">
+            <td class="py-1 text-amber-800">{{ ligne.decomposition.article.code }}</td>
+            <td class="py-1 text-amber-800">{{ ligne.decomposition.libelle_composant }}</td>
+            <td class="py-1 text-right text-amber-800">{{ ligne.quantite_saisie }}</td>
+            <td class="py-1">
+              {% include "projects/_pose_media_thumbs.html" with medias=ligne.medias.all %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if historique %}
+  <div class="card p-0 overflow-hidden" x-data="{ open: false }">
+    <div class="w-full flex items-center justify-between px-4 py-3 hover:bg-ardoise-50 transition-colors">
+      <button type="button" @click="open = !open" class="flex-1 flex items-center justify-between text-left">
+        <span class="font-semibold text-ardoise-800 text-sm">
+          Historique des pièces de comptage validées
+          <span class="text-ardoise-400 font-normal">({{ historique|length }})</span>
+        </span>
+        <svg class="w-4 h-4 text-ardoise-400 transition-transform mr-3" :class="open && 'rotate-180'"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+      <a href="{% url 'projects:pose_gestion_historique_pointage_export' project.pk %}"
+         class="btn-secondary btn-sm flex items-center gap-1.5 shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Exporter (.xlsx)
+      </a>
+    </div>
+    <div x-show="open" x-cloak class="border-t border-ardoise-100 divide-y divide-ardoise-100">
+      {% for entry in historique %}
+      {% with piece=entry.piece %}
+      <div class="px-4 py-3 space-y-3" x-data="{}">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-sm font-semibold text-ardoise-800">{{ piece.numero }}</p>
+          <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-foret-100 text-foret-700">Validée</span>
+        </div>
+        <p class="text-xs text-ardoise-400">
+          Saisie par {{ piece.saisi_par.get_full_name|default:piece.saisi_par.username|default:"—" }}
+          le {{ piece.date_creation|date:"d/m/Y H:i" }}
+          · Validée par {{ piece.valide_par.get_full_name|default:piece.valide_par.username|default:"—" }}
+          le {{ piece.date_validation|date:"d/m/Y H:i" }}
+        </p>
+
+        {% for groupe in entry.groupes %}
+        <div class="rounded-lg border border-ardoise-100 overflow-hidden">
+          <div class="px-3 py-1.5 bg-ardoise-50 text-xs font-semibold text-ardoise-700 flex flex-wrap items-center justify-between gap-2">
+            <span>{{ groupe.article.code }} — {{ groupe.article.designation }}</span>
+            <span class="font-normal text-ardoise-500">
+              Poseur(s) :
+              {% with poseurs=groupe.article.poseurs.all %}
+                {% if poseurs %}{% for p in poseurs %}{{ p.nom }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                {% else %}<span class="italic text-ardoise-400">non assigné</span>{% endif %}
+              {% endwith %}
+            </span>
+          </div>
+          <table class="w-full text-xs">
+            <tbody>
+              {% for ligne in groupe.lignes %}
+              {% with fiche=ligne.fiche %}
+              <tr class="border-t border-ardoise-100">
+                <td class="py-1.5 px-3 text-ardoise-700">
+                  {{ ligne.decomposition.libelle_composant }}
+                  {% if ligne.poseur %}<span class="block text-ardoise-400">{{ ligne.poseur.nom }}</span>{% endif %}
+                </td>
+                <td class="py-1.5 px-3 text-right text-ardoise-700">{{ ligne.quantite_saisie }}</td>
+                <td class="py-1.5 px-3">
+                  {% include "projects/_pose_media_thumbs.html" with medias=ligne.medias.all %}
+                </td>
+                <td class="py-1.5 px-3 text-right">
+                  {% if fiche %}
+                  <button type="button" @click="$refs.modal_hist_{{ fiche.pk }}.showModal()"
+                          class="btn-secondary btn-sm"
+                          title="Demander {% if fiche.statut == 'PAYE' %}une dérogation{% else %}une modification{% endif %}">
+                    {% if fiche.statut == 'PAYE' %}Dérogation{% else %}Modification{% endif %}
+                  </button>
+                  <dialog x-ref="modal_hist_{{ fiche.pk }}" class="rounded-xl p-0 backdrop:bg-black/30">
+                    <form method="post" action="{% url 'projects:pose_gestion_demande_modification_create' project.pk fiche.pk %}"
+                          class="p-5 w-80 space-y-3 text-left">
+                      {% csrf_token %}
+                      <p class="font-semibold text-ardoise-800 text-sm">
+                        {% if fiche.statut == 'PAYE' %}Demande de dérogation (DG/Admin){% else %}Demande de modification (Administrateur){% endif %}
+                      </p>
+                      <p class="text-xs text-ardoise-400">
+                        {{ groupe.article.code }} — {{ ligne.decomposition.libelle_composant }}
+                        (actuellement {{ fiche.quantite_posee }})
+                      </p>
+                      <div>
+                        <label class="form-label">Nouvelle quantité proposée (optionnel)</label>
+                        <input type="number" step="0.01" min="0" name="nouvelle_quantite" class="form-input">
+                      </div>
+                      <div>
+                        <label class="form-label">Motif <span class="text-red-500">*</span></label>
+                        <textarea name="motif" rows="2" class="form-input" required></textarea>
+                      </div>
+                      <div class="flex justify-end gap-2">
+                        <button type="button" @click="$refs.modal_hist_{{ fiche.pk }}.close()" class="btn-secondary btn-sm">Annuler</button>
+                        <button type="submit" class="btn-primary btn-sm">Envoyer la demande</button>
+                      </div>
+                    </form>
+                  </dialog>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if pieces_refusees %}
+  <div class="card p-0 overflow-hidden" x-data="{ open: false }">
+    <button type="button" @click="open = !open"
+            class="w-full flex items-center justify-between px-4 py-3 hover:bg-ardoise-50 transition-colors">
+      <span class="font-semibold text-ardoise-800 text-sm">
+        Pièces refusées / révisions demandées
+        <span class="text-ardoise-400 font-normal">({{ pieces_refusees|length }})</span>
+      </span>
+      <svg class="w-4 h-4 text-ardoise-400 transition-transform" :class="open && 'rotate-180'"
+           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </button>
+    <div x-show="open" x-cloak class="border-t border-ardoise-100 divide-y divide-ardoise-100">
+      {% for piece_r in pieces_refusees %}
+      <div class="px-4 py-3 space-y-1">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="font-semibold text-ardoise-800 text-sm">{{ piece_r.numero }}</p>
+          <span class="px-2 py-0.5 rounded-full text-xs font-semibold
+            {% if piece_r.type_refus == 'REJET' %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+            {{ piece_r.get_type_refus_display }}
+          </span>
+        </div>
+        <p class="text-xs text-ardoise-400">
+          Saisie par {{ piece_r.saisi_par.get_full_name|default:piece_r.saisi_par.username }} le {{ piece_r.date_creation|date:"d/m/Y H:i" }}
+          — {{ piece_r.get_type_refus_display|lower }} par {{ piece_r.refuse_par.get_full_name|default:piece_r.refuse_par.username }}
+          le {{ piece_r.date_refus|date:"d/m/Y H:i" }}
+        </p>
+        {% if piece_r.motif_categorie %}
+        <p class="text-xs text-ardoise-600"><strong>Motif :</strong> {{ piece_r.get_motif_categorie_display }}</p>
+        {% endif %}
+        {% if piece_r.motif_refus %}
+        <p class="text-xs text-ardoise-600 italic">« {{ piece_r.motif_refus }} »</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Formulaire de saisie groupée — vide, référencé par attribut form="..." depuis les champs quantité ci-dessous. #}
+  <form id="bulk-pointage-form" method="post" enctype="multipart/form-data"
+        action="{% url 'projects:pose_gestion_pointage_composant_bulk_saisir' project.pk %}">
+    {% csrf_token %}
+  </form>
+
+  {% if peut_saisir_ici %}
+  <div class="flex justify-end">
+    <button type="submit" form="bulk-pointage-form" class="btn-primary flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8"/>
+      </svg>
+      Enregistrer tout
+    </button>
+  </div>
+  {% endif %}
+
+  {% if groupes %}
+  <div class="flex flex-wrap items-center gap-3">
+    <div class="relative max-w-sm flex-1 min-w-[220px]">
+      <svg class="w-4 h-4 text-ardoise-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="text" id="article-filter" placeholder="Filtrer par code ou désignation…"
+             class="form-input pl-9" autocomplete="off">
+    </div>
+    {% if poseurs_projet %}
+    <select id="poseur-filter" class="form-input w-auto">
+      <option value="">Tous les poseurs</option>
+      {% for p in poseurs_projet %}
+      <option value="{{ p.nom|lower }}">{{ p.nom }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+  <p id="article-filter-empty" hidden class="text-sm text-ardoise-400">Aucun article ne correspond à ce filtre.</p>
+  {% endif %}
+
+  {% for groupe in groupes %}
+  <div class="card p-0 overflow-hidden js-article-group"
+       data-filter="{{ groupe.article.code|lower }} {{ groupe.article.designation|lower }}"
+       data-poseurs="{% for p in groupe.article.poseurs.all %}{{ p.nom|lower }}|{% endfor %}"
+       x-data="{ open: true }">
+    <button type="button" @click="open = !open"
+            class="w-full px-4 py-2 border-b border-ardoise-100 bg-ardoise-50 flex flex-wrap items-center justify-between gap-3 text-left hover:bg-ardoise-100 transition-colors">
+      <div>
+        <p class="text-xs text-ardoise-400">{{ groupe.article.code }}</p>
+        <p class="font-semibold text-ardoise-800">{{ groupe.article.designation }}</p>
+        <p class="text-xs text-ardoise-500 mt-0.5">
+          Poseur(s) :
+          {% with poseurs=groupe.article.poseurs.all %}
+            {% if poseurs %}{% for p in poseurs %}{{ p.nom }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            {% else %}<span class="italic text-ardoise-400">non assigné</span>{% endif %}
+          {% endwith %}
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <p class="text-xs text-ardoise-400">Quantité prévue (article)</p>
+          <p class="font-semibold text-ardoise-800">{{ groupe.article.quantite }} {{ groupe.article.unite }}</p>
+        </div>
+        <svg class="w-4 h-4 text-ardoise-400 transition-transform flex-shrink-0" :class="open && 'rotate-180'"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </div>
+    </button>
+
+    <div x-show="open" x-cloak class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead class="bg-ardoise-50 text-ardoise-500 text-xs uppercase">
+          <tr>
+            <th class="text-left px-3 py-1.5">Composant</th>
+            <th class="text-right px-3 py-1.5">Poids</th>
+            <th class="text-left px-3 py-1.5">Statut</th>
+            <th class="text-right px-3 py-1.5">Quantité</th>
+            <th class="text-left px-3 py-1.5">Quantité posée</th>
+            <th class="text-left px-3 py-1.5">Photos/vidéo</th>
+            <th class="text-right px-3 py-1.5">Reste</th>
+            {% if not masquer_valeurs %}<th class="text-right px-3 py-1.5">Montant</th>{% endif %}
+            <th class="text-right px-3 py-1.5">Avancement</th>
+            <th class="text-left px-3 py-1.5">Traçabilité</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-ardoise-100">
+          {% for ligne in groupe.lignes %}
+          {% with decomposition=ligne.decomposition %}
+          {% for sous_ligne in ligne.sous_lignes %}
+          {% with fiche=sous_ligne.fiche %}
+          <tr x-data="{ files: [] }" class="js-pointage-row" data-poseur="{{ sous_ligne.poseur.nom|lower|default:'' }}">
+            <td class="px-3 py-1 whitespace-normal min-w-[180px] font-semibold text-ardoise-800">
+              {{ decomposition.libelle_composant }}
+              {% if ligne.split %}<span class="block text-xs font-normal text-ardoise-500">{{ sous_ligne.poseur.nom }}</span>{% endif %}
+            </td>
+            <td class="px-3 py-1 text-right text-ardoise-400">{{ ligne.poids_pourcent }} %</td>
+            <td class="px-3 py-1">
+              {% if ligne.quantite_posee > 0 and ligne.reste <= 0 %}
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-foret-100 text-foret-700">Achevé</span>
+              {% else %}
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">En cours</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-1 text-right text-ardoise-400">{{ groupe.article.quantite }} {{ groupe.article.unite }}</td>
+            <td class="px-3 py-1">
+              {% if peut_saisir_ici and not fiche.verrou_modification %}
+              <div class="flex items-center gap-2">
+                <input type="number" step="0.01" min="0"
+                       name="quantite_{{ decomposition.pk }}{% if ligne.split %}:{{ sous_ligne.poseur.pk }}{% endif %}"
+                       form="bulk-pointage-form"
+                       placeholder="0" class="form-input w-24 !py-1 js-spreadsheet-nav">
+                <span class="text-xs text-ardoise-400 whitespace-nowrap">déjà : {{ sous_ligne.quantite_posee }}</span>
+              </div>
+              {% else %}
+              <span class="text-ardoise-600">{{ sous_ligne.quantite_posee }}</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-1">
+              {% if peut_saisir_ici and not fiche.verrou_modification %}
+              <div class="flex items-center gap-1.5 flex-wrap max-w-[180px]">
+                <label class="btn-secondary btn-sm !px-2 !py-1 cursor-pointer flex items-center gap-1 flex-shrink-0"
+                       title="Ajouter photo(s)/vidéo(s)">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17a4 4 0 100-8 4 4 0 000 8z"/>
+                  </svg>
+                  <span x-show="files.length" x-text="files.length" class="text-xs font-semibold"></span>
+                  <input type="file" multiple accept="image/*,video/*" class="hidden" x-ref="input"
+                         name="media_{{ decomposition.pk }}{% if ligne.split %}:{{ sous_ligne.poseur.pk }}{% endif %}"
+                         form="bulk-pointage-form"
+                         @change="files = Array.from($event.target.files)">
+                </label>
+                <template x-for="(f, idx) in files" :key="idx">
+                  <span class="relative inline-flex flex-shrink-0">
+                    <img x-show="f.type.startsWith('image/')" :src="URL.createObjectURL(f)"
+                         class="w-7 h-7 rounded object-cover border border-ardoise-200">
+                    <span x-show="!f.type.startsWith('image/')"
+                          class="w-7 h-7 rounded border border-ardoise-200 flex items-center justify-center bg-ardoise-50">
+                      <svg class="w-3.5 h-3.5 text-ardoise-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </span>
+                    <button type="button"
+                            @click="files.splice(idx,1); const dt = new DataTransfer(); files.forEach(x => dt.items.add(x)); $refs.input.files = dt.files;"
+                            class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[9px] leading-none flex items-center justify-center">×</button>
+                  </span>
+                </template>
+              </div>
+              {% else %}
+              <span class="text-ardoise-300 text-xs">—</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-1 text-right {% if ligne.reste < 0 %}text-red-600 font-semibold{% else %}text-ardoise-600{% endif %}">
+              {{ ligne.reste }} {{ groupe.article.unite }}
+            </td>
+            {% if not masquer_valeurs %}<td class="px-3 py-1 text-right text-ardoise-600">{{ ligne.montant }}</td>{% endif %}
+            <td class="px-3 py-1 text-right text-ardoise-600">{{ ligne.avancement }} %</td>
+            <td class="px-3 py-1 whitespace-normal min-w-[160px] text-xs text-ardoise-400">
+              {% if fiche %}
+              Saisi par {{ fiche.saisi_par.get_full_name|default:fiche.saisi_par.username|default:"—" }}
+              le {{ fiche.date_saisie|date:"d/m/Y H:i"|default:"—" }}
+              {% if fiche.valide_par %}<br>Validé par {{ fiche.valide_par.get_full_name|default:fiche.valide_par.username }}
+              le {{ fiche.date_validation|date:"d/m/Y H:i" }}{% endif %}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-sm text-ardoise-400">Aucun article avec une décomposition active pour ce projet.</p>
+  {% endfor %}
+
+  <div x-show="lightbox.open" x-cloak
+       class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6"
+       @click.self="lightbox.open = false">
+    <button type="button" @click="lightbox.open = false"
+            class="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <template x-if="lightbox.type === 'VIDEO'">
+      <video :src="lightbox.url" controls autoplay class="max-w-full max-h-full rounded-lg shadow-2xl"></video>
+    </template>
+    <template x-if="lightbox.type !== 'VIDEO'">
+      <img :src="lightbox.url" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain">
+    </template>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/spreadsheet-nav.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var input = document.getElementById('article-filter');
+    if (!input) return;
+    var poseurSelect = document.getElementById('poseur-filter');
+    var groups = Array.prototype.slice.call(document.querySelectorAll('.js-article-group'));
+    var emptyMsg = document.getElementById('article-filter-empty');
+
+    function applyFilter() {
+      var q = input.value.trim().toLowerCase();
+      var poseur = poseurSelect ? poseurSelect.value : '';
+      var visibleCount = 0;
+      groups.forEach(function (group) {
+        var matchText = !q || group.dataset.filter.indexOf(q) !== -1;
+        var matchPoseurGroup = !poseur || (group.dataset.poseurs || '').indexOf(poseur + '|') !== -1;
+
+        // Filtre par poseur : au sein d'un article split (2+ poseurs), ne garder visibles
+        // que les lignes du poseur choisi, pour éviter de saisir sur la mauvaise ligne.
+        var rows = group.querySelectorAll('.js-pointage-row');
+        var anyRowVisible = !poseur;
+        rows.forEach(function (row) {
+          var rowMatch = !poseur || row.dataset.poseur === poseur;
+          row.hidden = !rowMatch;
+          if (rowMatch) anyRowVisible = true;
+        });
+
+        var match = matchText && matchPoseurGroup && anyRowVisible;
+        group.hidden = !match;
+        if (match) visibleCount++;
+      });
+      if (emptyMsg) emptyMsg.hidden = visibleCount !== 0;
+    }
+
+    input.addEventListener('input', applyFilter);
+    if (poseurSelect) poseurSelect.addEventListener('change', applyFilter);
+  });
+</script>
+{% endblock %}

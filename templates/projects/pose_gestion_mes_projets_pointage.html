@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Mes projets — Pointage{% endblock %}
+{% block page_title %}Mes projets — Pointage par composant{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-3">
+
+  {% for project in projets %}
+  <div class="card flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-xs text-ardoise-400">{{ project.reference }}</p>
+      <p class="font-semibold text-ardoise-800">{{ project.name }}</p>
+      <p class="text-xs text-ardoise-400">{{ project.client_name }} · {{ project.pose_meta.region|default:"—" }}</p>
+    </div>
+    <a href="{% url 'projects:pose_gestion_pointage_composant' project.pk %}" class="btn-primary btn-sm">Pointer →</a>
+  </div>
+  {% empty %}
+  <p class="text-sm text-ardoise-400">Aucun projet accessible pour le pointage pour l'instant.</p>
+  {% endfor %}
+
+</div>
+{% endblock %}
