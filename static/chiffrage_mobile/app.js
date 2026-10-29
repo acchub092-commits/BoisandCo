@@ -122,6 +122,12 @@
     search: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>',
     table: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M3 6h18v12H3V6z"/>',
     grid: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h6v6H4V5zm10 0h6v6h-6V5zM4 15h6v6H4v-6zm10 0h6v6h-6v-6z"/>',
+    clock: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    gridDots: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>',
+    checkCircle: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    check: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7"/>',
+    xCircle: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    ban: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>',
   };
   function icon(name, cls) {
     return `<svg class="icon-svg${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -272,12 +278,89 @@
   }
 
   let listSearchTimer = null;
+  let activeKpiFilter = null; // { params: {statut: 'EN_ATTENTE'} | {retard: 1}, label: '…' } | null
+
+  const KPI_ITEMS = [
+    { key: 'en_attente',   label: 'En attente DC',  icon: 'clock',       color: 'amber',  params: { statut: 'EN_ATTENTE' } },
+    { key: 'en_chiffrage', label: 'En chiffrage',   icon: 'gridDots',    color: 'indigo', params: { statut: 'EN_CHIFFRAGE' } },
+    { key: 'soumis_dg',    label: 'Soumis DG',      icon: 'checkCircle', color: 'purple', params: { statut: 'SOUMIS_DG' } },
+    { key: 'valides',      label: 'Devis validés',  icon: 'check',       color: 'foret',  params: { statut: 'DEVIS_VALIDE' } },
+    { key: 'retard',       label: 'En retard',      icon: 'warning',     color: 'red',    params: { retard: 1 } },
+  ];
+  const KPI_CLIENT_ITEMS = [
+    { key: 'accepte',    label: 'Accepté client', icon: 'checkCircle', color: 'foret', params: { statut: 'ACCEPTE' },    amountKey: 'accepte_mad' },
+    { key: 'refuse_cli', label: 'Refusé client',  icon: 'xCircle',     color: 'red',   params: { statut: 'REFUSE_CLI' }, amountKey: 'refuse_cli_mad' },
+    { key: 'rejetee',    label: 'Rejeté',         icon: 'ban',         color: 'amber', params: { statut: 'REJETEE' },    amountKey: 'rejetee_mad' },
+  ];
+
+  function kpiCardTemplate(item, stats) {
+    const amount = item.amountKey ? formatMontant(stats[item.amountKey]) : null;
+    return `
+      <button type="button" class="kpi-card" data-color="${item.color}" data-filter='${escapeHtml(JSON.stringify(item.params))}' data-label="${escapeHtml(item.label)}">
+        <span class="kpi-icon">${icon(item.icon)}</span>
+        <span class="kpi-value">${stats[item.key] ?? 0}</span>
+        <span class="kpi-label">${escapeHtml(item.label)}</span>
+        ${amount ? `<span class="kpi-amount">${amount}</span>` : ''}
+      </button>`;
+  }
+
+  function kpiSectionTemplate(stats) {
+    return `
+      <div class="kpi-section">
+        <div class="kpi-grid">${KPI_ITEMS.map((item) => kpiCardTemplate(item, stats)).join('')}</div>
+        <p class="kpi-section-title">${icon('document', 'icon-xs')} Réponses clients</p>
+        <div class="kpi-grid kpi-grid-small">${KPI_CLIENT_ITEMS.map((item) => kpiCardTemplate(item, stats)).join('')}</div>
+      </div>`;
+  }
+
+  function syncKpiActiveState() {
+    document.querySelectorAll('.kpi-card').forEach((btn) => {
+      const isActive = activeKpiFilter && btn.dataset.filter === JSON.stringify(activeKpiFilter.params);
+      btn.classList.toggle('active', !!isActive);
+    });
+  }
+
+  function filterChipTemplate() {
+    if (!activeKpiFilter) return '';
+    return `
+      <div class="filter-chip" id="kpi-filter-chip">
+        <span>Filtré : <strong>${escapeHtml(activeKpiFilter.label)}</strong></span>
+        <button type="button" id="kpi-filter-clear" aria-label="Effacer le filtre">${icon('close', 'icon-xs')}</button>
+      </div>`;
+  }
+
+  async function loadKpis() {
+    const container = document.getElementById('kpi-results');
+    if (!container) return;
+    try {
+      const stats = await api('/chiffrage/demandes/stats/');
+      container.innerHTML = kpiSectionTemplate(stats);
+      syncKpiActiveState();
+      container.querySelectorAll('.kpi-card').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const params = JSON.parse(btn.dataset.filter);
+          const label = btn.dataset.label;
+          if (activeKpiFilter && JSON.stringify(activeKpiFilter.params) === JSON.stringify(params)) {
+            activeKpiFilter = null;
+          } else {
+            activeKpiFilter = { params, label };
+          }
+          syncKpiActiveState();
+          loadListResults(document.getElementById('list-search').value.trim());
+        });
+      });
+    } catch (err) {
+      container.innerHTML = '';
+    }
+  }
 
   async function viewListe() {
     const user = getUser();
     const showFab = canCreateDemande(user);
+    activeKpiFilter = null;
     app.innerHTML = topbar(user) + `
       <div class="screen-body">
+        <div id="kpi-results">${skeletonList(2)}</div>
         <div class="list-toolbar">
           <div class="search-box">
             ${icon('search')}
@@ -307,6 +390,7 @@
       listSearchTimer = setTimeout(() => loadListResults(searchInput.value.trim()), 350);
     });
 
+    await loadKpis();
     await loadListResults('');
   }
 
@@ -317,31 +401,53 @@
     if (!container) return;
     container.innerHTML = skeletonList();
 
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (activeKpiFilter) {
+      Object.entries(activeKpiFilter.params).forEach(([k, v]) => params.set(k, v));
+    }
+    const qs = params.toString();
+
     let data;
     try {
-      data = await api('/chiffrage/demandes/' + (query ? '?q=' + encodeURIComponent(query) : ''));
+      data = await api('/chiffrage/demandes/' + (qs ? '?' + qs : ''));
     } catch (err) {
       container.innerHTML = `<p class="field-error">${escapeHtml(err.message)}</p>`;
       return;
     }
     const items = data.results || data;
     const banner = notifBannerTemplate();
+    const chip = filterChipTemplate();
 
     if (!items.length) {
-      container.innerHTML = banner + (query
+      container.innerHTML = banner + chip + (query
         ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucun résultat pour « ${escapeHtml(query)} ».</p></div>`
-        : showFab
-          ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p><p class="muted">Touchez « Nouvelle demande » pour en créer une.</p></div>`
-          : `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p></div>`);
+        : activeKpiFilter
+          ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour « ${escapeHtml(activeKpiFilter.label)} ».</p></div>`
+          : showFab
+            ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p><p class="muted">Touchez « Nouvelle demande » pour en créer une.</p></div>`
+            : `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p></div>`);
       wireNotifBanner();
+      wireFilterChip();
       return;
     }
 
     items.sort((a, b) => actionScore(b) - actionScore(a));
-    container.innerHTML = banner + (getListViewMode() === 'table' ? tableTemplate(items) : `<div class="card-list">${items.map(cardTemplate).join('')}</div>`);
+    container.innerHTML = banner + chip + (getListViewMode() === 'table' ? tableTemplate(items) : `<div class="card-list">${items.map(cardTemplate).join('')}</div>`);
     wireNotifBanner();
+    wireFilterChip();
     container.querySelectorAll('[data-goto]').forEach((el) => {
       el.addEventListener('click', () => { location.hash = '#/detail/' + el.dataset.goto; });
+    });
+  }
+
+  function wireFilterChip() {
+    const clearBtn = document.getElementById('kpi-filter-clear');
+    if (!clearBtn) return;
+    clearBtn.addEventListener('click', () => {
+      activeKpiFilter = null;
+      syncKpiActiveState();
+      loadListResults(document.getElementById('list-search').value.trim());
     });
   }
 

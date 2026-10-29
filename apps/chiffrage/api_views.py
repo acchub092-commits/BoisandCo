@@ -5,7 +5,7 @@ Méthodes/Estimateur (actions de validation/traitement des étapes qui les conce
 avec notification push relayée automatiquement par apps.notifications).
 """
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -23,6 +23,12 @@ from .serializers import (
 )
 from .views import _log, _notify, _qs_for_user
 
+RETARD_EXCLUS = [
+    DemandeChiffrage.Statut.DEVIS_VALIDE, DemandeChiffrage.Statut.TRANSMIS,
+    DemandeChiffrage.Statut.ACCEPTE, DemandeChiffrage.Statut.REFUSE_CLI,
+    DemandeChiffrage.Statut.ARCHIVE,
+]
+
 
 class DemandeChiffrageViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsChiffrageMobileUser]
@@ -34,6 +40,8 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
         statut = self.request.query_params.get('statut')
         if statut:
             qs = qs.filter(statut=statut)
+        if self.request.query_params.get('retard'):
+            qs = qs.exclude(statut__in=RETARD_EXCLUS).filter(delai_souhaite__lt=timezone.now().date())
         search = self.request.query_params.get('q', '').strip()
         if search:
             qs = qs.filter(
@@ -190,6 +198,27 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
 
         demande.refresh_from_db()
         return Response(DemandeChiffrageDetailSerializer(demande, context={'request': request}).data)
+
+    @action(detail=False, methods=['get'], url_path='stats')
+    def stats(self, request):
+        """KPI du tableau de bord mobile — mêmes indicateurs et même périmètre
+        (_qs_for_user) que DashboardView (web)."""
+        qs = _qs_for_user(request.user)
+        today = timezone.now().date()
+        data = {
+            'en_attente':   qs.filter(statut='EN_ATTENTE').count(),
+            'en_chiffrage': qs.filter(statut='EN_CHIFFRAGE').count(),
+            'soumis_dg':    qs.filter(statut='SOUMIS_DG').count(),
+            'valides':      qs.filter(statut='DEVIS_VALIDE').count(),
+            'retard':       qs.exclude(statut__in=RETARD_EXCLUS).filter(delai_souhaite__lt=today).count(),
+            'accepte':      qs.filter(statut='ACCEPTE').count(),
+            'refuse_cli':   qs.filter(statut='REFUSE_CLI').count(),
+            'rejetee':      qs.filter(statut='REJETEE').count(),
+            'accepte_mad':    qs.filter(statut='ACCEPTE').aggregate(t=Sum('montant_ht'))['t'] or 0,
+            'refuse_cli_mad': qs.filter(statut='REFUSE_CLI').aggregate(t=Sum('montant_ht'))['t'] or 0,
+            'rejetee_mad':    qs.filter(statut='REJETEE').aggregate(t=Sum('montant_ht'))['t'] or 0,
+        }
+        return Response(data)
 
     @action(detail=True, methods=['post'], url_path='action-rm')
     def action_rm(self, request, pk=None):

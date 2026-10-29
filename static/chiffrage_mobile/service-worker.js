@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hope-chiffrage-shell-v24';
+const CACHE_NAME = 'hope-chiffrage-shell-v25';
 const SHELL_URLS = [
   '/m/chiffrage/',
   '/static/chiffrage_mobile/app.js',

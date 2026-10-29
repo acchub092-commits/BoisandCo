@@ -112,6 +112,40 @@ a { color: inherit; }
 .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
 .btn-secondary { background: var(--paper); color: var(--marine-soft); border: 1.5px solid var(--hairline); display: inline-flex; align-items: center; gap: 6px; width: fit-content; }
 
+/* Tableau de bord — KPI interactifs */
+.kpi-section { margin-bottom: 16px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.kpi-grid-small { grid-template-columns: repeat(3, 1fr); }
+.kpi-section-title {
+  display: flex; align-items: center; gap: 6px; margin: 16px 0 8px; font-size: 0.68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+.kpi-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--paper);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-card); border: 1.5px solid transparent;
+  padding: 10px 12px; cursor: pointer; font-family: inherit; text-align: left; transition: border-color .12s ease, transform .1s ease;
+}
+.kpi-card:active { transform: scale(0.97); }
+.kpi-card.active { border-color: var(--kpi-color, var(--foret-dark)); background: color-mix(in srgb, var(--kpi-color, var(--foret-dark)) 8%, var(--paper)); }
+.kpi-card[data-color="amber"]  { --kpi-color: #d97706; }
+.kpi-card[data-color="indigo"] { --kpi-color: #4f46e5; }
+.kpi-card[data-color="purple"] { --kpi-color: #7c3aed; }
+.kpi-card[data-color="foret"]  { --kpi-color: #4f7d14; }
+.kpi-card[data-color="red"]    { --kpi-color: #dc2626; }
+.kpi-card .kpi-icon { color: var(--kpi-color, var(--marine-soft)); margin-bottom: 2px; }
+.kpi-card .kpi-icon .icon-svg { width: 18px; height: 18px; }
+.kpi-card .kpi-value { font-size: 1.25rem; font-weight: 800; color: var(--marine-soft); line-height: 1; }
+.kpi-card .kpi-label { font-size: 0.68rem; font-weight: 600; color: var(--muted); line-height: 1.2; }
+.kpi-card .kpi-amount { font-size: 0.65rem; font-family: ui-monospace, monospace; color: var(--kpi-color, var(--muted)); margin-top: 1px; }
+
+.filter-chip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--foret-soft);
+  color: var(--foret-dark); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; font-size: 0.8rem;
+}
+.filter-chip button {
+  background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; padding: 2px;
+}
+
 /* Barre d'outils — recherche + bascule d'affichage */
 .list-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
 .search-box {
