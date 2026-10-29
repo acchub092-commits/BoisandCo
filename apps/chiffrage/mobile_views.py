@@ -15,6 +15,14 @@ class ShellView(TemplateView):
         ctx['vapid_public_key'] = settings.VAPID_PUBLIC_KEY
         return ctx
 
+    def render_to_response(self, context, **kwargs):
+        response = super().render_to_response(context, **kwargs)
+        # Les navigateurs mettent en cache le shell PWA de façon agressive — on force
+        # la revalidation à chaque chargement pour que les mises à jour (JS/CSS versionnés
+        # dans la manifeste static) soient détectées immédiatement.
+        response['Cache-Control'] = 'no-cache'
+        return response
+
 
 class ServiceWorkerView(View):
     def get(self, request):
@@ -25,4 +33,8 @@ class ServiceWorkerView(View):
             content = f.read()
         response = HttpResponse(content, content_type='application/javascript')
         response['Service-Worker-Allowed'] = '/m/chiffrage/'
+        # Sans ceci, les navigateurs appliquent un cache plancher de 24h sur ce fichier
+        # précis — une mise à jour pourrait ne jamais être détectée avant ce délai,
+        # même après une désinstallation/réinstallation de l'app.
+        response['Cache-Control'] = 'no-cache'
         return response
