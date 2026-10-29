@@ -272,6 +272,8 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Réservé au Service Méthodes.")
 
         demande = self.get_object()
+        if not request.user.is_superuser and demande.assigned_to_id != request.user.id:
+            raise PermissionDenied("Cette demande n'est pas affectée à votre compte.")
         jalon = request.data.get('jalon', '')
         if jalon not in dict(DemandeChiffrage.Jalon.choices):
             return Response({'detail': 'Jalon invalide.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -290,6 +292,8 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Réservé au Service Méthodes.")
 
         demande = self.get_object()
+        if not request.user.is_superuser and demande.assigned_to_id != request.user.id:
+            raise PermissionDenied("Cette demande n'est pas affectée à votre compte.")
         montant = str(request.data.get('montant_ht', '')).strip()
         try:
             demande.montant_ht = float(montant.replace(',', '.')) if montant else None
@@ -309,6 +313,8 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Réservé au Service Méthodes.")
 
         demande = self.get_object()
+        if not request.user.is_superuser and demande.assigned_to_id != request.user.id:
+            raise PermissionDenied("Cette demande n'est pas affectée à votre compte.")
         if demande.statut != DemandeChiffrage.Statut.EN_CHIFFRAGE:
             return Response(
                 {'detail': "Cette demande n'est pas (ou plus) en cours de chiffrage."},

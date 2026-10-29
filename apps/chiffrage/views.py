@@ -457,7 +457,13 @@ class AssignerView(ChiffrageRequiredMixin, View):
         chiffreur_id = request.POST.get('chiffreur') or None
         ancien = demande.statut
         if chiffreur_id:
-            demande.assigned_to = User.objects.get(pk=chiffreur_id)
+            chiffreur = User.objects.filter(
+                pk=chiffreur_id, role='ESTIMATEUR', is_active_employee=True,
+            ).first()
+            if not chiffreur:
+                django_messages.error(request, 'Méthodiste sélectionné invalide.')
+                return redirect('chiffrage:detail', pk=pk)
+            demande.assigned_to = chiffreur
         elif request.user.role == 'RESP_METHODES':
             django_messages.error(request, 'Veuillez sélectionner un méthodiste.')
             return redirect('chiffrage:detail', pk=pk)
@@ -478,6 +484,9 @@ class JalonView(ChiffrageRequiredMixin, View):
         if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
             return HttpResponseForbidden()
         demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        if (request.user.role == 'ESTIMATEUR' and not request.user.is_superuser
+                and demande.assigned_to_id != request.user.id):
+            return HttpResponseForbidden()
         jalon = request.POST.get('jalon', '')
         if jalon in dict(DemandeChiffrage.Jalon.choices):
             demande.jalon = jalon
@@ -493,6 +502,9 @@ class MontantView(ChiffrageRequiredMixin, View):
         if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
             return HttpResponseForbidden()
         demande = get_object_or_404(DemandeChiffrage, pk=pk)
+        if (request.user.role == 'ESTIMATEUR' and not request.user.is_superuser
+                and demande.assigned_to_id != request.user.id):
+            return HttpResponseForbidden()
         montant = request.POST.get('montant_ht', '').strip()
         try:
             demande.montant_ht = float(montant.replace(',', '.')) if montant else None
@@ -510,6 +522,8 @@ class SoumettreDevisView(ChiffrageRequiredMixin, View):
         demande = get_object_or_404(
             DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.EN_CHIFFRAGE
         )
+        if not request.user.is_superuser and demande.assigned_to_id != request.user.id:
+            return HttpResponseForbidden()
         fichier_detail = request.FILES.get('fichier_detail')
         fichier_public = request.FILES.get('fichier_public')
         MAX_SIZE = 50 * 1024 * 1024  # 50 Mo
