@@ -105,6 +105,9 @@ class DemandeChiffrage(models.Model):
     revision_motif          = models.TextField(blank=True, default='', verbose_name='Motif de révision')
     revision_commentaire_dc = models.TextField(blank=True, default='', verbose_name='Commentaire DC (révision)')
 
+    # Corrections demandées par le Responsable Méthodes au méthodiste/estimateur
+    rm_rejet_motif = models.TextField(blank=True, default='', verbose_name='Corrections demandées (RM)')
+
     # Timestamps
     created_at         = models.DateTimeField(auto_now_add=True)
     updated_at         = models.DateTimeField(auto_now=True)

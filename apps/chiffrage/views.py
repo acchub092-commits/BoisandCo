@@ -547,6 +547,7 @@ class SoumettreDevisView(ChiffrageRequiredMixin, View):
         ancien = demande.statut
         demande.statut = DemandeChiffrage.Statut.SOUMIS_RM
         demande.jalon  = ''
+        demande.rm_rejet_motif = ''
         demande.save()
         _log(demande, request.user, 'Devis soumis au Responsable Méthodes',
              nouveau=demande.statut, ancien=ancien)
@@ -573,6 +574,7 @@ class ValiderRMView(ChiffrageRequiredMixin, View):
 
         if action == 'approuver':
             demande.statut = DemandeChiffrage.Statut.SOUMIS_DG
+            demande.rm_rejet_motif = ''
             demande.save()
             _log(demande, request.user, 'Approuvé par Responsable Méthodes — soumis DG',
                  nouveau=demande.statut, ancien=ancien)
@@ -588,6 +590,7 @@ class ValiderRMView(ChiffrageRequiredMixin, View):
                 django_messages.error(request, 'Un motif est requis pour retourner le devis.')
                 return redirect('chiffrage:detail', pk=pk)
             demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
+            demande.rm_rejet_motif = motif
             demande.save()
             _log(demande, request.user, f'Retourné par RM : {motif}',
                  nouveau=demande.statut, ancien=ancien)

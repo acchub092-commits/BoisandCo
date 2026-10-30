@@ -134,7 +134,7 @@ class DemandeChiffrageDetailSerializer(DemandeChiffrageListSerializer):
             'description', 'finitions', 'kits_references', 'quantites_estimees',
             'contraintes_techniques', 'commentaires', 'lien_telechargement',
             'jalon', 'jalon_display', 'validated_dc_at', 'validated_dg_at', 'transmis_client_at',
-            'revision_motif', 'revision_commentaire_dc',
+            'revision_motif', 'revision_commentaire_dc', 'rm_rejet_motif',
             'fichiers', 'messages', 'historique',
         ]
 

@@ -954,6 +954,12 @@
       <div class="action-panel">
         <h3>Traitement — Service Méthodes</h3>
 
+        ${d.rm_rejet_motif ? `
+        <div class="correction-banner">
+          <p class="correction-banner-title">Corrections demandées par le Responsable Méthodes</p>
+          <p class="correction-banner-text">${escapeHtml(d.rm_rejet_motif)}</p>
+        </div>` : ''}
+
         <div class="form" style="margin-bottom:16px;">
           <label>Jalon
             <select id="methodes-jalon">

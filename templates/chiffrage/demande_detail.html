@@ -740,6 +740,12 @@
           <h3 class="text-sm font-bold text-indigo-800">Outils Méthodes</h3>
         </div>
         <div class="px-5 py-4 space-y-4">
+          {% if demande.rm_rejet_motif %}
+          <div class="p-3 bg-orange-50 rounded-lg border border-orange-200">
+            <p class="text-xs text-orange-600 font-semibold mb-1">Corrections demandées par le Responsable Méthodes</p>
+            <p class="text-sm text-orange-800 whitespace-pre-line">{{ demande.rm_rejet_motif }}</p>
+          </div>
+          {% endif %}
           <form method="post" action="{% url 'chiffrage:jalon' demande.pk %}" class="flex items-end gap-2">
             {% csrf_token %}
             <div class="flex-1">

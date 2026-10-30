@@ -282,6 +282,13 @@ a { color: inherit; }
 .action-panel h3 { margin: 0 0 12px; font-size: 0.98rem; color: #92400e; }
 .action-panel .form { gap: 10px; }
 
+.correction-banner {
+  background: var(--amber-soft); border: 1px solid #fde68a; border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-bottom: 14px;
+}
+.correction-banner-title { font-size: 0.68rem; font-weight: 700; color: #92400e; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.correction-banner-text { font-size: 0.85rem; color: #78350f; margin: 0; white-space: pre-line; }
+
 .detail-section { margin-bottom: 26px; }
 .detail-section h3 { font-size: 0.98rem; color: var(--marine-soft); margin: 0 0 12px; letter-spacing: -0.01em; }
 .detail-grid { display: grid; grid-template-columns: 1fr; gap: 6px 0; margin: 0; background: var(--paper); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-card); }

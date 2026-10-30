@@ -238,6 +238,7 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
 
         if decision == 'approuver':
             demande.statut = DemandeChiffrage.Statut.SOUMIS_DG
+            demande.rm_rejet_motif = ''
             demande.save()
             _log(demande, request.user, 'Approuvé par Responsable Méthodes — soumis DG',
                  nouveau=demande.statut, ancien=ancien)
@@ -251,6 +252,7 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
             if not motif:
                 return Response({'detail': 'Un motif est requis pour retourner le devis.'}, status=status.HTTP_400_BAD_REQUEST)
             demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
+            demande.rm_rejet_motif = motif
             demande.save()
             _log(demande, request.user, f'Retourné par RM : {motif}', nouveau=demande.statut, ancien=ancien)
             if demande.assigned_to:
@@ -342,6 +344,7 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
         ancien = demande.statut
         demande.statut = DemandeChiffrage.Statut.SOUMIS_RM
         demande.jalon = ''
+        demande.rm_rejet_motif = ''
         demande.save()
         _log(demande, request.user, 'Devis soumis au Responsable Méthodes',
              nouveau=demande.statut, ancien=ancien)
