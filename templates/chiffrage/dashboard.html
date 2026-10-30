@@ -246,6 +246,7 @@
           <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden sm:table-cell">Client</th>
           <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Statut</th>
           <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden md:table-cell">Commercial</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden md:table-cell">Méthodiste</th>
           <th class="px-5 py-3 text-left text-xs font-semibold text-ardoise-400 uppercase tracking-wider hidden lg:table-cell">Délai</th>
           <th class="px-5 py-3 text-right text-xs font-semibold text-ardoise-400 uppercase tracking-wider">Action</th>
         </tr>
@@ -313,6 +314,20 @@
               </div>
               <span class="text-sm text-ardoise-700">{{ d.commercial.get_full_name|truncatechars:20 }}</span>
             </div>
+          </td>
+
+          {# Méthodiste / Estimateur #}
+          <td class="px-5 py-3.5 hidden md:table-cell">
+            {% if d.assigned_to %}
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-semibold flex-shrink-0">
+                {{ d.assigned_to.first_name|first|upper }}{{ d.assigned_to.last_name|first|upper }}
+              </div>
+              <span class="text-sm text-ardoise-700">{{ d.assigned_to.get_full_name|truncatechars:20 }}</span>
+            </div>
+            {% else %}
+            <span class="text-xs text-ardoise-300">—</span>
+            {% endif %}
           </td>
 
           {# Délai #}
