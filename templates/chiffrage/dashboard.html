@@ -304,6 +304,9 @@
             {% if d.jalon %}
             <p class="text-xs text-ardoise-400 mt-1">{{ d.get_jalon_display }}</p>
             {% endif %}
+            {% if d.statut == 'EN_CHIFFRAGE' and d.assigned_to %}
+            <p class="text-xs text-ardoise-500 mt-0.5">{{ d.assigned_to.get_full_name }}</p>
+            {% endif %}
           </td>
 
           {# Commercial #}
