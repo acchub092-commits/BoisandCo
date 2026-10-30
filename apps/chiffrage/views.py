@@ -365,6 +365,11 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
 
         # Chiffreurs disponibles (ESTIMATEUR)
         chiffreurs = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
+        peut_reaffecter = (
+            demande.assigned_to_id is not None
+            and demande.statut in ReaffecterView.REAFFECTABLE
+            and (request.user.is_superuser or request.user.role == 'RESP_METHODES')
+        )
 
         return render(request, self.template_name, {
             'demande':           demande,
@@ -373,6 +378,7 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
             'historique':        demande.historique.all(),
             'modif_en_attente':  modif_en_attente,
             'chiffreurs':        chiffreurs,
+            'peut_reaffecter':   peut_reaffecter,
             'is_commercial':     is_commercial,
             'is_internal':       is_internal,
             'devis_detail':      devis_detail,
@@ -476,6 +482,53 @@ class AssignerView(ChiffrageRequiredMixin, View):
              f'Pris en charge par {demande.assigned_to.get_full_name()}',
              nouveau=demande.statut, ancien=ancien)
         django_messages.success(request, 'Demande prise en charge — chiffrage en cours.')
+        return redirect('chiffrage:detail', pk=pk)
+
+
+class ReaffecterView(ChiffrageRequiredMixin, View):
+    """Permet au Responsable Méthodes de changer le méthodiste/estimateur affecté
+    à une demande déjà en cours de chiffrage, sans modifier son statut."""
+    REAFFECTABLE = (
+        DemandeChiffrage.Statut.EN_CHIFFRAGE,
+        DemandeChiffrage.Statut.REVISION_DG,
+        DemandeChiffrage.Statut.SOUMIS_RM,
+    )
+
+    def post(self, request, pk):
+        if not request.user.is_superuser and request.user.role != 'RESP_METHODES':
+            return HttpResponseForbidden()
+        demande = get_object_or_404(DemandeChiffrage, pk=pk, statut__in=self.REAFFECTABLE)
+
+        chiffreur = User.objects.filter(
+            pk=request.POST.get('chiffreur'), role='ESTIMATEUR', is_active_employee=True,
+        ).first()
+        if not chiffreur:
+            django_messages.error(request, 'Méthodiste sélectionné invalide.')
+            return redirect('chiffrage:detail', pk=pk)
+
+        ancien_chiffreur = demande.assigned_to
+        if chiffreur == ancien_chiffreur:
+            django_messages.info(request, 'Cette demande est déjà affectée à ce méthodiste.')
+            return redirect('chiffrage:detail', pk=pk)
+
+        demande.assigned_to = chiffreur
+        demande.save(update_fields=['assigned_to', 'updated_at'])
+
+        detail = (f'de {ancien_chiffreur.get_full_name()} vers {chiffreur.get_full_name()}'
+                  if ancien_chiffreur else f'vers {chiffreur.get_full_name()}')
+        _log(demande, request.user, f'Réaffecté {detail}')
+
+        _notify([chiffreur],
+            f'Demande affectée — {demande.reference}',
+            f'{request.user.get_full_name()} vous a affecté la demande {demande.reference} ({demande.client_nom}).',
+            sender=request.user, demande=demande)
+        if ancien_chiffreur and ancien_chiffreur != chiffreur:
+            _notify([ancien_chiffreur],
+                f'Demande réaffectée — {demande.reference}',
+                f'La demande {demande.reference} a été réaffectée à {chiffreur.get_full_name()}.',
+                sender=request.user, demande=demande)
+
+        django_messages.success(request, f'Demande réaffectée à {chiffreur.get_full_name()}.')
         return redirect('chiffrage:detail', pk=pk)
 
 

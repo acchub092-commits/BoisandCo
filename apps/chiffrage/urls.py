@@ -13,6 +13,7 @@ urlpatterns = [
 
     # Actions Méthodes
     path('<int:pk>/assigner/',            views.AssignerView.as_view(),      name='assigner'),
+    path('<int:pk>/reaffecter/',          views.ReaffecterView.as_view(),    name='reaffecter'),
     path('<int:pk>/jalon/',               views.JalonView.as_view(),         name='jalon'),
     path('<int:pk>/montant/',             views.MontantView.as_view(),       name='montant'),
     path('<int:pk>/soumettre-dg/',        views.SoumettreDevisView.as_view(),name='soumettre_dg'),
