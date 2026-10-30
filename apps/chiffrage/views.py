@@ -75,7 +75,13 @@ def _qs_for_user(user):
     )
     if user.role == 'COMMERCIAL' and not user.is_superuser:
         return qs.filter(commercial=user)
-    # MANAGER, DIRECTEUR, ESTIMATEUR, RESP_METHODES, ADMIN voient tout
+    if user.role == 'ESTIMATEUR' and not user.is_superuser:
+        # Un méthodiste/estimateur ne voit que le pool en attente de prise en
+        # charge (non encore affecté) et les demandes qui lui sont affectées.
+        return qs.filter(
+            Q(statut=DemandeChiffrage.Statut.VALIDEE_DC) | Q(assigned_to=user)
+        )
+    # MANAGER, DIRECTEUR, RESP_METHODES, ADMIN voient tout
     return qs
 
 
@@ -319,6 +325,11 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
         )
         # COMMERCIAL ne voit que ses propres demandes
         if request.user.role == 'COMMERCIAL' and demande.commercial != request.user:
+            return HttpResponseForbidden()
+        # ESTIMATEUR : uniquement le pool en attente (VALIDEE_DC) ou ses propres affectations
+        if (request.user.role == 'ESTIMATEUR' and not request.user.is_superuser
+                and demande.statut != DemandeChiffrage.Statut.VALIDEE_DC
+                and demande.assigned_to_id != request.user.id):
             return HttpResponseForbidden()
 
         # Fichiers — séparés en deux widgets distincts
