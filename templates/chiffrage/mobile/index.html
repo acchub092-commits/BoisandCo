@@ -17,7 +17,11 @@
 </head>
 <body>
   <div id="app"><p style="text-align:center;padding:40px;color:#7a7267;">Chargement…</p></div>
-  <script>window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";</script>
+  {{ statut_choices|json_script:"statut-choices-data" }}
+  <script>
+    window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
+    window.STATUT_CHOICES = JSON.parse(document.getElementById('statut-choices-data').textContent);
+  </script>
   <script src="{% static 'chiffrage_mobile/app.js' %}" defer></script>
 </body>
 </html>

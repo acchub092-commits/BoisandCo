@@ -279,6 +279,15 @@
 
   let listSearchTimer = null;
   let activeKpiFilter = null; // { params: {statut: 'EN_ATTENTE'} | {retard: 1}, label: '…' } | null
+  let currentPage = 1;
+  let listTotalCount = 0;
+  const STATUT_CHOICES = window.STATUT_CHOICES || [];
+  const PAGE_SIZE = 20; // doit correspondre à REST_FRAMEWORK.PAGE_SIZE (settings.py)
+
+  function statutLabel(value) {
+    const found = STATUT_CHOICES.find(([v]) => v === value);
+    return found ? found[1] : value;
+  }
 
   const KPI_ITEMS = [
     { key: 'en_attente',   label: 'En attente DC',  icon: 'clock',       color: 'amber',  params: { statut: 'EN_ATTENTE' } },
@@ -318,6 +327,10 @@
       const isActive = activeKpiFilter && btn.dataset.filter === JSON.stringify(activeKpiFilter.params);
       btn.classList.toggle('active', !!isActive);
     });
+    const statutSelect = document.getElementById('list-statut-filter');
+    if (statutSelect) {
+      statutSelect.value = (activeKpiFilter && activeKpiFilter.params.statut) || '';
+    }
   }
 
   function filterChipTemplate() {
@@ -346,7 +359,7 @@
             activeKpiFilter = { params, label };
           }
           syncKpiActiveState();
-          loadListResults(document.getElementById('list-search').value.trim());
+          loadListResults(document.getElementById('list-search').value.trim(), 1);
         });
       });
     } catch (err) {
@@ -358,6 +371,7 @@
     const user = getUser();
     const showFab = canCreateDemande(user);
     activeKpiFilter = null;
+    currentPage = 1;
     app.innerHTML = topbar(user) + `
       <div class="screen-body">
         <div id="kpi-results">${skeletonList(2)}</div>
@@ -368,7 +382,13 @@
           </div>
           <button type="button" class="view-toggle-btn" id="view-toggle-btn" title="Changer d'affichage"></button>
         </div>
+        <select id="list-statut-filter" class="statut-filter-select">
+          <option value="">Tous les statuts</option>
+          ${STATUT_CHOICES.map(([val, label]) => `<option value="${val}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <p class="list-count" id="list-count"></p>
         <div id="liste-results">${skeletonList()}</div>
+        <div id="list-pagination"></div>
       </div>` + (showFab ? fab() : '');
     wireTopbar();
     if (showFab) wireFab();
@@ -387,18 +407,27 @@
     const searchInput = document.getElementById('list-search');
     searchInput.addEventListener('input', () => {
       clearTimeout(listSearchTimer);
-      listSearchTimer = setTimeout(() => loadListResults(searchInput.value.trim()), 350);
+      listSearchTimer = setTimeout(() => loadListResults(searchInput.value.trim(), 1), 350);
+    });
+
+    const statutSelect = document.getElementById('list-statut-filter');
+    statutSelect.addEventListener('change', () => {
+      const val = statutSelect.value;
+      activeKpiFilter = val ? { params: { statut: val }, label: statutLabel(val) } : null;
+      syncKpiActiveState();
+      loadListResults(searchInput.value.trim(), 1);
     });
 
     await loadKpis();
     await loadListResults('');
   }
 
-  async function loadListResults(query) {
+  async function loadListResults(query, page) {
     const user = getUser();
     const showFab = canCreateDemande(user);
     const container = document.getElementById('liste-results');
     if (!container) return;
+    if (typeof page === 'number') currentPage = page;
     container.innerHTML = skeletonList();
 
     const params = new URLSearchParams();
@@ -406,6 +435,7 @@
     if (activeKpiFilter) {
       Object.entries(activeKpiFilter.params).forEach(([k, v]) => params.set(k, v));
     }
+    if (currentPage > 1) params.set('page', currentPage);
     const qs = params.toString();
 
     let data;
@@ -413,9 +443,13 @@
       data = await api('/chiffrage/demandes/' + (qs ? '?' + qs : ''));
     } catch (err) {
       container.innerHTML = `<p class="field-error">${escapeHtml(err.message)}</p>`;
+      setListCount(null);
+      setPagination(null);
       return;
     }
     const items = data.results || data;
+    listTotalCount = typeof data.count === 'number' ? data.count : items.length;
+    setListCount(listTotalCount);
     const banner = notifBannerTemplate();
     const chip = filterChipTemplate();
 
@@ -429,6 +463,7 @@
             : `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p></div>`);
       wireNotifBanner();
       wireFilterChip();
+      setPagination(null);
       return;
     }
 
@@ -439,6 +474,28 @@
     container.querySelectorAll('[data-goto]').forEach((el) => {
       el.addEventListener('click', () => { location.hash = '#/detail/' + el.dataset.goto; });
     });
+    setPagination({ next: data.next, previous: data.previous, query });
+  }
+
+  function setListCount(count) {
+    const el = document.getElementById('list-count');
+    if (!el) return;
+    el.textContent = count === null ? '' : `${count} demande${count !== 1 ? 's' : ''}`;
+  }
+
+  function setPagination(info) {
+    const el = document.getElementById('list-pagination');
+    if (!el) return;
+    if (!info || (!info.next && !info.previous)) { el.innerHTML = ''; return; }
+    const totalPages = Math.max(1, Math.ceil(listTotalCount / PAGE_SIZE));
+    el.innerHTML = `
+      <button type="button" class="btn-secondary btn-sm" id="page-prev" ${!info.previous ? 'disabled' : ''}>${icon('back', 'icon-xs')} Précédent</button>
+      <span class="list-pagination-info">Page ${currentPage} / ${totalPages}</span>
+      <button type="button" class="btn-secondary btn-sm" id="page-next" ${!info.next ? 'disabled' : ''}>Suivant</button>`;
+    const prevBtn = document.getElementById('page-prev');
+    const nextBtn = document.getElementById('page-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => loadListResults(info.query, currentPage - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => loadListResults(info.query, currentPage + 1));
   }
 
   function wireFilterChip() {
@@ -447,7 +504,7 @@
     clearBtn.addEventListener('click', () => {
       activeKpiFilter = null;
       syncKpiActiveState();
-      loadListResults(document.getElementById('list-search').value.trim());
+      loadListResults(document.getElementById('list-search').value.trim(), 1);
     });
   }
 

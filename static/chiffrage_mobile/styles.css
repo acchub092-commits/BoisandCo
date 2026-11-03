@@ -111,6 +111,18 @@ a { color: inherit; }
 .btn-primary { background: var(--foret-dark); color: #fff; box-shadow: 0 8px 20px -10px rgba(22,163,74,.6); }
 .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
 .btn-secondary { background: var(--paper); color: var(--marine-soft); border: 1.5px solid var(--hairline); display: inline-flex; align-items: center; gap: 6px; width: fit-content; }
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sm { font-size: 0.8rem; padding: 8px 12px; }
+
+.statut-filter-select {
+  width: 100%; font-size: 0.88rem; padding: 10px 12px; border: 1.5px solid var(--hairline); border-radius: var(--radius-sm);
+  font-family: inherit; background: var(--paper); color: var(--ink); margin-bottom: 10px;
+}
+.list-count { font-size: 0.78rem; color: var(--muted); margin: 0 0 10px; }
+.list-pagination {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px;
+}
+.list-pagination-info { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
 
 /* Tableau de bord — KPI interactifs */
 .kpi-section { margin-bottom: 16px; }

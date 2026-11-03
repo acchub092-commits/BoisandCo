@@ -11,8 +11,10 @@ class ShellView(TemplateView):
 
     def get_context_data(self, **kwargs):
         from django.conf import settings
+        from .models import DemandeChiffrage
         ctx = super().get_context_data(**kwargs)
         ctx['vapid_public_key'] = settings.VAPID_PUBLIC_KEY
+        ctx['statut_choices'] = list(DemandeChiffrage.Statut.choices)
         return ctx
 
     def render_to_response(self, context, **kwargs):
