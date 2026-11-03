@@ -68,6 +68,17 @@ def _notify(recipients, title, message, sender=None, demande=None):
         )
 
 
+def _peut_traiter_demande(user, demande):
+    """Autorisation d'agir en tant que chiffreur sur une demande (jalon, montant,
+    soumission du devis, reprise de révision) : superviseurs sans restriction,
+    estimateur/RM uniquement sur ce qui leur est affecté."""
+    if user.is_superuser or user.role in ('MANAGER', 'DIRECTEUR'):
+        return True
+    if user.role in ('ESTIMATEUR', 'RESP_METHODES'):
+        return demande.assigned_to_id == user.id
+    return False
+
+
 def _qs_for_user(user):
     """Queryset de base filtré selon le rôle."""
     qs = DemandeChiffrage.objects.select_related(
@@ -374,22 +385,34 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
             statut='EN_ATTENTE'
         ).first()
 
-        # Chiffreurs disponibles (ESTIMATEUR)
-        chiffreurs = User.objects.filter(role='ESTIMATEUR', is_active_employee=True)
+        # Chiffreurs disponibles (ESTIMATEUR, + le Responsable Méthodes lui-même)
+        chiffreurs = User.objects.filter(
+            role__in=('ESTIMATEUR', 'RESP_METHODES'), is_active_employee=True,
+        )
         peut_reaffecter = (
             demande.assigned_to_id is not None
             and demande.statut in ReaffecterView.REAFFECTABLE
             and (request.user.is_superuser or request.user.role == 'RESP_METHODES')
         )
+        peut_outils_methodes = (
+            demande.statut == DemandeChiffrage.Statut.EN_CHIFFRAGE
+            and _peut_traiter_demande(request.user, demande)
+        )
+        peut_reprendre_revision = (
+            demande.statut == DemandeChiffrage.Statut.REVISION_DG
+            and _peut_traiter_demande(request.user, demande)
+        )
 
         return render(request, self.template_name, {
-            'demande':           demande,
-            'fichiers':          fichiers,
-            'messages':          msgs,
-            'historique':        demande.historique.all(),
-            'modif_en_attente':  modif_en_attente,
-            'chiffreurs':        chiffreurs,
-            'peut_reaffecter':   peut_reaffecter,
+            'demande':                demande,
+            'fichiers':               fichiers,
+            'messages':               msgs,
+            'historique':             demande.historique.all(),
+            'modif_en_attente':       modif_en_attente,
+            'chiffreurs':             chiffreurs,
+            'peut_reaffecter':        peut_reaffecter,
+            'peut_outils_methodes':   peut_outils_methodes,
+            'peut_reprendre_revision': peut_reprendre_revision,
             'is_commercial':     is_commercial,
             'is_internal':       is_internal,
             'devis_detail':      devis_detail,
@@ -475,7 +498,7 @@ class AssignerView(ChiffrageRequiredMixin, View):
         ancien = demande.statut
         if chiffreur_id:
             chiffreur = User.objects.filter(
-                pk=chiffreur_id, role='ESTIMATEUR', is_active_employee=True,
+                pk=chiffreur_id, role__in=('ESTIMATEUR', 'RESP_METHODES'), is_active_employee=True,
             ).first()
             if not chiffreur:
                 django_messages.error(request, 'Méthodiste sélectionné invalide.')
@@ -511,7 +534,7 @@ class ReaffecterView(ChiffrageRequiredMixin, View):
         demande = get_object_or_404(DemandeChiffrage, pk=pk, statut__in=self.REAFFECTABLE)
 
         chiffreur = User.objects.filter(
-            pk=request.POST.get('chiffreur'), role='ESTIMATEUR', is_active_employee=True,
+            pk=request.POST.get('chiffreur'), role__in=('ESTIMATEUR', 'RESP_METHODES'), is_active_employee=True,
         ).first()
         if not chiffreur:
             django_messages.error(request, 'Méthodiste sélectionné invalide.')
@@ -545,11 +568,8 @@ class ReaffecterView(ChiffrageRequiredMixin, View):
 
 class JalonView(ChiffrageRequiredMixin, View):
     def post(self, request, pk):
-        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
-            return HttpResponseForbidden()
         demande = get_object_or_404(DemandeChiffrage, pk=pk)
-        if (request.user.role == 'ESTIMATEUR' and not request.user.is_superuser
-                and demande.assigned_to_id != request.user.id):
+        if not _peut_traiter_demande(request.user, demande):
             return HttpResponseForbidden()
         jalon = request.POST.get('jalon', '')
         if jalon in dict(DemandeChiffrage.Jalon.choices):
@@ -563,11 +583,8 @@ class JalonView(ChiffrageRequiredMixin, View):
 class MontantView(ChiffrageRequiredMixin, View):
     """Enregistrement du montant brouillon par Méthodes."""
     def post(self, request, pk):
-        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
-            return HttpResponseForbidden()
         demande = get_object_or_404(DemandeChiffrage, pk=pk)
-        if (request.user.role == 'ESTIMATEUR' and not request.user.is_superuser
-                and demande.assigned_to_id != request.user.id):
+        if not _peut_traiter_demande(request.user, demande):
             return HttpResponseForbidden()
         montant = request.POST.get('montant_ht', '').strip()
         try:
@@ -581,7 +598,7 @@ class MontantView(ChiffrageRequiredMixin, View):
 
 class SoumettreDevisView(ChiffrageRequiredMixin, View):
     def post(self, request, pk):
-        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR',):
+        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'RESP_METHODES'):
             return HttpResponseForbidden()
         demande = get_object_or_404(
             DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.EN_CHIFFRAGE
@@ -735,11 +752,11 @@ class ActionDGView(ChiffrageRequiredMixin, View):
 
 class RepriseRevisionView(ChiffrageRequiredMixin, View):
     def post(self, request, pk):
-        if not request.user.is_superuser and request.user.role not in ('ESTIMATEUR', 'MANAGER', 'DIRECTEUR'):
-            return HttpResponseForbidden()
         demande = get_object_or_404(
             DemandeChiffrage, pk=pk, statut=DemandeChiffrage.Statut.REVISION_DG
         )
+        if not _peut_traiter_demande(request.user, demande):
+            return HttpResponseForbidden()
         ancien = demande.statut
         demande.statut = DemandeChiffrage.Statut.EN_CHIFFRAGE
         demande.save()
