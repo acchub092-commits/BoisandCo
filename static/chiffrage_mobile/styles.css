@@ -92,6 +92,7 @@ a { color: inherit; }
 .login-card-body { padding: 26px 24px 28px; text-align: left; gap: 16px; }
 .btn-primary.login-submit { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--marine); box-shadow: 0 8px 20px -10px rgba(83,119,43,.6); }
 .login-footer { margin-top: 20px; font-size: 0.74rem; color: var(--muted); }
+.app-footer { margin: 22px 0 6px; font-size: 0.72rem; color: var(--muted); text-align: center; }
 
 /* Formulaires */
 .form { display: flex; flex-direction: column; gap: 14px; }

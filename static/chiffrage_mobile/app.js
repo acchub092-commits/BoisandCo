@@ -5,6 +5,7 @@
   const API_BASE = '/api/v1';
   const STORAGE_TOKEN = 'hope_chiffrage_token';
   const STORAGE_USER = 'hope_chiffrage_user';
+  const APP_VERSION = window.APP_VERSION || '';
 
   const app = document.getElementById('app');
 
@@ -231,7 +232,7 @@
           </form>
         </div>
 
-        <p class="login-footer">Hope AppMobile · Bois&amp;Co © ${year}</p>
+        <p class="login-footer">Hope AppMobile${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co © ${year}</p>
       </div>`;
     const form = document.getElementById('login-form');
     form.addEventListener('submit', async (e) => {
@@ -389,6 +390,7 @@
         <p class="list-count" id="list-count"></p>
         <div id="liste-results">${skeletonList()}</div>
         <div id="list-pagination"></div>
+        <p class="app-footer">Hope AppMobile${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co</p>
       </div>` + (showFab ? fab() : '');
     wireTopbar();
     if (showFab) wireFab();

@@ -21,6 +21,7 @@
   <script>
     window.VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
     window.STATUT_CHOICES = JSON.parse(document.getElementById('statut-choices-data').textContent);
+    window.APP_VERSION = "{{ app_version }}";
   </script>
   <script src="{% static 'chiffrage_mobile/app.js' %}" defer></script>
 </body>
