@@ -110,6 +110,7 @@
   // ---------------------------------------------------------------------
   const ICONS = {
     back: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>',
+    forward: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>',
     logout: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>',
     camera: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17a4 4 0 100-8 4 4 0 000 8z"/>',
     paperclip: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>',
@@ -387,9 +388,11 @@
           <option value="">Tous les statuts</option>
           ${STATUT_CHOICES.map(([val, label]) => `<option value="${val}">${escapeHtml(label)}</option>`).join('')}
         </select>
-        <p class="list-count" id="list-count"></p>
+        <div class="list-meta-bar">
+          <span class="list-count" id="list-count"></span>
+          <div class="list-pagination" id="list-pagination"></div>
+        </div>
         <div id="liste-results">${skeletonList()}</div>
-        <div id="list-pagination"></div>
         <p class="app-footer">Hope AppMobile${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co</p>
       </div>` + (showFab ? fab() : '');
     wireTopbar();
@@ -491,13 +494,18 @@
     if (!info || (!info.next && !info.previous)) { el.innerHTML = ''; return; }
     const totalPages = Math.max(1, Math.ceil(listTotalCount / PAGE_SIZE));
     el.innerHTML = `
-      <button type="button" class="btn-secondary btn-sm" id="page-prev" ${!info.previous ? 'disabled' : ''}>${icon('back', 'icon-xs')} Précédent</button>
-      <span class="list-pagination-info">Page ${currentPage} / ${totalPages}</span>
-      <button type="button" class="btn-secondary btn-sm" id="page-next" ${!info.next ? 'disabled' : ''}>Suivant</button>`;
+      <button type="button" class="pager-btn" id="page-prev" aria-label="Page précédente" ${!info.previous ? 'disabled' : ''}>${icon('back', 'icon-xs')}</button>
+      <span class="list-pagination-info">${currentPage} / ${totalPages}</span>
+      <button type="button" class="pager-btn" id="page-next" aria-label="Page suivante" ${!info.next ? 'disabled' : ''}>${icon('forward', 'icon-xs')}</button>`;
     const prevBtn = document.getElementById('page-prev');
     const nextBtn = document.getElementById('page-next');
-    if (prevBtn) prevBtn.addEventListener('click', () => loadListResults(info.query, currentPage - 1));
-    if (nextBtn) nextBtn.addEventListener('click', () => loadListResults(info.query, currentPage + 1));
+    if (prevBtn) prevBtn.addEventListener('click', () => { loadListResults(info.query, currentPage - 1); scrollListToTop(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { loadListResults(info.query, currentPage + 1); scrollListToTop(); });
+  }
+
+  function scrollListToTop() {
+    const el = document.getElementById('liste-results');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function wireFilterChip() {
