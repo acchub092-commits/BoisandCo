@@ -1143,9 +1143,9 @@
   // ce qui rendait l'icône PNG méconnaissable. Un SVG avec des couleurs explicites y échappe.
   const BRAND_MARK_SVG = `
     <svg class="topbar-logo-svg" viewBox="0 0 40 40" aria-hidden="true">
-      <text x="7" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#112534">B</text>
-      <text x="17.5" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#6cc600">&amp;</text>
-      <text x="27" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#112534">C</text>
+      <text x="7" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#1d3448">B</text>
+      <text x="17.5" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#73b72b">&amp;</text>
+      <text x="27" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#1d3448">C</text>
     </svg>`;
 
   function topbar(user, withBack) {

@@ -11,59 +11,60 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Palette Bois&Co — alignée sur le site officiel bois-co.ma (logo + charte réelle)
-        // Vert de marque — exact du site officiel (#6CC600), repris aussi comme "bois"
-        // pour unifier les deux familles d'accent historiques sur une seule identité verte.
+        // Palette Bois&Co — valeurs exactes de la charte graphique officielle
+        // (Pantone 368 C / RVB 115,183,43 — vérifié aussi par échantillonnage du logo réel).
+        // "bois" reprend le même vert de marque que "foret" pour unifier les deux familles
+        // d'accent historiques sur une seule identité verte.
         bois: {
-          50:  '#f3fce6',
-          100: '#e2f8c2',
-          200: '#c7f091',
-          300: '#a3e659',
-          400: '#87d92e',
-          500: '#6cc600',   // vert exact du site officiel
-          600: '#5aa800',
-          700: '#478300',
-          800: '#366500',
-          900: '#274a00',
+          50:  '#f3fbe9',
+          100: '#e3f5cb',
+          200: '#c8ec9a',
+          300: '#a5e063',
+          400: '#8fd046',
+          500: '#73b72b',   // vert exact de la charte (Pantone 368 C)
+          600: '#5c9622',
+          700: '#48761b',
+          800: '#395c16',
+          900: '#2a4310',
         },
         // Vert forêt — même vert de marque que "bois", conservé comme alias historique
         foret: {
-          50:  '#f3fce6',
-          100: '#e2f8c2',
-          200: '#c7f091',
-          300: '#a3e659',
-          400: '#87d92e',
-          500: '#6cc600',   // vert exact du site officiel — boutons, badges actifs
-          600: '#5aa800',   // hover
-          700: '#478300',   // foncé
-          800: '#366500',   // très foncé
-          900: '#274a00',
+          50:  '#f3fbe9',
+          100: '#e3f5cb',
+          200: '#c8ec9a',
+          300: '#a5e063',
+          400: '#8fd046',
+          500: '#73b72b',   // vert exact de la charte — boutons, badges actifs
+          600: '#5c9622',   // hover
+          700: '#48761b',   // foncé
+          800: '#395c16',   // très foncé
+          900: '#2a4310',
         },
-        // Marine — bleu-nuit exact du site officiel (#112534 : nav, texte du logo, fonds foncés)
+        // Marine — bleu-nuit exact de la charte (Pantone 289 XGC / RVB 29,52,72)
         marine: {
-          50:  '#eef3f6',
-          100: '#d7e3ea',
-          200: '#aec7d4',
-          300: '#7ea3b7',
-          400: '#4d7891',
-          500: '#335a70',
-          600: '#26485c',
-          700: '#1c3747',
-          800: '#162c39',
-          900: '#112534',   // marine exact du site officiel — fond sidebar, en-tête connexion
+          50:  '#eef2f4',
+          100: '#d7e0e5',
+          200: '#aec0cb',
+          300: '#7f9aa9',
+          400: '#51717f',   // gris bleuté — variante secondaire de la charte
+          500: '#3b5768',
+          600: '#2c4455',
+          700: '#233847',
+          800: '#1d2e3b',
+          900: '#1d3448',   // marine exact de la charte — fond sidebar, en-tête connexion
         },
-        // Bronze — orange de marque du site officiel (#F06D22), accent secondaire chaleureux
+        // Terracotta — couleur secondaire de la charte (variante alternative du logo)
         bronze: {
-          50:  '#fef3ec',
-          100: '#fde1cc',
-          200: '#fac199',
-          300: '#f69d66',
-          400: '#f3843f',
-          500: '#f06d22',   // orange exact du site officiel
-          600: '#cc551a',
-          700: '#a34315',
-          800: '#7d3412',
-          900: '#5c270e',
+          50:  '#fbf0ed',
+          100: '#f4d9d0',
+          200: '#e8b4a3',
+          300: '#da8a70',
+          400: '#cc6c4f',
+          500: '#bf583e',   // terracotta exact de la charte (Pantone 7619 C)
+          600: '#9f4631',
+          700: '#7d3726',
+          800: '#602a1d',
+          900: '#471f16',
         },
         // Crème — couleur texte du logo
         creme: {
@@ -92,8 +93,8 @@ module.exports = {
         },
       },
       fontFamily: {
+        // Plus Jakarta Sans — unique police de la charte graphique officielle Bois&Co.
         sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['"Cormorant Garamond"', 'ui-serif', 'serif'],
       },
       boxShadow: {
         'card':       '0 2px 8px 0 rgba(0,0,0,0.07)',

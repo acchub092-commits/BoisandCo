@@ -5,30 +5,53 @@
 
 {% block auth_content %}
 
-<div class="fixed inset-0 flex items-center justify-center px-4"
-     style="background-color: #f5f1eb;">
+<div class="fixed inset-0 flex flex-col lg:flex-row bg-white">
 
-  <div class="w-full max-w-sm">
+  {# ── Panneau de marque (visible dès lg) — fond marine officiel + motif de marque ── #}
+  <div class="hidden lg:flex lg:w-[44%] relative flex-col justify-between overflow-hidden"
+       style="background-color:#1d3448;">
 
-    {# Logo au-dessus de la carte — nouvelle identité visuelle #}
-    <div class="flex flex-col items-center mb-6">
-      <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co — Matières vivantes, intérieurs durables"
-           class="h-20 w-auto object-contain">
-      <p class="mt-1 text-xs font-bold uppercase text-ardoise-400" style="letter-spacing: 0.2em;">HOPE</p>
+    {# Motif décoratif — reprend le cadre + l'esperluette du logo, inclinés (charte, p.2 / p.38) #}
+    <div aria-hidden="true" class="absolute pointer-events-none select-none"
+         style="right:-7%; bottom:-6%; width:78%; transform:rotate(-7deg);">
+      <div style="border:3px solid rgba(255,255,255,0.14); aspect-ratio:3/4; width:100%; border-radius:4px;"></div>
+      <span style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                    font-size:26vw; line-height:1; font-weight:800; color:rgba(255,255,255,0.07);">&amp;</span>
     </div>
 
-    {# Carte formulaire #}
-    <div class="bg-white rounded-2xl overflow-hidden"
-         style="box-shadow: 0 4px 32px rgba(21,39,50,0.12);">
+    <div class="relative z-10 px-12 pt-12">
+      <img src="{% static 'images/logo-full-white.png' %}" alt="Bois&amp;Co"
+           class="h-9 w-auto object-contain">
+    </div>
 
-      <div class="px-8 pt-7 pb-8 space-y-5">
-      <div class="-mx-8 px-8 py-4 text-center" style="background-color: #112534;">
-        <h1 class="text-lg font-bold tracking-wide" style="color: #f2e8d5;">Connexion</h1>
-        <p class="text-xs mt-0.5" style="color: rgba(242,232,213,0.55);">Accédez à votre espace de gestion</p>
+    <div class="relative z-10 px-12 pb-14 max-w-md">
+      <p class="text-[11px] font-bold uppercase tracking-[0.25em]" style="color:#73b72b;">Hope</p>
+      <p class="mt-3 text-2xl font-extrabold leading-snug text-white">
+        L'espace de gestion&nbsp;interne Bois&amp;Co.
+      </p>
+      <p class="mt-4 text-sm leading-relaxed" style="color:rgba(255,255,255,0.6);">
+        Matières vivantes, intérieurs durables — chiffrage, projets et pilotage commercial,
+        réunis dans un seul outil.
+      </p>
+    </div>
+  </div>
+
+  {# ── Panneau formulaire ── #}
+  <div class="flex-1 flex items-center justify-center p-6 sm:p-10">
+    <div class="w-full max-w-sm">
+
+      {# Logo compact — mobile/tablette uniquement (le panneau de marque prend le relais dès lg) #}
+      <div class="flex flex-col items-center mb-8 lg:hidden">
+        <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co — Matières vivantes, intérieurs durables"
+             class="h-14 w-auto object-contain">
+        <p class="mt-2 text-[11px] font-bold uppercase text-ardoise-400" style="letter-spacing:0.25em;">Hope</p>
       </div>
 
+      <h1 class="text-2xl font-extrabold" style="color:#1d3448;">Connexion</h1>
+      <p class="text-sm text-ardoise-500 mt-1.5 mb-8">Accédez à votre espace de gestion</p>
+
       {% if form.errors %}
-      <div class="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+      <div class="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-sm text-red-700">
         <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
         </svg>
@@ -36,7 +59,7 @@
       </div>
       {% endif %}
 
-      <form method="post" action="{% url 'account_login' %}" class="space-y-4">
+      <form method="post" action="{% url 'account_login' %}" class="space-y-5">
         {% csrf_token %}
 
         {# Email #}
@@ -46,11 +69,9 @@
           </label>
           <input type="email" name="login" id="id_login"
                  autocomplete="email" required
-                 class="block w-full rounded-lg border border-ardoise-200 text-sm px-3.5 py-2.5 outline-none transition-all"
-                 style="color: #2e353f;"
-                 placeholder="vous@boisandco.fr"
-                 onfocus="this.style.borderColor='#112534'; this.style.boxShadow='0 0 0 3px rgba(21,39,50,0.08)'"
-                 onblur="this.style.borderColor=''; this.style.boxShadow=''">
+                 class="block w-full rounded-lg border border-ardoise-200 text-sm px-3.5 py-2.5 outline-none transition-all focus:border-[#73b72b] focus:ring-4 focus:ring-[#73b72b]/10"
+                 style="color:#2e353f;"
+                 placeholder="vous@boisandco.fr">
         </div>
 
         {# Mot de passe #}
@@ -60,8 +81,7 @@
               Mot de passe
             </label>
             <a href="{% url 'account_reset_password' %}"
-               class="text-xs font-medium transition-colors"
-               style="color: #112534;">
+               class="text-xs font-medium hover:underline" style="color:#1d3448;">
               Mot de passe oublié ?
             </a>
           </div>
@@ -69,10 +89,8 @@
             <input :type="show ? 'text' : 'password'"
                    name="password" id="id_password"
                    autocomplete="current-password" required
-                   class="block w-full rounded-lg border border-ardoise-200 text-sm px-3.5 py-2.5 pr-11 outline-none transition-all"
-                   style="color: #2e353f;"
-                   onfocus="this.style.borderColor='#112534'; this.style.boxShadow='0 0 0 3px rgba(21,39,50,0.08)'"
-                   onblur="this.style.borderColor=''; this.style.boxShadow=''">
+                   class="block w-full rounded-lg border border-ardoise-200 text-sm px-3.5 py-2.5 pr-11 outline-none transition-all focus:border-[#73b72b] focus:ring-4 focus:ring-[#73b72b]/10"
+                   style="color:#2e353f;">
             <button type="button" @click="show = !show"
                     class="absolute inset-y-0 right-0 flex items-center px-3 text-ardoise-400 hover:text-ardoise-600 transition-colors">
               <svg x-show="!show" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,19 +109,18 @@
         {# Se souvenir #}
         <label class="flex items-center gap-2.5 cursor-pointer select-none">
           <input type="checkbox" name="remember"
-                 class="w-4 h-4 rounded border-ardoise-300"
-                 style="accent-color: #112534;">
+                 class="w-4 h-4 rounded border-ardoise-300" style="accent-color:#73b72b;">
           <span class="text-sm text-ardoise-500">Se souvenir de moi</span>
         </label>
 
-        {# Bouton #}
+        {# Bouton — vert de marque, cohérent avec les actions principales du reste de l'app #}
         <button type="submit"
                 class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl
-                       font-semibold text-sm transition-all duration-150
-                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-foret-400"
-                style="background-color: #112534; color: #f2e8d5;"
-                onmouseover="this.style.backgroundColor='#162c39'"
-                onmouseout="this.style.backgroundColor='#112534'">
+                       font-bold text-sm text-white transition-all duration-150
+                       focus:outline-none focus:ring-4"
+                style="background-color:#73b72b; box-shadow:0 8px 20px -8px rgba(115,183,43,0.55);"
+                onmouseover="this.style.backgroundColor='#5c9622'"
+                onmouseout="this.style.backgroundColor='#73b72b'">
           Se connecter
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
@@ -111,14 +128,13 @@
         </button>
 
       </form>
-      </div>
+
+      <p class="text-center text-xs text-ardoise-400 mt-8">
+        HOPE &middot; Bois&amp;Co &copy; {% now "Y" %}
+      </p>
     </div>
-
-    <p class="text-center text-xs text-ardoise-400 mt-5">
-      HOPE &middot; Bois&amp;Co &copy; {% now "Y" %}
-    </p>
-
   </div>
+
 </div>
 
 {% endblock %}
