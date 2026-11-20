@@ -13,9 +13,9 @@
   {# Tailwind CSS compilé #}
   {% tailwind_css %}
 
-  {# Police Inter via Google Fonts #}
+  {# Polices Plus Jakarta Sans + Cormorant Garamond — identité du site officiel bois-co.ma #}
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
 
   {# HTMX #}
   <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
@@ -54,12 +54,12 @@
           <div class="flex items-center gap-3">
             <button @click="mobileMenuOpen = !mobileMenuOpen; sidebarOpen = true"
                     class="lg:hidden p-1.5 rounded-lg hover:bg-ardoise-100 transition-colors"
-                    style="color:#152732;">
+                    style="color:#112534;">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
               </svg>
             </button>
-            <h1 class="text-lg font-semibold text-ardoise-800">{% block page_title %}{% endblock %}</h1>
+            <h1 class="text-xl font-serif font-semibold text-ardoise-800 tracking-tight">{% block page_title %}{% endblock %}</h1>
           </div>
 
           <div class="flex items-center gap-2">
@@ -95,11 +95,11 @@
                       class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-ardoise-50 transition-colors">
                 <div class="relative flex-shrink-0">
                   <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                       style="background-color:#152732;color:#f2e8d5;border:1.5px solid rgba(21,39,50,0.15);">
+                       style="background-color:#112534;color:#f2e8d5;border:1.5px solid rgba(21,39,50,0.15);">
                     {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
                   </div>
                   <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
-                        style="background-color:#70b41d;" title="Connecté"></span>
+                        style="background-color:#6cc600;" title="Connecté"></span>
                 </div>
                 <div class="hidden sm:block text-left">
                   <p class="text-xs font-semibold text-ardoise-800 leading-tight">{{ user.get_full_name|default:user.username|truncatechars:20 }}</p>
@@ -125,7 +125,7 @@
                 {# En-tête identité #}
                 <div class="px-4 py-3.5 flex items-start gap-3">
                   <div class="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                       style="background-color:#152732;color:#f2e8d5;border:1.5px solid rgba(21,39,50,0.15);">
+                       style="background-color:#112534;color:#f2e8d5;border:1.5px solid rgba(21,39,50,0.15);">
                     {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
                   </div>
                   <div class="min-w-0 flex-1">
@@ -140,13 +140,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                       </svg>
-                      <svg x-show="copied" class="w-3 h-3 flex-shrink-0" style="color:#70b41d;"
+                      <svg x-show="copied" class="w-3 h-3 flex-shrink-0" style="color:#6cc600;"
                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                       </svg>
                     </button>
                     <span class="inline-block mt-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                          style="background-color:rgba(112,180,29,0.12);color:#477213;">
+                          style="background-color:rgba(108,198,0,0.12);color:#478300;">
                       {{ user.get_role_display }}
                     </span>
                   </div>

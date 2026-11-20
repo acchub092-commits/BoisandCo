@@ -1,10 +1,11 @@
 :root {
-  --marine: #53772b;
-  --marine-soft: #221f20;
-  --foret: #8ec155;
-  --foret-dark: #6d9c39;
-  --foret-darker: #53772b;
-  --foret-soft: #e1eed2;
+  /* Identité alignée sur le site officiel bois-co.ma — vert #6CC600, marine #112534 */
+  --marine: #112534;
+  --marine-soft: #0b1a23;
+  --foret: #87d92e;
+  --foret-dark: #6cc600;
+  --foret-darker: #478300;
+  --foret-soft: #e2f8c2;
   --ink: #1c1917;
   --muted: #78716c;
   --hairline: #ebe7e0;
@@ -20,7 +21,7 @@
   --radius-md: 16px;
   --radius-lg: 22px;
   --shadow-card: 0 1px 2px rgba(21,39,50,.05), 0 10px 24px -14px rgba(21,39,50,.22);
-  --shadow-float: 0 10px 30px -8px rgba(22,163,74,.45);
+  --shadow-float: 0 10px 30px -8px rgba(108,198,0,.45);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light only;
@@ -36,7 +37,7 @@ html { color-scheme: light only; background: #f6f5f2; }
 .icon-svg.icon-xl { width: 40px; height: 40px; color: var(--muted); }
 html, body {
   margin: 0; padding: 0; height: 100%; max-width: 100%; overflow-x: hidden;
-  font-family: -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, Arial, sans-serif;
   background: var(--bg); color: var(--ink);
 }
 #app { min-height: 100%; display: flex; flex-direction: column; animation: fade-in .22s ease; }
@@ -90,7 +91,7 @@ a { color: inherit; }
 .login-card-head h1 { margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.02em; color: #f2e8d5; }
 .login-card-head p { margin: 2px 0 0; font-size: 0.74rem; color: rgba(242,232,213,.6); }
 .login-card-body { padding: 26px 24px 28px; text-align: left; gap: 16px; }
-.btn-primary.login-submit { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--marine); box-shadow: 0 8px 20px -10px rgba(83,119,43,.6); }
+.btn-primary.login-submit { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--marine); box-shadow: 0 8px 20px -10px rgba(17,37,52,.6); }
 .login-footer { margin-top: 20px; font-size: 0.74rem; color: var(--muted); }
 .app-footer { margin: 22px 0 6px; font-size: 0.72rem; color: var(--muted); text-align: center; }
 
@@ -109,7 +110,7 @@ a { color: inherit; }
   cursor: pointer; font-family: inherit; text-align: center; transition: transform .1s ease, opacity .15s ease;
 }
 .btn-primary:active, .btn-secondary:active { transform: scale(0.98); }
-.btn-primary { background: var(--foret-dark); color: #fff; box-shadow: 0 8px 20px -10px rgba(22,163,74,.6); }
+.btn-primary { background: var(--foret-dark); color: #fff; box-shadow: 0 8px 20px -10px rgba(108,198,0,.6); }
 .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
 .btn-secondary { background: var(--paper); color: var(--marine-soft); border: 1.5px solid var(--hairline); display: inline-flex; align-items: center; gap: 6px; width: fit-content; }
 .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }

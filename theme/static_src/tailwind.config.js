@@ -11,44 +11,59 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Palette Bois&Co — identité nouveau logo
+        // Palette Bois&Co — alignée sur le site officiel bois-co.ma (logo + charte réelle)
+        // Vert de marque — exact du site officiel (#6CC600), repris aussi comme "bois"
+        // pour unifier les deux familles d'accent historiques sur une seule identité verte.
         bois: {
-          50:  '#fdf8f0',
-          100: '#faefd9',
-          200: '#f3d9a8',
-          300: '#e8bc6e',
-          400: '#dc9d3e',
-          500: '#c9821f',   // bois principal
-          600: '#a96518',
-          700: '#874e16',
-          800: '#6e3e18',
-          900: '#5a3418',
+          50:  '#f3fce6',
+          100: '#e2f8c2',
+          200: '#c7f091',
+          300: '#a3e659',
+          400: '#87d92e',
+          500: '#6cc600',   // vert exact du site officiel
+          600: '#5aa800',
+          700: '#478300',
+          800: '#366500',
+          900: '#274a00',
         },
-        // Vert forêt — échantillonné pixel par pixel sur le vrai logo (vert #71BB16)
+        // Vert forêt — même vert de marque que "bois", conservé comme alias historique
         foret: {
-          50:  '#f6fced',
-          100: '#e7f8d3',
-          200: '#d0f1a7',
-          300: '#b3e873',
-          400: '#92de35',
-          500: '#70b41d',   // vert exact du logo — boutons, badges actifs
-          600: '#5a9118',   // hover
-          700: '#477213',   // foncé
-          800: '#35560e',   // très foncé
-          900: '#253b0a',
+          50:  '#f3fce6',
+          100: '#e2f8c2',
+          200: '#c7f091',
+          300: '#a3e659',
+          400: '#87d92e',
+          500: '#6cc600',   // vert exact du site officiel — boutons, badges actifs
+          600: '#5aa800',   // hover
+          700: '#478300',   // foncé
+          800: '#366500',   // très foncé
+          900: '#274a00',
         },
-        // Marine — bleu-nuit exact de l'encre du logo (fonds foncés : sidebar, connexion, avatar)
+        // Marine — bleu-nuit exact du site officiel (#112534 : nav, texte du logo, fonds foncés)
         marine: {
-          50:  '#f1f6f9',
-          100: '#dbe8f0',
-          200: '#b8d1e0',
-          300: '#86b0cb',
-          400: '#4d8bb2',
-          500: '#376481',
-          600: '#2b4e64',
-          700: '#223d4f',
-          800: '#1c3240',   // hover des fonds foncés
-          900: '#152732',   // marine exact du logo — fond sidebar, en-tête connexion
+          50:  '#eef3f6',
+          100: '#d7e3ea',
+          200: '#aec7d4',
+          300: '#7ea3b7',
+          400: '#4d7891',
+          500: '#335a70',
+          600: '#26485c',
+          700: '#1c3747',
+          800: '#162c39',
+          900: '#112534',   // marine exact du site officiel — fond sidebar, en-tête connexion
+        },
+        // Bronze — orange de marque du site officiel (#F06D22), accent secondaire chaleureux
+        bronze: {
+          50:  '#fef3ec',
+          100: '#fde1cc',
+          200: '#fac199',
+          300: '#f69d66',
+          400: '#f3843f',
+          500: '#f06d22',   // orange exact du site officiel
+          600: '#cc551a',
+          700: '#a34315',
+          800: '#7d3412',
+          900: '#5c270e',
         },
         // Crème — couleur texte du logo
         creme: {
@@ -77,8 +92,8 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['Georgia', 'ui-serif', 'serif'],
+        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['"Cormorant Garamond"', 'ui-serif', 'serif'],
       },
       boxShadow: {
         'card':       '0 2px 8px 0 rgba(0,0,0,0.07)',
