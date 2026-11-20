@@ -5,6 +5,7 @@ app_name = 'chiffrage'
 
 urlpatterns = [
     path('',                              views.DashboardView.as_view(),     name='dashboard'),
+    path('export/',                       views.DemandeChiffrageExportView.as_view(), name='export'),
     path('nouveau/',                      views.DemandeCreateView.as_view(), name='create'),
     path('<int:pk>/',                     views.DemandeDetailView.as_view(), name='detail'),
 

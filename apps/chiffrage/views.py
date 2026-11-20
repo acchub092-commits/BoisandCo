@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View, ListView
 import mimetypes
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseForbidden, JsonResponse, FileResponse, Http404
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, FileResponse, Http404
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
 
@@ -190,7 +190,102 @@ class DashboardView(ChiffrageRequiredMixin, View):
             'sel_commercial':  commercial_id,
             'sel_methodiste':  methodiste_id,
             'can_filter_people': can_filter_people,
+            'peut_exporter':   request.user.is_superuser or request.user.role in DemandeChiffrageExportView.ROLES_EXPORT,
         })
+
+
+class DemandeChiffrageExportView(ChiffrageRequiredMixin, View):
+    """Export Excel de la liste des demandes de chiffrage (respecte les filtres actifs
+    du dashboard) — réservé à l'administrateur, la DG et le Responsable Méthodes."""
+    ROLES_EXPORT = ('DIRECTEUR', 'RESP_METHODES', 'ADMIN')
+
+    def get(self, request):
+        if not request.user.is_superuser and request.user.role not in self.ROLES_EXPORT:
+            return HttpResponseForbidden(
+                "Export réservé à l'administrateur, la Direction Générale et le Responsable Méthodes."
+            )
+
+        qs = _qs_for_user(request.user)
+        statut        = request.GET.get('statut', '')
+        urgence       = request.GET.get('urgence', '')
+        search        = request.GET.get('q', '').strip()
+        retard        = request.GET.get('retard', '')
+        commercial_id = request.GET.get('commercial', '')
+        methodiste_id = request.GET.get('methodiste', '')
+
+        if statut:
+            qs = qs.filter(statut=statut)
+        if urgence:
+            qs = qs.filter(urgence=urgence)
+        if search:
+            qs = qs.filter(
+                Q(reference__icontains=search)
+                | Q(client_nom__icontains=search)
+                | Q(client_ref_affaire__icontains=search)
+            )
+        if commercial_id:
+            qs = qs.filter(commercial_id=commercial_id)
+        if methodiste_id:
+            qs = qs.filter(assigned_to_id=methodiste_id)
+
+        demandes = list(qs.select_related('commercial', 'assigned_to').order_by('-created_at'))
+        if retard:
+            demandes = [d for d in demandes if d.is_retard]
+
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Demandes de chiffrage'
+
+        headers = [
+            'Référence', 'Client', 'Réf. affaire', 'Statut', 'Urgence',
+            'Commercial', 'Méthodiste', 'Montant HT (MAD)',
+            'Délai souhaité', 'En retard', 'Créée le',
+        ]
+        ws.append(headers)
+        header_fill = PatternFill(start_color='1D3448', end_color='1D3448', fill_type='solid')
+        header_font = Font(color='FFFFFF', bold=True)
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+        ws.freeze_panes = 'A2'
+
+        for d in demandes:
+            ws.append([
+                d.reference,
+                d.client_nom,
+                d.client_ref_affaire or '',
+                d.get_statut_display(),
+                d.get_urgence_display(),
+                d.commercial.get_full_name() if d.commercial else '',
+                d.assigned_to.get_full_name() if d.assigned_to else '',
+                float(d.montant_ht) if d.montant_ht is not None else None,
+                d.delai_souhaite.strftime('%d/%m/%Y') if d.delai_souhaite else '',
+                'Oui' if d.is_retard else 'Non',
+                d.created_at.strftime('%d/%m/%Y %H:%M'),
+            ])
+
+        for col_idx, header in enumerate(headers, start=1):
+            col_letter = get_column_letter(col_idx)
+            max_len = len(header)
+            for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+                value = row[0].value
+                if value is not None:
+                    max_len = max(max_len, len(str(value)))
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 40)
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        filename = f"chiffrage_{timezone.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        wb.save(response)
+        return response
 
 
 # ---------------------------------------------------------------------------
