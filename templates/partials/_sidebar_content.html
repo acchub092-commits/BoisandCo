@@ -1,24 +1,27 @@
 {% load static %}
 
 {# Logo + bouton collapse ─────────────────────────────────────── #}
-<div class="flex items-center justify-between px-3 py-4 flex-shrink-0 min-h-[120px] border-b border-ardoise-100">
-  <div class="flex items-center overflow-hidden">
-    {# Logo replié : badge « & » seul #}
-    <div :class="sidebarOpen ? 'hidden' : 'flex'" class="items-center justify-center rounded-xl p-1.5" style="background-color: #f5f1eb;">
-      <img src="{% static 'images/logo-mark.png' %}" alt="Bois&amp;Co"
-           class="w-7 h-7 flex-shrink-0 object-contain">
-    </div>
-    {# Logo complet — encart clair #}
-    <div :class="sidebarOpen ? 'flex' : 'hidden'" class="flex-col">
-      <div class="flex items-center rounded-xl px-3 py-2" style="background-color: #f5f1eb;">
-        <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co — Matières vivantes, intérieurs durables"
-             class="h-12 w-auto max-w-[190px] object-contain">
-      </div>
-      <p class="mt-1.5 pl-1 text-[10px] font-bold uppercase text-ardoise-400" style="letter-spacing: 0.18em;">
-        HOPE
-      </p>
+<div class="flex-shrink-0 border-b border-ardoise-100"
+     :class="sidebarOpen ? 'flex items-center justify-between px-4 py-5 min-h-[112px]' : 'flex flex-col items-center gap-3 px-2 py-4'">
+
+  {# Logo replié : badge marine avec le mark blanc #}
+  <div :class="sidebarOpen ? 'hidden' : 'flex'"
+       class="items-center justify-center rounded-xl w-9 h-9 flex-shrink-0 shadow-sm"
+       style="background-color:#1d3448;">
+    <img src="{% static 'images/logo-mark.png' %}" alt="Bois&amp;Co"
+         class="w-5 h-5 flex-shrink-0 object-contain" style="filter:brightness(0) invert(1);">
+  </div>
+
+  {# Logo complet #}
+  <div :class="sidebarOpen ? 'flex' : 'hidden'" class="flex-col gap-2 overflow-hidden">
+    <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co — Matières vivantes, intérieurs durables"
+         class="h-9 w-auto max-w-[180px] object-contain">
+    <div class="flex items-center gap-1.5 pl-0.5">
+      <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background-color:#73b72b;"></span>
+      <p class="text-[10px] font-bold uppercase text-ardoise-400" style="letter-spacing:0.22em;">Hope</p>
     </div>
   </div>
+
   <button @click="sidebarOpen = !sidebarOpen"
           class="p-1.5 rounded-lg text-ardoise-400 hover:text-marine-900 hover:bg-ardoise-100 transition-colors flex-shrink-0"
           :title="sidebarOpen ? 'Réduire' : 'Agrandir'">

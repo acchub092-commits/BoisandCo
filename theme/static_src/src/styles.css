@@ -55,26 +55,26 @@
     @apply text-red-600 text-xs mt-1;
   }
 
-  /* Navigation sidebar — fond sombre (vert logo) */
+  /* Navigation sidebar — identité officielle Bois&Co (marine #1d3448 / vert #73b72b) */
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
            transition-all duration-150 relative;
     color: #4a5869;   /* ardoise-600 */
     border-left: 2.5px solid transparent;
   }
   .nav-link:hover {
-    background-color: rgba(21, 39, 50, 0.05);
-    color: #152732;      /* marine-900 */
+    background-color: rgba(29, 52, 72, 0.05);
+    color: #1d3448;      /* marine-900 */
     transform: translateX(2px);
   }
   .nav-link-active {
-    background: linear-gradient(90deg, rgba(112, 180, 29, 0.14), rgba(112, 180, 29, 0.02)) !important;
-    color: #477213 !important;          /* foret-700 */
+    background: linear-gradient(90deg, rgba(115, 183, 43, 0.15), rgba(115, 183, 43, 0.02)) !important;
+    color: #48761b !important;          /* foret-700 */
     font-weight: 600;
-    border-left: 2.5px solid #70b41d;
+    border-left: 2.5px solid #73b72b;
   }
   .nav-link-active:hover {
-    background: linear-gradient(90deg, rgba(112, 180, 29, 0.2), rgba(112, 180, 29, 0.04)) !important;
+    background: linear-gradient(90deg, rgba(115, 183, 43, 0.22), rgba(115, 183, 43, 0.04)) !important;
     transform: none;
   }
 
