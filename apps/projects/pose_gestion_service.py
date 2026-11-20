@@ -387,7 +387,7 @@ def projets_pipeline_pose(user):
     from .models import Project
 
     qs = Project.objects.filter(pose_meta__isnull=False).select_related('pose_meta').order_by('-created_at')
-    if user.is_superuser or getattr(user, 'role', None) in ROLES_CREATION_PROJET_POSE:
+    if user.is_superuser or getattr(user, 'role', None) in ROLES_CREATION_PROJET_POSE + ('CONSULTATION',):
         return qs
 
     from .models_pose import PoseDelegation

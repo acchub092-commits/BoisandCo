@@ -48,7 +48,7 @@
   {% endif %}
 
   {# ── Chiffrage ── #}
-  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.is_superuser %}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.role == 'CONSULTATION' or user.is_superuser %}
   <a href="{% url 'chiffrage:dashboard' %}"
      class="nav-link {% if 'chiffrage' in request.path %}nav-link-active{% endif %}"
      :class="sidebarOpen ? '' : 'justify-center px-0'"
@@ -104,7 +104,7 @@
   {% endif %}
 
   {# ── CRM (ex-Pipeline commercial) ── #}
-  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser %}
+  {% if user.role == 'COMMERCIAL' or user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'CONSULTATION' or user.is_superuser %}
   <a href="{% url 'crm:pipeline' %}"
      class="nav-link {% if 'crm' in request.path and 'tableau-de-bord' not in request.path and 'agenda' not in request.path and 'comex' not in request.path %}nav-link-active{% endif %}"
      :class="sidebarOpen ? '' : 'justify-center px-0'"
@@ -142,7 +142,7 @@
   {% endif %}
 
   {# ── Performance commercial (ex-Tableau COMEX) ── #}
-  {% if user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.is_superuser or user.role == 'ADMIN' %}
+  {% if user.role == 'MANAGER' or user.role == 'DIRECTEUR' or user.role == 'CONSULTATION' or user.is_superuser or user.role == 'ADMIN' %}
   <a href="{% url 'crm:comex' %}"
      class="nav-link {% if 'comex' in request.path %}nav-link-active{% endif %}"
      :class="sidebarOpen ? '' : 'justify-center px-0'"
@@ -294,7 +294,7 @@
   {% endif %}
 
   {# ── Suivi Financier ── #}
-  {% if user.role == 'ADV' or user.role == 'DIRECTEUR' or user.role == 'MANAGER' or user.role == 'FINANCE' or user.role == 'ADMIN' or user.is_superuser %}
+  {% if user.role == 'ADV' or user.role == 'DIRECTEUR' or user.role == 'MANAGER' or user.role == 'FINANCE' or user.role == 'ADMIN' or user.role == 'CONSULTATION' or user.is_superuser %}
 
   {# Séparateur section Suivi Financier #}
   <div class="pt-3 pb-1">

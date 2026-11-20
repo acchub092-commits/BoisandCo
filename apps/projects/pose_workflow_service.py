@@ -61,7 +61,7 @@ def projets_visibles_pointage(user):
     from .models import Project
 
     qs = Project.objects.filter(pose_meta__isnull=False)
-    if _est_supervision(user):
+    if _est_supervision(user) or getattr(user, 'role', None) == 'CONSULTATION':
         return qs
     from .models_pose import PoseDelegation
 

@@ -31,6 +31,7 @@ class User(AbstractUser):
         CHEF_PROJET_POSE  = 'CHEF_PROJET_POSE',  'Chef de projet de la pose'
         TRESO_POSE        = 'TRESO_POSE',        'Trésorerie Pose (test)'
         CONDUCTEUR_POSE   = 'CONDUCTEUR_POSE',   'Coordinateur de la pose'
+        CONSULTATION      = 'CONSULTATION',      'Consultation (lecture seule)'
 
     role = models.CharField(
         max_length=20,

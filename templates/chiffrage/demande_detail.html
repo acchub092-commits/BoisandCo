@@ -269,11 +269,11 @@
 
       {# Montant — visible DG et Méthodes toujours, DC et Commercial uniquement après validation DG #}
       {% if demande.montant_ht %}
-        {% if user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.is_superuser or devis_visible %}
+        {% if user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.role == 'CONSULTATION' or user.is_superuser or devis_visible %}
         <div class="bg-white rounded-xl shadow-card p-0 overflow-hidden">
           <div class="px-5 py-3 bg-foret-50 border-b border-foret-100 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-foret-800">Montant du devis</h2>
-            {% if user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.is_superuser %}
+            {% if user.role == 'DIRECTEUR' or user.role == 'ESTIMATEUR' or user.role == 'RESP_METHODES' or user.role == 'CONSULTATION' or user.is_superuser %}
             <span class="text-xs {% if devis_visible %}text-foret-600{% else %}text-orange-500 font-medium{% endif %}">
               {% if devis_visible %}Visible DC et commercial{% else %}Confidentiel — en attente validation DG{% endif %}
             </span>

@@ -25,7 +25,14 @@ def is_commercial(user):
 
 
 def can_access_crm(user):
-    return user.is_authenticated and (user.is_superuser or user.role in ('DIRECTEUR', 'MANAGER', 'COMMERCIAL'))
+    return user.is_authenticated and (
+        user.is_superuser or user.role in ('DIRECTEUR', 'MANAGER', 'COMMERCIAL', 'CONSULTATION')
+    )
+
+
+def can_view_all_crm(user):
+    """Visibilité complète en lecture (director + le rôle Consultation, lecture seule)."""
+    return is_director(user) or (user.is_authenticated and user.role == 'CONSULTATION')
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ from .models import (
     Lead, LeadNote, Activity, ACTIVITY_ICONS,
     Appointment, LeadDocument, LeadActivityLog, ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE,
 )
-from .permissions import is_director, is_commercial, can_access_crm
+from .permissions import is_director, is_commercial, can_access_crm, can_view_all_crm
 
 
 # ── Couleurs et labels des colonnes ─────────────────────────────────────────
@@ -43,7 +43,7 @@ class PipelineView(LoginRequiredMixin, TemplateView):
 
         # Filtrage RBAC : commerciaux ne voient que leurs leads
         base_qs = Lead.objects.select_related('assigned_to')
-        if not is_director(user) and not user.is_superuser:
+        if not can_view_all_crm(user) and not user.is_superuser:
             base_qs = base_qs.filter(
                 Q(assigned_to=user) | Q(created_by=user)
             )
@@ -503,7 +503,7 @@ class CRMDashboardView(LoginRequiredMixin, TemplateView):
         today = date.today()
 
         # ── Queryset de base (RBAC) ──────────────────────────────────────────
-        qs_base = Lead.objects.all() if is_director(user) else Lead.objects.filter(
+        qs_base = Lead.objects.all() if can_view_all_crm(user) else Lead.objects.filter(
             Q(assigned_to=user) | Q(created_by=user)
         )
 
@@ -548,7 +548,7 @@ class CRMDashboardView(LoginRequiredMixin, TemplateView):
         # ── Leads à valider (directeur) ──────────────────────────────────────
         pending = Lead.objects.filter(
             workflow_status=Lead.WorkflowStatus.PENDING_VALIDATION
-        ) if is_director(user) else Lead.objects.none()
+        ) if can_view_all_crm(user) else Lead.objects.none()
 
         # ── Prochains RDV (7 jours) ──────────────────────────────────────────
         rdv_qs = Appointment.objects.select_related('lead', 'created_by').filter(
@@ -556,12 +556,12 @@ class CRMDashboardView(LoginRequiredMixin, TemplateView):
             scheduled_at__date__lte=today + timedelta(days=7),
             status=Appointment.Status.PLANIFIE,
         )
-        if not is_director(user):
+        if not can_view_all_crm(user):
             rdv_qs = rdv_qs.filter(Q(lead__assigned_to=user) | Q(attendees=user)).distinct()
 
         # ── Journal récent ───────────────────────────────────────────────────
         logs_qs = LeadActivityLog.objects.select_related('lead', 'performed_by')
-        if not is_director(user):
+        if not can_view_all_crm(user):
             logs_qs = logs_qs.filter(lead__assigned_to=user)
         recent_logs = logs_qs.order_by('-created_at')[:12]
 
@@ -612,7 +612,7 @@ class CRMDashboardView(LoginRequiredMixin, TemplateView):
 
         # ── Performance par commercial (directeurs) ──────────────────────────
         perf_commerciaux = []
-        if is_director(user):
+        if can_view_all_crm(user):
             from apps.users.models import User as AppUser
             perf_commerciaux = list(
                 AppUser.objects.filter(role='COMMERCIAL', is_active_employee=True).annotate(
@@ -1045,7 +1045,7 @@ def _check_lead_access(user, lead):
     """Lève PermissionDenied si l'utilisateur n'a pas accès à ce lead."""
     if not can_access_crm(user):
         raise PermissionDenied
-    if not is_director(user) and lead.assigned_to != user:
+    if not can_view_all_crm(user) and lead.assigned_to != user:
         raise PermissionDenied
 
 
@@ -1325,7 +1325,7 @@ class COMEXDashboardView(LoginRequiredMixin, TemplateView):
     MONTHLY_TARGET = 20_000_000  # MAD — objectif mensuel de référence
 
     def dispatch(self, request, *args, **kwargs):
-        allowed = {User.Role.ADMIN, User.Role.DIRECTEUR, User.Role.MANAGER}
+        allowed = {User.Role.ADMIN, User.Role.DIRECTEUR, User.Role.MANAGER, User.Role.CONSULTATION}
         if not (request.user.is_superuser or getattr(request.user, 'role', None) in allowed):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
@@ -1775,7 +1775,7 @@ class AnalysePipelineView(CRMAccessMixin, View):
         f_commercial = request.GET.get('commercial', '')
         f_statut     = request.GET.get('statut', '')
         f_segment    = request.GET.get('segment', '')
-        if f_commercial and is_director(request.user):
+        if f_commercial and can_view_all_crm(request.user):
             qs = qs.filter(commercial_id=f_commercial)
         if f_statut:
             qs = qs.filter(statut=f_statut)

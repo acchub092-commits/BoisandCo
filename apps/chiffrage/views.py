@@ -22,7 +22,7 @@ from .models import (
 )
 from apps.users.models import User
 
-ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES', 'ADMIN')
+ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES', 'ADMIN', 'CONSULTATION')
 
 
 # ---------------------------------------------------------------------------
@@ -346,7 +346,7 @@ class DemandeDetailView(ChiffrageRequiredMixin, View):
         # Fichiers — séparés en deux widgets distincts
         is_commercial = request.user.role == 'COMMERCIAL' and not request.user.is_superuser
         is_internal   = (
-            request.user.role in ('DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES')
+            request.user.role in ('DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES', 'CONSULTATION')
             or request.user.is_superuser
         )
         POST_DG = {'DEVIS_VALIDE', 'TRANSMIS', 'ACCEPTE', 'REFUSE_CLI', 'ARCHIVE'}

@@ -78,7 +78,7 @@ def _visible_projects(user):
     - created the project directly (created_by)
     - commercial who submitted the chiffrage that originated the project
     """
-    if user.is_superuser or user.role in ('DIRECTEUR', 'MANAGER', 'ESTIMATEUR', 'ADV', 'ATELIER'):
+    if user.is_superuser or user.role in ('DIRECTEUR', 'MANAGER', 'ESTIMATEUR', 'ADV', 'ATELIER', 'CONSULTATION'):
         return Project.objects.all()
     qs = Project.objects.filter(
         Q(manager=user) |
@@ -185,7 +185,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         })
 
         # ── KPI Chiffrage ────────────────────────────────────────────
-        ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES')
+        ROLES_CHIFFRAGE = ('COMMERCIAL', 'MANAGER', 'DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES', 'CONSULTATION')
         if user.is_superuser or user.role in ROLES_CHIFFRAGE:
             all_chiffrage = DemandeChiffrage.objects.all()
 
