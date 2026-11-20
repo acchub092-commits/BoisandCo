@@ -154,9 +154,17 @@ class DashboardView(ChiffrageRequiredMixin, View):
         }
 
         # Filtre retard (post-queryset car propriété Python)
-        demandes = list(qs.order_by('-created_at'))
+        demandes_list = list(qs.select_related('commercial', 'assigned_to').order_by('-created_at'))
         if retard:
-            demandes = [d for d in demandes if d.is_retard]
+            demandes_list = [d for d in demandes_list if d.is_retard]
+
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(demandes_list, 25)
+        page_obj = paginator.get_page(request.GET.get('page'))
+        pagination_params = request.GET.copy()
+        pagination_params.pop('page', None)
+        pagination_qs = pagination_params.urlencode()
 
         # Listes pour les selects — uniquement pour les rôles qui ont accès global
         from apps.users.models import User as AppUser
@@ -177,7 +185,11 @@ class DashboardView(ChiffrageRequiredMixin, View):
         )
 
         return render(request, self.template_name, {
-            'demandes':        demandes,
+            'demandes':        page_obj.object_list,
+            'page_obj':        page_obj,
+            'paginator':       paginator,
+            'pagination_qs':   pagination_qs,
+            'total_demandes':  paginator.count,
             'stats':           stats,
             'statuts':         DemandeChiffrage.Statut.choices,
             'urgences':        DemandeChiffrage.Urgence.choices,

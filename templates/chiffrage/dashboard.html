@@ -242,8 +242,8 @@
     {% if demandes %}
     <div class="px-5 py-2.5 border-b border-ardoise-100 bg-ardoise-50">
       <p class="text-xs text-ardoise-500">
-        <span class="font-semibold text-ardoise-700">{{ demandes|length }}</span>
-        demande{{ demandes|length|pluralize }}
+        <span class="font-semibold text-ardoise-700">{{ total_demandes }}</span>
+        demande{{ total_demandes|pluralize }}
       </p>
     </div>
 
@@ -366,6 +366,29 @@
         {% endfor %}
       </tbody>
     </table>
+
+    {% if paginator.num_pages > 1 %}
+    <div class="px-5 py-3 border-t border-ardoise-100 flex items-center justify-between bg-white">
+      <p class="text-xs text-ardoise-400">
+        Page <span class="font-semibold text-ardoise-600">{{ page_obj.number }}</span> sur
+        <span class="font-semibold text-ardoise-600">{{ paginator.num_pages }}</span>
+      </p>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?{{ pagination_qs }}{% if pagination_qs %}&{% endif %}page={{ page_obj.previous_page_number }}"
+           class="btn-secondary btn-sm">← Précédent</a>
+        {% else %}
+        <span class="btn-secondary btn-sm opacity-40 cursor-not-allowed pointer-events-none">← Précédent</span>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?{{ pagination_qs }}{% if pagination_qs %}&{% endif %}page={{ page_obj.next_page_number }}"
+           class="btn-secondary btn-sm">Suivant →</a>
+        {% else %}
+        <span class="btn-secondary btn-sm opacity-40 cursor-not-allowed pointer-events-none">Suivant →</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
     {% else %}
     <div class="py-20 text-center">
