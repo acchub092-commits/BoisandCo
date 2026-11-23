@@ -30,6 +30,12 @@
       localStorage.removeItem(STORAGE_USER);
     } catch (e) { /* ignore */ }
   }
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      Promise.resolve(promise).catch(() => null),
+      new Promise((resolve) => setTimeout(resolve, ms)),
+    ]);
+  }
 
   // ---------------------------------------------------------------------
   // Appels API
@@ -1206,8 +1212,12 @@
     refreshBellBadge();
     const logout = document.getElementById('logout-btn');
     if (logout) logout.addEventListener('click', async () => {
-      await unsubscribeFromPush();
-      try { await api('/auth/logout/', { method: 'POST' }); } catch (e) { /* on efface quand même la session locale */ }
+      if (logout.disabled) return;
+      logout.disabled = true;
+      logout.style.opacity = '0.5';
+      // Déconnexion toujours effective même si le réseau (push, logout serveur) traîne ou ne répond jamais.
+      await withTimeout(unsubscribeFromPush(), 2500);
+      await withTimeout(api('/auth/logout/', { method: 'POST' }).catch(() => null), 2500);
       clearSession();
       location.hash = '#/login';
     });
