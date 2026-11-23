@@ -213,7 +213,7 @@
     app.innerHTML = `
       <div class="login-screen">
         <div class="login-brand">
-          <img src="/static/chiffrage_mobile/logo-new.png" class="login-wordmark" alt="Bois&amp;Co">
+          <img src="/static/images/logo-full-white.png" class="login-wordmark" alt="Bois&amp;Co">
           <p class="login-hope-label">Hope AppMobile</p>
         </div>
 
@@ -648,7 +648,7 @@
     app.innerHTML = topbar(getUser(), true) + `
       <div class="screen-body">
         <h2>Nouvelle demande de chiffrage</h2>
-        <form id="create-form" class="form">
+        <form id="create-form" class="form form-panel">
           <label>Nom du client *<input type="text" name="client_nom" required></label>
           <label>Référence affaire<input type="text" name="client_ref_affaire"></label>
           <label>Description commerciale *<textarea name="description" rows="3" required></textarea></label>
