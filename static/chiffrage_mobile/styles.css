@@ -42,20 +42,18 @@ html, body {
   font-family: 'Plus Jakarta Sans', -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, Arial, sans-serif;
   background: var(--marine); color: var(--ink);
 }
-/* Motif de marque — cadre + esperluette inclinés (charte, p.2/p.38), repris du panneau de connexion desktop */
-body::before {
-  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background-image:
-    radial-gradient(ellipse 120% 70% at 10% -10%, rgba(255,255,255,.05), transparent 60%);
-}
-body::after {
-  content: '&'; position: fixed; z-index: 0; pointer-events: none; user-select: none;
-  right: -12vw; bottom: -9vh; width: 78vw; aspect-ratio: 3/4;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 30vw; line-height: 1; font-weight: 800; color: rgba(255,255,255,.055);
-  border: 3px solid rgba(255,255,255,.12); border-radius: 4px; transform: rotate(-7deg);
-}
 #app { position: relative; z-index: 1; min-height: 100%; display: flex; flex-direction: column; animation: fade-in .22s ease; }
+/* Motif de marque — cadre + esperluette inclinés (charte, p.2/p.38) : confiné à la largeur de l'écran mobile
+   (560px max, via .screen-body/.login-screen), pas à la fenêtre du navigateur — en %, relatif au conteneur. */
+.screen-body::after, .login-screen::after {
+  content: '&'; position: absolute; z-index: -1; pointer-events: none; user-select: none;
+  right: -2%; width: 88%; aspect-ratio: 3/4;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(100px, 32vw, 170px); line-height: 1; font-weight: 800; color: rgba(255,255,255,.07);
+  border: 3px solid rgba(255,255,255,.14); border-radius: 4px; transform: rotate(-7deg);
+}
+.screen-body::after { top: 230px; }
+.login-screen::after { bottom: -6%; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 button, input, select, textarea { font-family: inherit; }
 button { touch-action: manipulation; }
@@ -88,7 +86,10 @@ a { color: inherit; }
   display: flex; align-items: center; justify-content: center; line-height: 1; border: 1.5px solid var(--marine);
 }
 
-.screen-body { padding: 16px; padding-bottom: calc(96px + var(--safe-bottom)); flex: 1; max-width: 560px; margin: 0 auto; width: 100%; }
+.screen-body {
+  padding: 16px; padding-bottom: calc(96px + var(--safe-bottom)); flex: 1; max-width: 560px; margin: 0 auto; width: 100%;
+  position: relative; overflow: hidden;
+}
 .screen-body h2 { margin: 0 0 14px; font-size: 1.3rem; letter-spacing: -0.01em; color: var(--on-dark); }
 .muted { color: var(--muted); }
 
@@ -96,6 +97,7 @@ a { color: inherit; }
 .login-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 100vh; padding: 32px 24px; text-align: center;
+  max-width: 560px; margin: 0 auto; position: relative; overflow: hidden;
 }
 .login-brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 28px; }
 .login-wordmark { height: 56px; width: auto; object-fit: contain; }
