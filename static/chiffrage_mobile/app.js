@@ -281,6 +281,7 @@
 
   let listSearchTimer = null;
   let activeKpiFilter = null; // { params: {statut: 'EN_ATTENTE'} | {retard: 1}, label: '…' } | null
+  let activeTab = 'action'; // 'action' | 'autres'
   let currentPage = 1;
   let listTotalCount = 0;
   const STATUT_CHOICES = window.STATUT_CHOICES || [];
@@ -351,6 +352,12 @@
       const stats = await api('/chiffrage/demandes/stats/');
       container.innerHTML = kpiSectionTemplate(stats);
       syncKpiActiveState();
+      const badge = document.getElementById('tab-badge-action');
+      if (badge) {
+        const n = stats.action_requise || 0;
+        badge.textContent = n > 99 ? '99+' : String(n);
+        badge.hidden = n === 0;
+      }
       container.querySelectorAll('.kpi-card').forEach((btn) => {
         btn.addEventListener('click', () => {
           const params = JSON.parse(btn.dataset.filter);
@@ -373,10 +380,20 @@
     const user = getUser();
     const showFab = canCreateDemande(user);
     activeKpiFilter = null;
+    activeTab = 'action';
     currentPage = 1;
     app.innerHTML = topbar(user) + `
       <div class="screen-body">
         <div id="kpi-results">${skeletonList(2)}</div>
+        <div class="list-tabs" id="list-tabs" role="tablist">
+          <button type="button" class="list-tab active" id="tab-action" data-tab="action" role="tab">
+            <span>Action requise</span>
+            <span class="list-tab-badge" id="tab-badge-action" hidden>0</span>
+          </button>
+          <button type="button" class="list-tab" id="tab-autres" data-tab="autres" role="tab">
+            <span>Autres demandes</span>
+          </button>
+        </div>
         <div class="list-toolbar">
           <div class="search-box">
             ${icon('search')}
@@ -397,6 +414,17 @@
       </div>` + (showFab ? fab() : '');
     wireTopbar();
     if (showFab) wireFab();
+
+    document.getElementById('list-tabs').querySelectorAll('.list-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.tab === activeTab) return;
+        activeTab = btn.dataset.tab;
+        document.querySelectorAll('.list-tab').forEach((b) => b.classList.toggle('active', b === btn));
+        activeKpiFilter = null;
+        syncKpiActiveState();
+        loadListResults(document.getElementById('list-search').value.trim(), 1);
+      });
+    });
 
     const toggleBtn = document.getElementById('view-toggle-btn');
     const syncToggleIcon = () => {
@@ -436,6 +464,7 @@
     container.innerHTML = skeletonList();
 
     const params = new URLSearchParams();
+    params.set('onglet', activeTab);
     if (query) params.set('q', query);
     if (activeKpiFilter) {
       Object.entries(activeKpiFilter.params).forEach(([k, v]) => params.set(k, v));
@@ -463,16 +492,17 @@
         ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucun résultat pour « ${escapeHtml(query)} ».</p></div>`
         : activeKpiFilter
           ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour « ${escapeHtml(activeKpiFilter.label)} ».</p></div>`
-          : showFab
-            ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p><p class="muted">Touchez « Nouvelle demande » pour en créer une.</p></div>`
-            : `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p></div>`);
+          : activeTab === 'action'
+            ? `<div class="empty-state empty-state-positive">${icon('checkCircle', 'icon-xl')}<p>Tout est à jour !</p><p class="muted">Aucune action en attente de votre part pour le moment.</p></div>`
+            : showFab
+              ? `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p><p class="muted">Touchez « Nouvelle demande » pour en créer une.</p></div>`
+              : `<div class="empty-state">${icon('inbox', 'icon-xl')}<p>Aucune demande pour l'instant.</p></div>`);
       wireNotifBanner();
       wireFilterChip();
       setPagination(null);
       return;
     }
 
-    items.sort((a, b) => actionScore(b) - actionScore(a));
     container.innerHTML = banner + chip + (getListViewMode() === 'table' ? tableTemplate(items) : `<div class="card-list">${items.map(cardTemplate).join('')}</div>`);
     wireNotifBanner();
     wireFilterChip();
@@ -520,6 +550,14 @@
 
   function actionScore(d) {
     return (d.peut_valider_dc || d.peut_valider_dg || d.peut_valider_rm || d.peut_traiter_methodes) ? 1 : 0;
+  }
+
+  function actionLabel(d) {
+    if (d.peut_valider_dc) return 'À valider — Directeur Commercial';
+    if (d.peut_valider_dg) return 'Devis à valider — DG';
+    if (d.peut_valider_rm) return 'Devis à approuver';
+    if (d.peut_traiter_methodes) return 'À chiffrer';
+    return 'Action requise';
   }
 
   function tableTemplate(items) {
@@ -585,6 +623,7 @@
     const actionRequise = actionScore(d) === 1;
     return `
       <div class="demande-card ${actionRequise ? 'demande-card-action' : ''}" data-goto="${d.id}">
+        ${actionRequise ? `<div class="demande-card-action-pill">${icon('checkCircle', 'icon-xs')}<span>${escapeHtml(actionLabel(d))}</span></div>` : ''}
         <div class="demande-card-top">
           <span class="ref">${escapeHtml(d.reference)}</span>
         </div>
@@ -592,7 +631,6 @@
         ${d.commercial ? `<p class="muted" style="margin:-6px 0 8px;font-size:0.78rem;">Soumis par ${escapeHtml(d.commercial.full_name)}</p>` : ''}
         <div class="demande-card-bottom">
           <span class="badge" style="background:${color}1a;color:${color}">${escapeHtml(d.statut_display)}</span>
-          ${actionRequise ? `<span class="chip chip-action">${icon('warning', 'icon-xs')} Action requise</span>` : ''}
           ${d.is_retard ? '<span class="chip chip-red">En retard</span>' : ''}
           ${montant ? `<span class="chip chip-green">${montant}</span>` : ''}
         </div>

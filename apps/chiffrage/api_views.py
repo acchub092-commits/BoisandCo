@@ -30,6 +30,28 @@ RETARD_EXCLUS = [
 ]
 
 
+def _action_requise_q(user):
+    """Reproduit exactement la logique peut_valider_dc/dg/rm/traiter_methodes du
+    serializer, mais exprimée en filtre base de données (onglets de la liste mobile)."""
+    if user.is_superuser:
+        return (
+            Q(statut=DemandeChiffrage.Statut.EN_ATTENTE)
+            | Q(statut=DemandeChiffrage.Statut.SOUMIS_DG)
+            | Q(statut=DemandeChiffrage.Statut.SOUMIS_RM)
+            | Q(statut=DemandeChiffrage.Statut.EN_CHIFFRAGE)
+        )
+    if user.role == 'MANAGER':
+        return Q(statut=DemandeChiffrage.Statut.EN_ATTENTE)
+    if user.role == 'DIRECTEUR':
+        return Q(statut=DemandeChiffrage.Statut.SOUMIS_DG)
+    if user.role == 'RESP_METHODES':
+        return Q(statut=DemandeChiffrage.Statut.SOUMIS_RM)
+    if user.role == 'ESTIMATEUR':
+        return Q(statut=DemandeChiffrage.Statut.EN_CHIFFRAGE, assigned_to_id=user.id)
+    # Aucune action mobile définie pour ce rôle (COMMERCIAL, CONSULTATION…)
+    return Q(pk__in=[])
+
+
 class DemandeChiffrageViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsChiffrageMobileUser]
     http_method_names = ['get', 'post', 'head']
@@ -37,6 +59,11 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = _qs_for_user(self.request.user)
+        onglet = self.request.query_params.get('onglet')
+        if onglet == 'action':
+            qs = qs.filter(_action_requise_q(self.request.user))
+        elif onglet == 'autres':
+            qs = qs.exclude(_action_requise_q(self.request.user))
         statut = self.request.query_params.get('statut')
         if statut:
             qs = qs.filter(statut=statut)
@@ -206,6 +233,7 @@ class DemandeChiffrageViewSet(viewsets.ModelViewSet):
         qs = _qs_for_user(request.user)
         today = timezone.now().date()
         data = {
+            'action_requise': qs.filter(_action_requise_q(request.user)).count(),
             'en_attente':   qs.filter(statut='EN_ATTENTE').count(),
             'en_chiffrage': qs.filter(statut='EN_CHIFFRAGE').count(),
             'soumis_dg':    qs.filter(statut='SOUMIS_DG').count(),
