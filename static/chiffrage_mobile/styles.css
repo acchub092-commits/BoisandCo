@@ -110,7 +110,7 @@ a { color: inherit; }
 .login-brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 26px; }
 .login-wordmark-small { height: 24px; width: auto; object-fit: contain; opacity: .85; }
 .login-hope-lockup { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
-.login-hope-icon { height: 48px; width: auto; object-fit: contain; }
+.login-hope-icon { height: 66px; width: auto; object-fit: contain; }
 .login-hope-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
 .login-hope-title { font-size: 1.7rem; font-weight: 800; color: #fff; letter-spacing: -0.01em; }
 .login-hope-sub { font-size: 0.74rem; font-weight: 600; color: rgba(255,255,255,.65); margin-top: 3px; }
@@ -123,14 +123,14 @@ a { color: inherit; }
 .login-wave { position: absolute; left: 0; bottom: -1px; width: 100%; height: 50px; display: block; }
 
 .login-bottom {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: #f7f8f6; padding: 28px 22px 32px;
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  background: var(--paper); padding: 0 0 24px;
 }
 .login-card {
-  width: 100%; max-width: 360px; background: var(--paper); border-radius: var(--radius-lg); overflow: hidden;
-  box-shadow: 0 4px 32px rgba(21,39,50,.1); border: 1px solid var(--hairline); border-top: 3px solid var(--foret-dark);
+  width: 100%; max-width: 560px; background: var(--paper);
+  border-top: 3px solid var(--foret-dark);
 }
-.login-card-head { padding: 22px 24px 4px; }
+.login-card-head { padding: 26px 24px 4px; }
 .login-card-head h1 { margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--marine-soft); }
 .login-card-head p { margin: 4px 0 0; font-size: 0.82rem; color: var(--muted); }
 .login-card-body { padding: 18px 24px 28px; text-align: left; gap: 16px; }
