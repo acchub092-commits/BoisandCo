@@ -134,6 +134,15 @@ a { color: inherit; }
 .input-icon-wrap { position: relative; display: flex; align-items: center; }
 .input-icon-wrap .icon-svg { position: absolute; left: 13px; color: var(--muted); pointer-events: none; }
 .input-icon-wrap input { flex: 1; width: 100%; padding-left: 38px !important; }
+/* Neutralise le fond bleuté que Chrome/Edge appliquent aux champs auto-remplis */
+.login-card-body input:-webkit-autofill,
+.login-card-body input:-webkit-autofill:hover,
+.login-card-body input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #fff inset !important;
+  box-shadow: 0 0 0px 1000px #fff inset !important;
+  -webkit-text-fill-color: #2e353f !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
 .btn-primary.login-submit { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--foret-dark); box-shadow: 0 8px 20px -10px rgba(115,183,43,.6); }
 .login-footer { margin-top: 18px; font-size: 0.74rem; color: var(--muted); }
 .app-footer { margin: 22px 0 6px; font-size: 0.72rem; color: var(--on-dark-muted); text-align: center; }

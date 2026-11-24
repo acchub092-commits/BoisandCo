@@ -5,6 +5,21 @@
 
 {% block auth_content %}
 
+{# Neutralise le fond bleuté que Chrome/Edge appliquent aux champs auto-remplis (identifiants enregistrés) #}
+<style>
+  #id_login:-webkit-autofill,
+  #id_login:-webkit-autofill:hover,
+  #id_login:-webkit-autofill:focus,
+  #id_password:-webkit-autofill,
+  #id_password:-webkit-autofill:hover,
+  #id_password:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px #fff inset !important;
+    box-shadow: 0 0 0px 1000px #fff inset !important;
+    -webkit-text-fill-color: #2e353f !important;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+</style>
+
 <div class="fixed inset-0 flex flex-col lg:flex-row bg-white">
 
   {# ── Panneau de marque (visible dès lg) — fond marine officiel + motif de marque ── #}
