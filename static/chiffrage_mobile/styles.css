@@ -126,7 +126,10 @@ a { color: inherit; }
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: #f7f8f6; padding: 28px 22px 32px;
 }
-.login-card { width: 100%; max-width: 360px; background: var(--paper); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 4px 32px rgba(21,39,50,.1); border: 1px solid var(--hairline); }
+.login-card {
+  width: 100%; max-width: 360px; background: var(--paper); border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: 0 4px 32px rgba(21,39,50,.1); border: 1px solid var(--hairline); border-top: 3px solid var(--foret-dark);
+}
 .login-card-head { padding: 22px 24px 4px; }
 .login-card-head h1 { margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--marine-soft); }
 .login-card-head p { margin: 4px 0 0; font-size: 0.82rem; color: var(--muted); }
