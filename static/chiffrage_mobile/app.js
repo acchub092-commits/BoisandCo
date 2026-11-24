@@ -131,6 +131,8 @@
     table: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M3 6h18v12H3V6z"/>',
     grid: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h6v6H4V5zm10 0h6v6h-6V5zM4 15h6v6H4v-6zm10 0h6v6h-6v-6z"/>',
     clock: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    user: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>',
+    lock: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>',
     gridDots: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>',
     checkCircle: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
     check: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7"/>',
@@ -218,34 +220,59 @@
     const year = new Date().getFullYear();
     app.innerHTML = `
       <div class="login-screen">
-        <div class="login-brand">
-          <img src="/static/images/logo-full-white.png" class="login-wordmark-small" alt="Bois&amp;Co">
-          <div class="login-hope-lockup">
-            <img src="/static/images/hope-mark.png" class="login-hope-icon" alt="HOPE">
-            <div class="login-hope-text">
-              <span class="login-hope-title">HOPE</span>
-              <span class="login-hope-sub">By Bois <b>&amp;</b> Co</span>
+        <div class="login-top">
+          <div class="login-brand">
+            <img src="/static/images/logo-full-white.png" class="login-wordmark-small" alt="Bois&amp;Co">
+            <div class="login-hope-lockup">
+              <img src="/static/images/hope-mark.png" class="login-hope-icon" alt="HOPE">
+              <div class="login-hope-text">
+                <span class="login-hope-title">HOPE</span>
+                <span class="login-hope-sub">By Bois <b>&amp;</b> Co</span>
+              </div>
             </div>
           </div>
+          <p class="login-heading">L'espace de gestion interne Bois&amp;Co.</p>
+          <p class="login-tagline">Matières vivantes, intérieurs durables — chiffrage, projets et pilotage commercial, réunis dans un seul outil.</p>
+          <svg class="login-wave" viewBox="0 0 500 90" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="loginWaveGradientMobile" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#8fd13f"/>
+                <stop offset="1" stop-color="#4f8a1b"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,40 C120,75 260,5 500,42 L500,90 L0,90 Z" fill="url(#loginWaveGradientMobile)"/>
+          </svg>
         </div>
 
-        <div class="login-card">
-          <div class="login-card-head">
-            <h1>Connexion</h1>
-            <p>Accédez à votre espace de gestion</p>
+        <div class="login-bottom">
+          <div class="login-card">
+            <div class="login-card-head">
+              <h1>Connexion</h1>
+              <p>Accédez à votre espace de gestion</p>
+            </div>
+            <form id="login-form" class="form login-card-body">
+              <label>Identifiant
+                <div class="input-icon-wrap">
+                  ${icon('user', 'icon-xs')}
+                  <input type="text" name="username" autocomplete="username" required>
+                </div>
+              </label>
+              <label>Mot de passe
+                <div class="input-icon-wrap">
+                  ${icon('lock', 'icon-xs')}
+                  <input type="password" name="password" autocomplete="current-password" required>
+                </div>
+              </label>
+              <button type="submit" class="btn-primary login-submit">
+                Se connecter
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </button>
+              <p id="login-error" class="field-error" hidden></p>
+            </form>
           </div>
-          <form id="login-form" class="form login-card-body">
-            <label>Identifiant<input type="text" name="username" autocomplete="username" required></label>
-            <label>Mot de passe<input type="password" name="password" autocomplete="current-password" required></label>
-            <button type="submit" class="btn-primary login-submit">
-              Se connecter
-              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-            </button>
-            <p id="login-error" class="field-error" hidden></p>
-          </form>
-        </div>
 
-        <p class="login-footer">HOPE${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co © ${year}</p>
+          <p class="login-footer">HOPE${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co © ${year}</p>
+        </div>
       </div>`;
     const form = document.getElementById('login-form');
     form.addEventListener('submit', async (e) => {
