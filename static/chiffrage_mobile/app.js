@@ -200,7 +200,7 @@
 
   function offlineTemplate() {
     return `
-      <div class="topbar"><span>Hope AppMobile</span></div>
+      <div class="topbar"><span>HOPE</span></div>
       <div class="empty-state">
         <p>${icon('wifiOff')} Pas de connexion réseau.</p>
         <p class="muted">Vérifiez votre connexion puis réessayez.</p>
@@ -219,8 +219,14 @@
     app.innerHTML = `
       <div class="login-screen">
         <div class="login-brand">
-          <img src="/static/images/logo-full-white.png" class="login-wordmark" alt="Bois&amp;Co">
-          <p class="login-hope-label">Hope AppMobile</p>
+          <img src="/static/images/logo-full-white.png" class="login-wordmark-small" alt="Bois&amp;Co">
+          <div class="login-hope-lockup">
+            <img src="/static/images/hope-mark.png" class="login-hope-icon" alt="HOPE">
+            <div class="login-hope-text">
+              <span class="login-hope-title">HOPE</span>
+              <span class="login-hope-sub">By Bois <b>&amp;</b> Co</span>
+            </div>
+          </div>
         </div>
 
         <div class="login-card">
@@ -239,7 +245,7 @@
           </form>
         </div>
 
-        <p class="login-footer">Hope AppMobile${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co © ${year}</p>
+        <p class="login-footer">HOPE${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co © ${year}</p>
       </div>`;
     const form = document.getElementById('login-form');
     form.addEventListener('submit', async (e) => {
@@ -416,7 +422,7 @@
           <div class="list-pagination" id="list-pagination"></div>
         </div>
         <div id="liste-results">${skeletonList()}</div>
-        <p class="app-footer">Hope AppMobile${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co</p>
+        <p class="app-footer">HOPE${APP_VERSION ? ' v' + APP_VERSION : ''} · Bois&amp;Co</p>
       </div>` + (showFab ? fab() : '');
     wireTopbar();
     if (showFab) wireFab();
@@ -1187,16 +1193,18 @@
   // ce qui rendait l'icône PNG méconnaissable. Un SVG avec des couleurs explicites y échappe.
   const BRAND_MARK_SVG = `
     <svg class="topbar-logo-svg" viewBox="0 0 40 40" aria-hidden="true">
-      <text x="7" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#1d3448">B</text>
-      <text x="17.5" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#73b72b">&amp;</text>
-      <text x="27" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="19" font-weight="800" fill="#1d3448">C</text>
+      <rect x="18" y="7" width="15" height="19" fill="none" stroke="#73b72b" stroke-width="2"/>
+      <rect x="10" y="11" width="15" height="17" rx="1.5" fill="#fff"/>
+      <line x1="13.5" y1="17.5" x2="21.5" y2="17.5" stroke="#1d3448" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="13.5" y1="21.5" x2="19.5" y2="21.5" stroke="#1d3448" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M5 19 h8 l2 -2.5 h7 a2 2 0 0 1 2 2 v9 a2 2 0 0 1 -2 2 H7 a2 2 0 0 1 -2 -2 Z" fill="#73b72b"/>
     </svg>`;
 
   function topbar(user, withBack) {
     return `
       <div class="topbar">
         ${withBack ? `<button class="back-btn" id="back-btn">${icon('back')}</button>` : `<span class="topbar-logo">${BRAND_MARK_SVG}</span>`}
-        <span>Hope AppMobile</span>
+        <span class="topbar-brand"><strong>HOPE</strong><em>By Bois <b>&amp;</b> Co</em></span>
         <button class="bell-btn" id="bell-btn" title="Notifications">
           ${icon('bell')}
           <span class="bell-badge" id="bell-badge" hidden>0</span>

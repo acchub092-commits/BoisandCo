@@ -1,12 +1,14 @@
-const CACHE_NAME = 'hope-chiffrage-shell-v37';
+const CACHE_NAME = 'hope-chiffrage-shell-v39';
 const SHELL_URLS = [
   '/m/chiffrage/',
   '/static/chiffrage_mobile/app.js',
   '/static/chiffrage_mobile/styles.css',
   '/static/chiffrage_mobile/manifest.webmanifest',
+  '/static/chiffrage_mobile/icons/icon-32.png',
   '/static/chiffrage_mobile/icons/icon-192.png',
   '/static/chiffrage_mobile/icons/icon-512.png',
-  '/static/chiffrage_mobile/logo-new.png',
+  '/static/images/hope-mark.png',
+  '/static/images/logo-full-white.png',
 ];
 
 self.addEventListener('install', (event) => {

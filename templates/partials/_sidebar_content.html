@@ -4,21 +4,23 @@
 <div class="flex-shrink-0 border-b border-ardoise-100"
      :class="sidebarOpen ? 'flex items-center justify-between px-4 py-5 min-h-[112px]' : 'flex flex-col items-center gap-3 px-2 py-4'">
 
-  {# Logo replié : badge marine avec le mark blanc #}
+  {# Logo replié : icône HOPE seule #}
   <div :class="sidebarOpen ? 'hidden' : 'flex'"
        class="items-center justify-center rounded-xl w-9 h-9 flex-shrink-0 shadow-sm"
        style="background-color:#1d3448;">
-    <img src="{% static 'images/logo-mark.png' %}" alt="Bois&amp;Co"
-         class="w-5 h-5 flex-shrink-0 object-contain" style="filter:brightness(0) invert(1);">
+    <img src="{% static 'images/hope-mark.png' %}" alt="HOPE" class="w-6 h-6 object-contain">
   </div>
 
-  {# Logo complet #}
-  <div :class="sidebarOpen ? 'flex' : 'hidden'" class="flex-col gap-2 overflow-hidden">
-    <img src="{% static 'images/logo-full.png' %}" alt="Bois&amp;Co — Matières vivantes, intérieurs durables"
-         class="h-9 w-auto max-w-[180px] object-contain">
-    <div class="flex items-center gap-1.5 pl-0.5">
-      <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background-color:#73b72b;"></span>
-      <p class="text-[10px] font-bold uppercase text-ardoise-400" style="letter-spacing:0.22em;">Hope</p>
+  {# Logo complet : icône + lockup HOPE / By Bois & Co #}
+  <div :class="sidebarOpen ? 'flex' : 'hidden'" class="items-center gap-2.5 overflow-hidden">
+    <div class="flex items-center justify-center rounded-lg w-10 h-10 flex-shrink-0" style="background-color:#1d3448;">
+      <img src="{% static 'images/hope-mark.png' %}" alt="HOPE" class="w-7 h-7 object-contain">
+    </div>
+    <div class="flex flex-col leading-none">
+      <span class="text-lg font-extrabold tracking-tight" style="color:#1d3448;">HOPE</span>
+      <span class="text-[10px] font-semibold text-ardoise-400 mt-1">
+        By Bois<span class="inline-block px-1 mx-0.5 border rounded" style="border-color:#73b72b;color:#73b72b;">&amp;</span>Co
+      </span>
     </div>
   </div>
 
