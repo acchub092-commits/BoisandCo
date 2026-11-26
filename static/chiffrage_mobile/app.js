@@ -1220,8 +1220,8 @@
   // ce qui rendait l'icône PNG méconnaissable. Un SVG avec des couleurs explicites y échappe.
   const BRAND_MARK_SVG = `
     <svg class="topbar-logo-svg" viewBox="0 0 40 40" aria-hidden="true">
-      <circle cx="15" cy="10.5" r="4.2" fill="#1d3448"/>
-      <path d="M7 27c0-7 4-12 8-12s8 5 8 12" fill="#1d3448"/>
+      <circle cx="15" cy="10.5" r="4.2" fill="#fff"/>
+      <path d="M7 27c0-7 4-12 8-12s8 5 8 12" fill="#fff"/>
       <circle cx="25.5" cy="14.5" r="3.4" fill="#73b72b"/>
       <path d="M18.5 28c0-5.5 3-9.5 7-9.5s7 4 7 9.5" fill="#73b72b"/>
       <path d="M9 20a5 5 0 015-5h10a5 5 0 015 5v3a5 5 0 01-5 5h-7l-4 3v-3h-1a5 5 0 01-5-5z" fill="#fff"/>
