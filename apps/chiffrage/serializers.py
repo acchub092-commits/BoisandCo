@@ -142,11 +142,28 @@ class DemandeChiffrageDetailSerializer(DemandeChiffrageListSerializer):
         user = self._user()
         return bool(user and user.role == 'COMMERCIAL' and not user.is_superuser)
 
+    def _is_internal_role(self):
+        user = self._user()
+        return bool(user and (
+            user.is_superuser or user.role in ('DIRECTEUR', 'ESTIMATEUR', 'RESP_METHODES', 'CONSULTATION')
+        ))
+
     def get_fichiers(self, obj):
         qs = obj.fichiers.filter(is_devis=False)
         if self._is_commercial():
             qs = qs.filter(is_internal=False)
-        return FichierChiffrageSerializer(qs, many=True, context=self.context).data
+        fichiers = list(qs)
+
+        # Devis (chiffrage détaillé interne + devis public) — mêmes règles que le détail desktop :
+        # rôles internes (DG/Méthodes/RM/Consultation/superuser) voient tout, DC/Commercial uniquement
+        # le devis public une fois le statut post-DG.
+        devis_qs = obj.fichiers.filter(is_devis=True).order_by('-uploaded_at')
+        if self._is_internal_role():
+            fichiers += list(devis_qs)
+        elif obj.statut in _POST_DG_STATUTS:
+            fichiers += list(devis_qs.filter(is_public=True)[:1])
+
+        return FichierChiffrageSerializer(fichiers, many=True, context=self.context).data
 
     def get_messages(self, obj):
         qs = obj.messages.filter(is_internal=False) if self._is_commercial() else obj.messages.all()
